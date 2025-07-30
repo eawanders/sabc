@@ -19,7 +19,7 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(members)
+    return NextResponse.json({ members })
   } catch (error) {
     console.error('Error fetching members from Notion:', error)
     return NextResponse.json(

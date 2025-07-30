@@ -18,6 +18,10 @@ export async function GET() {
       },
     })
 
+    console.log(
+      "Fetched outings from Notion:",
+      JSON.stringify(response.results, null, 2)
+    )
     return NextResponse.json(response.results)
   } catch (error) {
     console.error('Error fetching outings from Notion:', error)
