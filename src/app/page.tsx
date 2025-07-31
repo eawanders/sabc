@@ -4,12 +4,26 @@ import WeekTabs from "@/components/WeekTabs";
 import OutingCard from "@/components/OutingCard";
 import { Outing } from "@/types/outing";
 import { Member } from "@/types/members";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function Page() {
   const [outings, setOutings] = useState<Outing[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedWeek, setSelectedWeek] = useState("Week 1");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // FIXED: Callback to refresh data when components make changes
+  const handleStateChange = useCallback(() => {
+    console.log("🔄 State change detected, refreshing data...");
+    setRefreshKey(prev => prev + 1);
+  }, []);
+
+  // FIXED: Force refresh when week changes to ensure state persistence
+  const handleWeekChange = (week: string) => {
+    console.log(`🔄 Changing week from ${selectedWeek} to ${week}`);
+    setSelectedWeek(week);
+    // Don't force refresh on week change, just filter
+  };
 
   useEffect(() => {
     console.log("🚀 useEffect executing...");
@@ -51,7 +65,7 @@ export default function Page() {
     };
 
     fetchData();
-  }, []);
+  }, [refreshKey]); // FIXED: Re-fetch data when refreshKey changes to get latest state
 
   const weeks = Array.from(
     new Set(
@@ -85,12 +99,17 @@ export default function Page() {
       <section id="outings" className="w-full max-w-6xl mt-12">
         <WeekTabs
           selectedWeek={selectedWeek}
-          onChange={setSelectedWeek}
+          onChange={handleWeekChange}
           weeks={weeks}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           {filtered.map((outing) => (
-            <OutingCard key={outing.id} outing={outing} members={members} />
+            <OutingCard
+              key={`${outing.id}-${selectedWeek}-${refreshKey}`}
+              outing={outing}
+              members={members}
+              onStateChange={handleStateChange}
+            />
           ))}
         </div>
       </section>

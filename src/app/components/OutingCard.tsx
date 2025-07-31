@@ -5,6 +5,7 @@ import { Member } from "@/types/members";
 interface OutingCardProps {
   outing: Outing;
   members: Member[];
+  onStateChange?: () => void;
 }
 
 const seatLabels = [
@@ -23,8 +24,9 @@ const seatLabels = [
   "Sub4",
 ];
 
-export default function OutingCard({ outing, members }: OutingCardProps) {
+export default function OutingCard({ outing, members, onStateChange }: OutingCardProps) {
   const [assignments, setAssignments] = React.useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
   // Helper function to safely access outing properties
   const getOutingProperty = React.useCallback((propertyName: string): unknown => {
@@ -64,7 +66,12 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
   const bankRiderMember = bankRiderId ? members.find(m => m.id === bankRiderId) : null;
   const bankRider = bankRiderMember?.name || "None";
 
+  // Initialize assignments from outing data - FIXED: Remove assignments from dependencies
   React.useEffect(() => {
+    if (!outing || !members.length) return;
+
+    console.log(`🔧 Initializing assignments for outing ${outing.id}`);
+
     const initialAssignments: Record<string, string> = {};
     seatLabels.forEach((seat) => {
       const seatProp = getOutingProperty(seat);
@@ -74,26 +81,30 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
         const matchedMember = members.find((m) => m.id === relatedId);
         if (matchedMember) {
           initialAssignments[seat] = matchedMember.name;
+          console.log(`🎯 Pre-filled ${seat} with ${matchedMember.name}`);
         }
       }
     });
 
-    const isSame = Object.keys(initialAssignments).every((key) => {
-      return assignments[key] === initialAssignments[key];
-    });
-
-    if (!isSame) {
-      setAssignments(initialAssignments);
-    }
-  }, [outing, members, getOutingProperty, assignments]);
+    // Always update assignments when outing or members change
+    setAssignments(initialAssignments);
+    setIsInitialized(true);
+    console.log(`✅ Assignments initialized:`, initialAssignments);
+  }, [outing?.id, members, getOutingProperty]); // FIXED: Removed assignments dependency
 
   const handleAssignmentChange = async (seat: string, memberName: string) => {
+    if (!isInitialized) {
+      console.warn(`⚠️ Attempted to change assignment before initialization complete`);
+      return;
+    }
+
     const prevMemberName = assignments[seat] || "";
     const member = members.find((m) => m.name === memberName) || null;
 
     console.log(`🔄 Assignment change for ${seat}: "${prevMemberName}" → "${memberName}"`);
 
-    // Update local state
+    // FIXED: Update local state optimistically but handle rollback on error
+    const previousAssignments = { ...assignments };
     setAssignments((prev) => {
       const updated = { ...prev };
       if (memberName === "") {
@@ -115,14 +126,26 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to update Notion");
+      if (!res.ok) {
+        // FIXED: Rollback on error
+        setAssignments(previousAssignments);
+        throw new Error("Failed to update Notion");
+      }
+
       console.log(
         member
           ? `✅ Seat ${seat} updated with ${memberName}`
           : `✅ Seat ${seat} cleared`
       );
+
+      // FIXED: Notify parent of state change to refresh data
+      if (onStateChange) {
+        onStateChange();
+      }
     } catch (err) {
       console.error(`❌ Error updating seat ${seat}:`, err);
+      // State already rolled back above
+      return;
     }
 
     // Reset availability status whenever assignment changes (member changed, added, or removed)
@@ -153,6 +176,11 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
           ...prev,
           [`${seat}_status`]: "Awaiting Approval",
         }));
+
+        // FIXED: Notify parent of state change after reset
+        if (onStateChange) {
+          onStateChange();
+        }
       } catch (err) {
         console.error(`❌ Error resetting ${statusField}:`, err);
       }
@@ -196,6 +224,11 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
         ...prev,
         [`${seat}_status`]: status,
       }));
+
+      // FIXED: Notify parent of state change to refresh data
+      if (onStateChange) {
+        onStateChange();
+      }
     } catch (err) {
       console.error(`❌ Error updating ${statusField}:`, err);
       // Show more detailed error information
