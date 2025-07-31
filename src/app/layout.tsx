@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SABC - Rowing Club Management",
-  description: "South Australian Boat Club - Manage outings, member assignments, and availability",
+  description: "St Antony's College, Oxford Boat Club - Manage outings, member assignments, and availability",
 };
 
 export default function RootLayout({
