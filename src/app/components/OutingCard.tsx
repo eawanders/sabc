@@ -1,8 +1,16 @@
 import React from "react";
 
+interface Member {
+  id: string;
+  name: string;
+}
+
 interface OutingCardProps {
-  outing: any;
-  members: any[];
+  outing: {
+    id: string;
+    properties: Record<string, any>;
+  };
+  members: Member[];
 }
 
 export default function OutingCard({ outing, members }: OutingCardProps) {
@@ -44,26 +52,6 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
     });
     setAssignments(initialAssignments);
   }, [outing, members]);
-
-  const getAssignedMember = (seat: string) => {
-    const seatProp = outing?.properties?.[seat];
-    console.log(`Seat ${seat} property:`, seatProp);
-    console.log(`Seat ${seat} property full object:`, JSON.stringify(seatProp, null, 2));
-
-    if (!seatProp || !seatProp.relation || seatProp.relation.length === 0) {
-      console.log(`No relation found for seat ${seat}`);
-      return "";
-    }
-
-    const relatedId = seatProp.relation[0]?.id;
-    console.log(`Seat ${seat} relation array:`, seatProp.relation);
-    console.log(`Related ID for seat ${seat}:`, relatedId);
-
-    const matchedMember = members.find((m) => m.id === relatedId);
-    console.log(`Matched member for seat ${seat}:`, matchedMember);
-
-    return matchedMember?.name || "";
-  };
 
   const handleAssignmentChange = async (seat: string, memberName: string) => {
     const prevMemberName = assignments[seat] || "";
@@ -202,8 +190,8 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
                 {members
                   .filter((member) => {
                     const assignedNames = Object.entries(assignments)
-                      .filter(([s, name]) => s !== seat)
-                      .map(([_, name]) => name);
+                      .filter(([key]) => key !== seat)
+                      .map(([, name]) => name);
                     return !assignedNames.includes(member.name) || member.name === assignments[seat];
                   })
                   .map((member) => (

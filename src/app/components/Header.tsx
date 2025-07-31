@@ -6,7 +6,7 @@ export default function Header() {
   return (
     <header className="w-full bg-white py-6 px-4 text-center">
       <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold uppercase tracking-wide text-gray-900">
-        St Antony's College, Oxford
+        <p>St Antony&apos;s College, Oxford</p>
       </h1>
       <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mt-1">
         Boat Club

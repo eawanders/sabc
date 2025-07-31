@@ -29,24 +29,6 @@ export default function Page() {
     o => o?.properties?.Week?.select?.name === selectedWeek
   );
 
-  const getAssignedMember = (outing: any, seat: string) => {
-    const seatProp = outing?.properties?.[seat];
-    console.log("🔍 Seat property for", seat, ":", seatProp);
-
-    if (!seatProp || !seatProp.relation || seatProp.relation.length === 0) {
-      console.log("⛔️ No relation found for seat", seat);
-      return "";
-    }
-
-    const relatedId = seatProp.relation[0]?.id;
-    console.log("🔗 Related member ID for", seat, ":", relatedId);
-
-    const matchedMember = members.find((m) => m.id === relatedId);
-    console.log("✅ Matched member for", seat, ":", matchedMember);
-
-    return matchedMember?.properties?.Name?.title?.[0]?.plain_text || "";
-  };
-
   return (
     <main className="min-h-screen bg-white flex flex-col items-center justify-start p-4 sm:p-6 md:p-10">
       <Header />
@@ -58,7 +40,7 @@ export default function Page() {
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           {filtered.map((outing) => (
-            <OutingCard key={outing.id} outing={outing} members={members} getAssignedMember={getAssignedMember} />
+            <OutingCard key={outing.id} outing={outing} members={members} />
           ))}
         </div>
       </section>
