@@ -54,10 +54,32 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     return statusFieldMapping[seat] || `${seat}Status`;
   };
 
-  const title = typeof outing?.properties?.Name === 'string' ? outing.properties.Name : "Untitled";
-  const startTime = typeof outing?.properties?.StartDateTime === 'string' ? outing.properties.StartDateTime : "";
-  const endTime = typeof outing?.properties?.EndDateTime === 'string' ? outing.properties.EndDateTime : "";
+  // Extract metadata properties according to Linear ticket EDW-20
+  const div = outing?.properties?.Div?.select?.name || "No Div Assigned";
+  const outingType = outing?.properties?.Type?.select?.name || "No Type Assigned";
+  const outingStatus = outing?.properties?.OutingStatus?.status?.name || "Unknown Status";
   const shell = outing?.properties?.Shell?.select?.name || "No Shell Assigned";
+
+  // Format date/time properties
+  const startDateTime = outing?.properties?.StartDateTime?.date?.start || "";
+  const endDateTime = outing?.properties?.EndDateTime?.date?.start || "";
+
+  // Extract time portion if datetime is available
+  const startTime = startDateTime ? new Date(startDateTime).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) : "";
+  const endTime = endDateTime ? new Date(endDateTime).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) : "";
+
+  // Session details
+  const sessionDetails = Array.isArray(outing?.properties?.SessionDetails)
+    ? outing.properties.SessionDetails.map((detail: { plain_text?: string }) => detail?.plain_text || '').join('')
+    : (typeof outing?.properties?.SessionDetails === 'string'
+      ? outing.properties.SessionDetails
+      : "No session details");
 
   // Get bank rider member name - the API returns arrays directly for relation properties
   const bankRiderId = Array.isArray(outing?.properties?.CoachBankRider) && outing.properties.CoachBankRider.length > 0
@@ -90,7 +112,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     setAssignments(initialAssignments);
     setIsInitialized(true);
     console.log(`✅ Assignments initialized:`, initialAssignments);
-  }, [outing?.id, members, getOutingProperty]); // FIXED: Removed assignments dependency
+  }, [outing?.id, outing, members, getOutingProperty]); // FIXED: Added outing dependency
 
   const handleAssignmentChange = async (seat: string, memberName: string) => {
     if (!isInitialized) {
@@ -244,13 +266,103 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     }
   };
 
+  const handleBankRiderChange = async (memberName: string) => {
+    const member = members.find((m) => m.name === memberName) || null;
+
+    console.log(`🔄 Bank Rider change: "${bankRider}" → "${memberName}"`);
+
+    try {
+      const res = await fetch("/api/assign-seat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outingId: outing.id,
+          seat: "CoachBankRider",
+          memberId: member ? member.id : null,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update Bank Rider");
+      }
+
+      console.log(
+        member
+          ? `✅ Bank Rider updated to ${memberName}`
+          : `✅ Bank Rider cleared`
+      );
+
+      // FIXED: Notify parent of state change to refresh data
+      if (onStateChange) {
+        onStateChange();
+      }
+    } catch (err) {
+      console.error(`❌ Error updating Bank Rider:`, err);
+    }
+  };
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 w-full">
       <div className="mb-4">
-        <h3 className="text-xl font-bold text-gray-800">{title}</h3>
-        <p className="text-sm text-gray-600">{startTime} – {endTime}</p>
+        {/* Simple Div title per updated EDW-20 requirements */}
+        <h3 className="text-xl font-bold text-gray-800">{div}</h3>
+
+        {/* Outing Type */}
+        <p className="text-sm text-gray-600">Outing: {outingType}</p>
+
+        {/* Date */}
+        <p className="text-sm text-gray-600">
+          Date: {startDateTime ? new Date(startDateTime).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : 'TBD'}
+        </p>
+
+        {/* Time information */}
+        {(startTime || endTime) && (
+          <p className="text-sm text-gray-600">
+            Time: {startTime}{endTime && startTime ? ` – ${endTime}` : endTime}
+          </p>
+        )}
+
+        {/* Outing Status with color coding */}
+        <p className={`text-sm font-medium ${
+          outingStatus === 'Outing Confirmed' ? 'text-green-600' :
+          outingStatus === 'Provisional Outing' ? 'text-yellow-600' :
+          outingStatus === 'Outing Cancelled' ? 'text-red-600' :
+          'text-gray-600'
+        }`}>
+          Status: {outingStatus}
+        </p>
+
+        {/* Shell information */}
         <p className="text-sm text-gray-600">Shell: {shell}</p>
-        <p className="text-sm text-gray-600">Bank Rider: {bankRider}</p>
+
+        {/* Session Details */}
+        {sessionDetails && sessionDetails !== "No session details" && (
+          <p className="text-sm text-gray-600 italic mt-1">&ldquo;{sessionDetails}&rdquo;</p>
+        )}
+
+        {/* Interactive Bank Rider Selection */}
+        <div className="mt-2">
+          <label className="text-sm font-medium text-gray-700">Coach/Bank Rider:</label>
+          <select
+            className="ml-2 border rounded px-2 py-1 text-sm"
+            value={bankRider}
+            onChange={(e) => handleBankRiderChange(e.target.value)}
+          >
+            <option value="">-- Select Coach/Bank Rider --</option>
+            {members
+              .filter((member) => {
+                // Don't filter out the current bank rider, but filter out members assigned to other seats
+                const assignedNames = Object.entries(assignments)
+                  .map(([, name]) => name);
+                return !assignedNames.includes(member.name) || member.name === bankRider;
+              })
+              .map((member) => (
+                <option key={member.id} value={member.name}>
+                  {member.name}
+                </option>
+              ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
