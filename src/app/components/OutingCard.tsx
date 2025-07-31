@@ -5,11 +5,28 @@ interface Member {
   name: string;
 }
 
-interface OutingCardProps {
-  outing: {
-    id: string;
-    properties: Record<string, any>;
+interface OutingProperty {
+  relation?: { id: string }[];
+  select?: { name: string };
+  title?: { plain_text: string }[];
+  date?: { start: string };
+}
+
+interface Outing {
+  id: string;
+  properties: {
+    Title?: { title: { plain_text: string }[] };
+    "Start Date/Time"?: { date: { start: string } };
+    "End Date/Time"?: { date: { start: string } };
+    Shell?: { select: { name: string } };
+    "Coach/Bank Rider"?: { select: { name: string } };
+  } & {
+    [seat: string]: OutingProperty;
   };
+}
+
+interface OutingCardProps {
+  outing: Outing;
   members: Member[];
 }
 
@@ -42,7 +59,7 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
     const initialAssignments: Record<string, string> = {};
     seatLabels.forEach((seat) => {
       const seatProp = outing?.properties?.[seat];
-      if (seatProp?.relation?.length > 0) {
+      if (seatProp?.relation && seatProp.relation.length > 0) {
         const relatedId = seatProp.relation[0]?.id;
         const matchedMember = members.find((m) => m.id === relatedId);
         if (matchedMember) {
@@ -50,7 +67,14 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
         }
       }
     });
-    setAssignments(initialAssignments);
+
+    const isSame = Object.keys(initialAssignments).every((key) => {
+      return assignments[key] === initialAssignments[key];
+    });
+
+    if (!isSame) {
+      setAssignments(initialAssignments);
+    }
   }, [outing, members]);
 
   const handleAssignmentChange = async (seat: string, memberName: string) => {

@@ -4,9 +4,27 @@ import WeekTabs from "@/components/WeekTabs";
 import OutingCard from "@/components/OutingCard";
 import { useEffect, useState } from "react";
 
+interface Outing {
+  id: string;
+  properties: {
+    Week?: {
+      select?: {
+        name?: string;
+      };
+    };
+    [key: string]: any; // Adjust as needed for other used properties
+  };
+}
+
+interface Member {
+  id: string;
+  name: string;
+  [key: string]: any; // Extend with additional member fields as necessary
+}
+
 export default function Page() {
-  const [outings, setOutings] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  const [outings, setOutings] = useState<Outing[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [selectedWeek, setSelectedWeek] = useState("Week 1");
 
   useEffect(() => {
@@ -22,7 +40,11 @@ export default function Page() {
   }, []);
 
   const weeks = Array.from(
-    new Set(outings.map(o => o?.properties?.Week?.select?.name).filter(Boolean))
+    new Set(
+      outings
+        .map((o) => o?.properties?.Week?.select?.name)
+        .filter((name): name is string => Boolean(name))
+    )
   );
 
   const filtered = outings.filter(
