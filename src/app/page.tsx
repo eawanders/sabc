@@ -12,57 +12,68 @@ export default function Page() {
   const [selectedWeek, setSelectedWeek] = useState("Week 1");
 
   useEffect(() => {
-    console.log("Fetching data...");
-    // Fetch outings
-    fetch("/api/get-outings")
-      .then((res) => {
-        console.log("Outings response status:", res.status);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Outings received:", data);
-        console.log("Data type:", typeof data);
-        console.log("Data.outings:", data.outings);
-        console.log("Data.outings length:", data.outings?.length);
-        if (data.outings) {
-          setOutings(data.outings);
-        } else {
-          console.error("No outings property in response");
-        }
-      })
-      .catch(err => console.error("Error fetching outings:", err));
+    console.log("🚀 useEffect executing...");
 
-    // Fetch members
-    fetch("/api/get-members")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Members received:", data);
-        setMembers(data.members);
-      })
-      .catch(err => console.error("Error fetching members:", err));
+    const fetchData = async () => {
+      try {
+        console.log("🔍 Starting outings fetch...");
+        const outingsResponse = await fetch("/api/get-outings");
+        console.log("🔍 Outings response received:", outingsResponse.status);
+
+        if (!outingsResponse.ok) {
+          throw new Error(`HTTP error! status: ${outingsResponse.status}`);
+        }
+
+        const outingsData = await outingsResponse.json();
+        console.log("🔍 Outings data parsed:", outingsData);
+        console.log("🔍 Outings array length:", outingsData.outings?.length);
+
+        if (outingsData.outings && Array.isArray(outingsData.outings)) {
+          console.log("🔍 Setting outings to state...");
+          setOutings(outingsData.outings);
+          console.log("🔍 Outings set to state!");
+        } else {
+          console.error("❌ Invalid outings data structure");
+        }
+
+        console.log("🔍 Starting members fetch...");
+        const membersResponse = await fetch("/api/get-members");
+        const membersData = await membersResponse.json();
+        console.log("🔍 Members data:", membersData);
+
+        if (membersData.members) {
+          setMembers(membersData.members);
+        }
+
+      } catch (error) {
+        console.error("❌ Fetch error:", error);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const weeks = Array.from(
     new Set(
       outings
         .filter(o => {
-          console.log("Checking outing:", o?.id, "PublishOuting:", (o?.properties?.PublishOuting as any));
-          return (o?.properties?.PublishOuting as any) === true;
+          console.log("Checking outing:", o?.id, "PublishOuting:", o?.properties?.PublishOuting);
+          return o?.properties?.PublishOuting?.checkbox === true;
         }) // Only include published outings
-        .map((o) => (o?.properties?.Week as any)?.name)
+        .map((o) => o?.properties?.Week?.select?.name)
         .filter((name): name is string => Boolean(name))
     )
   );
 
   const filtered = outings.filter(
-    o => (o?.properties?.PublishOuting as any) === true && // Only show published outings
-         (o?.properties?.Week as any)?.name === selectedWeek
+    o => o?.properties?.PublishOuting?.checkbox === true && // Only show published outings
+         o?.properties?.Week?.select?.name === selectedWeek
   );
 
   console.log("=== STATE DEBUG ===");
   console.log("Total outings:", outings.length);
   console.log("Outings array:", outings);
-  console.log("Published outings:", outings.filter(o => (o?.properties?.PublishOuting as any) === true).length);
+  console.log("Published outings:", outings.filter(o => o?.properties?.PublishOuting?.checkbox === true).length);
   console.log("Weeks:", weeks);
   console.log("Selected week:", selectedWeek);
   console.log("Filtered outings:", filtered.length);

@@ -7,13 +7,29 @@ interface OutingCardProps {
   members: Member[];
 }
 
+const seatLabels = [
+  "Cox",
+  "Stroke",
+  "7 Seat",
+  "6 Seat",
+  "5 Seat",
+  "4 Seat",
+  "3 Seat",
+  "2 Seat",
+  "Bow",
+  "Sub1",
+  "Sub2",
+  "Sub3",
+  "Sub4",
+];
+
 export default function OutingCard({ outing, members }: OutingCardProps) {
   const [assignments, setAssignments] = React.useState<Record<string, string>>({});
 
   // Helper function to safely access outing properties
-  const getOutingProperty = (propertyName: string): any => {
-    return (outing?.properties as any)?.[propertyName];
-  };
+  const getOutingProperty = React.useCallback((propertyName: string): unknown => {
+    return outing?.properties?.[propertyName as keyof typeof outing.properties];
+  }, [outing]);
 
   // Helper function to map seat names to status field names
   const getStatusField = (seat: string): string => {
@@ -39,28 +55,14 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
   const title = typeof outing?.properties?.Name === 'string' ? outing.properties.Name : "Untitled";
   const startTime = typeof outing?.properties?.StartDateTime === 'string' ? outing.properties.StartDateTime : "";
   const endTime = typeof outing?.properties?.EndDateTime === 'string' ? outing.properties.EndDateTime : "";
-  const shell = (outing?.properties?.Shell as any)?.name || "No Shell Assigned";
+  const shell = outing?.properties?.Shell?.select?.name || "No Shell Assigned";
 
   // Get bank rider member name - the API returns arrays directly for relation properties
   const bankRiderId = Array.isArray(outing?.properties?.CoachBankRider) && outing.properties.CoachBankRider.length > 0
-    ? outing.properties.CoachBankRider[0]?.id
+    ? (outing.properties.CoachBankRider[0] as { id: string })?.id
     : null;
   const bankRiderMember = bankRiderId ? members.find(m => m.id === bankRiderId) : null;
-  const bankRider = bankRiderMember?.name || "None";  const seatLabels = [
-    "Cox",
-    "Stroke",
-    "7 Seat",
-    "6 Seat",
-    "5 Seat",
-    "4 Seat",
-    "3 Seat",
-    "2 Seat",
-    "Bow",
-    "Sub1",
-    "Sub2",
-    "Sub3",
-    "Sub4",
-  ];
+  const bankRider = bankRiderMember?.name || "None";
 
   React.useEffect(() => {
     const initialAssignments: Record<string, string> = {};
@@ -68,7 +70,7 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
       const seatProp = getOutingProperty(seat);
       // The API returns arrays directly for relation properties, not {relation: [...]}
       if (Array.isArray(seatProp) && seatProp.length > 0) {
-        const relatedId = seatProp[0]?.id;
+        const relatedId = (seatProp[0] as { id: string })?.id;
         const matchedMember = members.find((m) => m.id === relatedId);
         if (matchedMember) {
           initialAssignments[seat] = matchedMember.name;
@@ -83,7 +85,7 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
     if (!isSame) {
       setAssignments(initialAssignments);
     }
-  }, [outing, members]);
+  }, [outing, members, getOutingProperty, assignments]);
 
   const handleAssignmentChange = async (seat: string, memberName: string) => {
     const prevMemberName = assignments[seat] || "";

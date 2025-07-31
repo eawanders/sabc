@@ -18,33 +18,45 @@ export async function GET() {
       (r): r is PageObjectResponse => 'properties' in r
     )
 
-    const getPropertyValue = (property: any) => {
-      if (!property) return undefined;
-      switch (property.type) {
+    const getPropertyValue = (property: unknown) => {
+      if (!property || typeof property !== 'object' || property === null) return undefined;
+
+      const typedProperty = property as { type: string; [key: string]: unknown };
+
+      switch (typedProperty.type) {
         case 'number':
-          return property.number;
+          return { number: typedProperty.number };
         case 'url':
-          return property.url;
+          return { url: typedProperty.url };
         case 'select':
-          return property.select;
+          return { select: typedProperty.select };
         case 'multi_select':
-          return property.multi_select;
+          return { multi_select: typedProperty.multi_select };
+        case 'relation':
+          // Return the relation array directly for frontend compatibility
+          return typedProperty.relation;
         case 'rich_text':
-          return property.rich_text?.map((rt: any) => rt.plain_text).join('') ?? '';
+          const richText = typedProperty.rich_text as Array<{ plain_text: string }> | undefined;
+          return richText?.map((rt) => rt.plain_text).join('') ?? '';
         case 'title':
-          return property.title?.map((t: any) => t.plain_text).join('') ?? '';
+          const title = typedProperty.title as Array<{ plain_text: string }> | undefined;
+          return title?.map((t) => t.plain_text).join('') ?? '';
         case 'date':
-          return property.date;
+          return { date: typedProperty.date };
         case 'checkbox':
-          return property.checkbox;
+          return { checkbox: typedProperty.checkbox };
+        case 'status':
+          return { status: typedProperty.status };
         case 'people':
-          return property.people;
+          return { people: typedProperty.people };
+        case 'unique_id':
+          return { unique_id: typedProperty.unique_id };
         default:
-          return property[property.type];
+          return typedProperty[typedProperty.type];
       }
     };
 
-    const outings: Outing[] = results.map((page) => ({
+    const outings = results.map((page) => ({
       id: page.id,
       properties: {
         Week: getPropertyValue(page.properties['Week']),
@@ -87,7 +99,10 @@ export async function GET() {
         Sub4: getPropertyValue(page.properties['Sub 4']),
         Sub4Status: getPropertyValue(page.properties['Sub 4 Status']),
       },
-    }))
+    })) as Outing[]
+
+    console.log(`📤 Returning ${outings.length} outings`);
+    console.log("📤 First outing:", outings[0] ? JSON.stringify(outings[0], null, 2) : "None");
 
     return NextResponse.json({ outings })
   } catch (error) {
