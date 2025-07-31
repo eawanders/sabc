@@ -67,7 +67,11 @@ export default function Page() {
     fetchData();
   }, [refreshKey]); // FIXED: Re-fetch data when refreshKey changes to get latest state
 
-  const weeks = Array.from(
+  // FIXED: Always show Weeks 1-8 in correct order, regardless of published outings
+  const allWeeks = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8"];
+
+  // Get weeks that actually have published outings
+  const weeksWithOutings = Array.from(
     new Set(
       outings
         .filter(o => {
@@ -78,6 +82,11 @@ export default function Page() {
         .filter((name): name is string => Boolean(name))
     )
   );
+
+  console.log("Weeks with published outings:", weeksWithOutings);
+
+  // Use the default week list (Week 1-8) as the display order
+  const weeks = allWeeks;
 
   const filtered = outings.filter(
     o => o?.properties?.PublishOuting?.checkbox === true && // Only show published outings
