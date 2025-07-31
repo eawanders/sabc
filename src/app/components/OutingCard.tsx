@@ -266,41 +266,6 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     }
   };
 
-  const handleBankRiderChange = async (memberName: string) => {
-    const member = members.find((m) => m.name === memberName) || null;
-
-    console.log(`🔄 Bank Rider change: "${bankRider}" → "${memberName}"`);
-
-    try {
-      const res = await fetch("/api/assign-seat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          outingId: outing.id,
-          seat: "CoachBankRider",
-          memberId: member ? member.id : null,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to update Bank Rider");
-      }
-
-      console.log(
-        member
-          ? `✅ Bank Rider updated to ${memberName}`
-          : `✅ Bank Rider cleared`
-      );
-
-      // FIXED: Notify parent of state change to refresh data
-      if (onStateChange) {
-        onStateChange();
-      }
-    } catch (err) {
-      console.error(`❌ Error updating Bank Rider:`, err);
-    }
-  };
-
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 w-full">
       <div className="mb-4">
@@ -340,32 +305,9 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
           <p className="text-sm text-gray-600 italic mt-1">&ldquo;{sessionDetails}&rdquo;</p>
         )}
 
-        {/* Interactive Bank Rider Selection */}
-        <div className="mt-2">
-          <label className="text-sm font-medium text-gray-700">Coach/Bank Rider:</label>
-          <select
-            className="ml-2 border rounded px-2 py-1 text-sm"
-            value={bankRider}
-            onChange={(e) => handleBankRiderChange(e.target.value)}
-          >
-            <option value="">-- Select Coach/Bank Rider --</option>
-            {members
-              .filter((member) => {
-                // Don't filter out the current bank rider, but filter out members assigned to other seats
-                const assignedNames = Object.entries(assignments)
-                  .map(([, name]) => name);
-                return !assignedNames.includes(member.name) || member.name === bankRider;
-              })
-              .map((member) => (
-                <option key={member.id} value={member.name}>
-                  {member.name}
-                </option>
-              ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Coach/Bank Rider as plain text */}
+        <p className="text-sm text-gray-600">Coach/Bank Rider: {bankRider}</p>
+      </div>      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {seatLabels.map((seat, idx) => {
           const allKeys = Object.keys(outing?.properties || {});
           console.log(`Checking seat: ${seat}`);
