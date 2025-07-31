@@ -13,16 +13,38 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify({ error: "Missing outingId, statusField, or status" }), { status: 400 });
   }
 
-  try {
-const response = await notion.pages.update({
-  page_id: outingId,
-  properties: {
-    [statusField]: {
-      status: { name: status }
-    }
-  }
-});
+  // Map frontend status field names to actual Notion property names
+  const statusFieldMapping: Record<string, string> = {
+    'CoxStatus': 'Cox Status',
+    'StrokeStatus': 'Stroke Status',
+    'BowStatus': 'Bow Status',
+    '7 SeatStatus': '7 Seat Status',
+    '6 SeatStatus': '6 Seat Status',
+    '5 SeatStatus': '5 Seat Status',
+    '4 SeatStatus': '4 Seat Status',
+    '3 SeatStatus': '3 Seat Status',
+    '2 SeatStatus': '2 Seat Status',
+    'BankRiderStatus': 'Bank Rider Status',
+    'Sub1Status': 'Sub 1 Status',
+    'Sub2Status': 'Sub 2 Status',
+    'Sub3Status': 'Sub 3 Status',
+    'Sub4Status': 'Sub 4 Status'
+  };
 
+  const actualPropertyName = statusFieldMapping[statusField] || statusField;
+  console.log(`🔄 Mapping ${statusField} to ${actualPropertyName}`);
+
+  try {
+    const response = await notion.pages.update({
+      page_id: outingId,
+      properties: {
+        [actualPropertyName]: {
+          status: { name: status }
+        }
+      }
+    });
+
+    console.log(`✅ Successfully updated ${actualPropertyName} to ${status}`);
     return new Response(JSON.stringify({ success: true, data: response }));
   } catch (error) {
     console.error('Failed to update availability:', error);

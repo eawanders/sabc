@@ -1,5 +1,6 @@
 import React from "react";
-import { Outing, Member } from "@/types/outing";
+import { Outing } from "@/types/outing";
+import { Member } from "@/types/members";
 
 interface OutingCardProps {
   outing: Outing;
@@ -9,13 +10,43 @@ interface OutingCardProps {
 export default function OutingCard({ outing, members }: OutingCardProps) {
   const [assignments, setAssignments] = React.useState<Record<string, string>>({});
 
-  const title = outing?.properties?.Title?.title?.[0]?.plain_text || "Untitled";
-  const startTime = outing?.properties?.["Start Date/Time"]?.date?.start || "";
-  const endTime = outing?.properties?.["End Date/Time"]?.date?.start || "";
-  const shell = outing?.properties?.Shell?.select?.name || "-";
-  const bankRider = outing?.properties?.["Coach/Bank Rider"]?.select?.name || "None";
+  // Helper function to safely access outing properties
+  const getOutingProperty = (propertyName: string): any => {
+    return (outing?.properties as any)?.[propertyName];
+  };
 
-  const seatLabels = [
+  // Helper function to map seat names to status field names
+  const getStatusField = (seat: string): string => {
+    const statusFieldMapping: Record<string, string> = {
+      'Cox': 'CoxStatus',
+      'Stroke': 'StrokeStatus',
+      'Bow': 'BowStatus',
+      '7 Seat': '7 SeatStatus',
+      '6 Seat': '6 SeatStatus',
+      '5 Seat': '5 SeatStatus',
+      '4 Seat': '4 SeatStatus',
+      '3 Seat': '3 SeatStatus',
+      '2 Seat': '2 SeatStatus',
+      'Sub1': 'Sub1Status',
+      'Sub2': 'Sub2Status',
+      'Sub3': 'Sub3Status',
+      'Sub4': 'Sub4Status'
+    };
+
+    return statusFieldMapping[seat] || `${seat}Status`;
+  };
+
+  const title = typeof outing?.properties?.Name === 'string' ? outing.properties.Name : "Untitled";
+  const startTime = typeof outing?.properties?.StartDateTime === 'string' ? outing.properties.StartDateTime : "";
+  const endTime = typeof outing?.properties?.EndDateTime === 'string' ? outing.properties.EndDateTime : "";
+  const shell = (outing?.properties?.Shell as any)?.name || "No Shell Assigned";
+
+  // Get bank rider member name - the API returns arrays directly for relation properties
+  const bankRiderId = Array.isArray(outing?.properties?.CoachBankRider) && outing.properties.CoachBankRider.length > 0
+    ? outing.properties.CoachBankRider[0]?.id
+    : null;
+  const bankRiderMember = bankRiderId ? members.find(m => m.id === bankRiderId) : null;
+  const bankRider = bankRiderMember?.name || "None";  const seatLabels = [
     "Cox",
     "Stroke",
     "7 Seat",
@@ -25,18 +56,19 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
     "3 Seat",
     "2 Seat",
     "Bow",
-    "Sub 1",
-    "Sub 2",
-    "Sub 3",
-    "Sub 4",
+    "Sub1",
+    "Sub2",
+    "Sub3",
+    "Sub4",
   ];
 
   React.useEffect(() => {
     const initialAssignments: Record<string, string> = {};
     seatLabels.forEach((seat) => {
-      const seatProp = outing?.properties?.[seat];
-      if (seatProp?.relation && seatProp.relation.length > 0) {
-        const relatedId = seatProp.relation[0]?.id;
+      const seatProp = getOutingProperty(seat);
+      // The API returns arrays directly for relation properties, not {relation: [...]}
+      if (Array.isArray(seatProp) && seatProp.length > 0) {
+        const relatedId = seatProp[0]?.id;
         const matchedMember = members.find((m) => m.id === relatedId);
         if (matchedMember) {
           initialAssignments[seat] = matchedMember.name;
@@ -56,6 +88,8 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
   const handleAssignmentChange = async (seat: string, memberName: string) => {
     const prevMemberName = assignments[seat] || "";
     const member = members.find((m) => m.name === memberName) || null;
+
+    console.log(`🔄 Assignment change for ${seat}: "${prevMemberName}" → "${memberName}"`);
 
     // Update local state
     setAssignments((prev) => {
@@ -89,10 +123,10 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
       console.error(`❌ Error updating seat ${seat}:`, err);
     }
 
-    // Reset availability if the assigned member changed or was cleared
-    if (prevMemberName && prevMemberName !== memberName) {
-      const statusField = `${seat} Status`;
-      console.log(`🔁 Resetting ${statusField} to "Not Available" due to member change`);
+    // Reset availability status whenever assignment changes (member changed, added, or removed)
+    if (prevMemberName !== memberName) {
+      const statusField = getStatusField(seat);
+      console.log(`🔁 Resetting ${statusField} to "Awaiting Approval" due to assignment change`);
 
       try {
         const res = await fetch("/api/update-availability", {
@@ -101,7 +135,7 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
           body: JSON.stringify({
             outingId: outing.id,
             statusField,
-            status: "Not Available",
+            status: "Awaiting Approval",
           }),
         });
 
@@ -110,12 +144,12 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
           throw new Error(`Failed to reset availability: ${errorText}`);
         }
 
-        console.log(`✅ ${statusField} reset to Not Available`);
+        console.log(`✅ ${statusField} reset to Awaiting Approval`);
 
         // Update local status in assignments
         setAssignments((prev) => ({
           ...prev,
-          [`${seat}_status`]: "Not Available",
+          [`${seat}_status`]: "Awaiting Approval",
         }));
       } catch (err) {
         console.error(`❌ Error resetting ${statusField}:`, err);
@@ -124,18 +158,19 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
   };
 
   const handleAvailabilityUpdate = async (seat: string, status: string) => {
-    const statusField = `${seat} Status`;
-    if (!outing?.properties?.hasOwnProperty(statusField)) {
-      console.warn(`❗ Property "${statusField}" does not exist in outing`);
-      return;
-    }
+    const statusField = getStatusField(seat);
+
+    // Remove the property existence check as all status fields should exist in Notion
+    // The check was causing false negatives when members tried to update their status
+    console.log(`🔄 Updating availability for ${seat} (${statusField}) to ${status}`);
 
     try {
       console.log("🔄 Sending availability update with:", {
         outingId: outing.id,
-        statusField, // make sure this is a correct Notion property name e.g., "Cox Status"
+        statusField,
         status,
       });
+
       const res = await fetch("/api/update-availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,8 +183,10 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
 
       if (!res.ok) {
         const errorText = await res.text();
+        console.error(`❌ API Error Response:`, errorText);
         throw new Error(`Failed to update availability: ${errorText}`);
       }
+
       console.log(`✅ ${statusField} updated to ${status}`);
 
       // Update local state to reflect new status for this seat
@@ -159,6 +196,10 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
       }));
     } catch (err) {
       console.error(`❌ Error updating ${statusField}:`, err);
+      // Show more detailed error information
+      if (err instanceof Error) {
+        console.error(`❌ Error details:`, err.message);
+      }
     }
   };
 
@@ -176,7 +217,7 @@ export default function OutingCard({ outing, members }: OutingCardProps) {
           const allKeys = Object.keys(outing?.properties || {});
           console.log(`Checking seat: ${seat}`);
           console.log("Available property keys:", allKeys);
-          console.log(`Does outing.properties have '${seat}'?`, outing?.properties?.hasOwnProperty(seat));
+          console.log(`Does outing.properties have '${seat}'?`, getOutingProperty(seat) !== undefined);
 
           return (
             <div key={idx} className="flex flex-col gap-1">
