@@ -1,29 +1,5 @@
 import React from "react";
-
-interface Member {
-  id: string;
-  name: string;
-}
-
-interface OutingProperty {
-  relation?: { id: string }[];
-  select?: { name: string };
-  title?: { plain_text: string }[];
-  date?: { start: string };
-}
-
-interface Outing {
-  id: string;
-  properties: {
-    Title?: { title: { plain_text: string }[] };
-    "Start Date/Time"?: { date: { start: string } };
-    "End Date/Time"?: { date: { start: string } };
-    Shell?: { select: { name: string } };
-    "Coach/Bank Rider"?: { select: { name: string } };
-  } & {
-    [seat: string]: OutingProperty;
-  };
-}
+import { Outing, Member } from "@/types/outing";
 
 interface OutingCardProps {
   outing: Outing;

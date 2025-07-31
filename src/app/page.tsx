@@ -2,25 +2,8 @@
 import Header from "@/components/Header";
 import WeekTabs from "@/components/WeekTabs";
 import OutingCard from "@/components/OutingCard";
+import { Outing, Member } from "@/types/outing";
 import { useEffect, useState } from "react";
-
-interface Outing {
-  id: string;
-  properties: {
-    Week?: {
-      select?: {
-        name?: string;
-      };
-    };
-    [key: string]: any; // Adjust as needed for other used properties
-  };
-}
-
-interface Member {
-  id: string;
-  name: string;
-  [key: string]: any; // Extend with additional member fields as necessary
-}
 
 export default function Page() {
   const [outings, setOutings] = useState<Outing[]>([]);
