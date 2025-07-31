@@ -188,6 +188,12 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   };
 
   const handleAvailabilityUpdate = async (seat: string, status: string) => {
+    // FIXED: Prevent availability update when no member is selected
+    if (!assignments[seat]) {
+      console.warn(`⚠️ Cannot set availability for ${seat} - no member selected`);
+      return;
+    }
+
     const statusField = getStatusField(seat);
 
     // Remove the property existence check as all status fields should exist in Notion
@@ -254,9 +260,20 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
           console.log("Available property keys:", allKeys);
           console.log(`Does outing.properties have '${seat}'?`, getOutingProperty(seat) !== undefined);
 
+          // FIXED: Check if member is selected for this seat
+          const isMemberSelected = Boolean(assignments[seat]);
+          const currentStatus = assignments[`${seat}_status`];
+
           return (
             <div key={idx} className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">{seat}</label>
+              <label className="text-sm font-medium text-gray-700">
+                {seat}
+                {isMemberSelected && currentStatus && (
+                  <span className="ml-2 text-xs text-gray-500">
+                    ({currentStatus})
+                  </span>
+                )}
+              </label>
               <select
                 className="border rounded px-2 py-1 text-sm"
                 value={assignments[seat] || ""}
@@ -278,20 +295,38 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
               </select>
               <div className="flex gap-1 mt-1">
                 <button
-                  className="text-xs px-2 py-1 rounded bg-green-200 hover:bg-green-300"
-                  onClick={() => handleAvailabilityUpdate(seat, "Available")}
+                  className={`text-xs px-2 py-1 rounded ${
+                    isMemberSelected
+                      ? "bg-green-200 hover:bg-green-300 cursor-pointer"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Available")}
+                  disabled={!isMemberSelected}
+                  title={isMemberSelected ? "Set as Available" : "Select a member first"}
                 >
                   ✅
                 </button>
                 <button
-                  className="text-xs px-2 py-1 rounded bg-yellow-200 hover:bg-yellow-300"
-                  onClick={() => handleAvailabilityUpdate(seat, "Maybe Available")}
+                  className={`text-xs px-2 py-1 rounded ${
+                    isMemberSelected
+                      ? "bg-yellow-200 hover:bg-yellow-300 cursor-pointer"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Maybe Available")}
+                  disabled={!isMemberSelected}
+                  title={isMemberSelected ? "Set as Maybe Available" : "Select a member first"}
                 >
                   ❓
                 </button>
                 <button
-                  className="text-xs px-2 py-1 rounded bg-red-200 hover:bg-red-300"
-                  onClick={() => handleAvailabilityUpdate(seat, "Not Available")}
+                  className={`text-xs px-2 py-1 rounded ${
+                    isMemberSelected
+                      ? "bg-red-200 hover:bg-red-300 cursor-pointer"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Not Available")}
+                  disabled={!isMemberSelected}
+                  title={isMemberSelected ? "Set as Not Available" : "Select a member first"}
                 >
                   ❌
                 </button>
