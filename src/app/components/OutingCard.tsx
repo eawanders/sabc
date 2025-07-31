@@ -302,7 +302,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
 
         {/* Session Details */}
         {sessionDetails && sessionDetails !== "No session details" && (
-          <p className="text-sm text-gray-600 italic mt-1">&ldquo;{sessionDetails}&rdquo;</p>
+          <p className="text-sm text-gray-600">Session Details: {sessionDetails}</p>
         )}
 
         {/* Coach/Bank Rider as plain text */}
