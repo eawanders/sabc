@@ -8,16 +8,24 @@ interface WeekTabsProps {
 
 export default function WeekTabs({ weeks, selectedWeek, onChange }: WeekTabsProps) {
   return (
-    <div className="flex flex-wrap gap-2 mt-6">
+    <div className="flex flex-wrap" style={{ gap: "8px" }}>
       {weeks.map((week) => (
         <button
           key={week}
           onClick={() => onChange(week)}
-          className={`px-4 py-2 rounded-full border text-sm font-medium ${
-            week === selectedWeek
-              ? 'bg-yellow-400 text-black border-yellow-500'
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-          }`}
+          style={{
+            display: "inline-flex",
+            padding: "8px 24px",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "10px",
+            borderRadius: "10px",
+            border: "1px solid rgba(170, 170, 170, 0.45)",
+            background: "#6F00FF",
+            color: week === selectedWeek ? "#FFFFFF" : "rgba(255, 255, 255, 0.7)",
+            fontWeight: 600,
+            fontSize: "14px"
+          }}
         >
           {week}
         </button>
