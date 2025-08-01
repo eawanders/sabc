@@ -14,11 +14,6 @@ export default function Header() {
       <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base text-gray-600">
         One place to sign up and confirm availability for water outings, erg, gym, and tank sessions
       </p>
-      <div className="mt-6">
-        <a href="#outings" className="inline-block bg-yellow-400 hover:bg-yellow-500 text-black font-medium px-6 py-2 rounded shadow transition-all">
-          Confirm availability
-        </a>
-      </div>
     </header>
   );
 }

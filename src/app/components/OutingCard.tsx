@@ -60,11 +60,65 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     return statusFieldMapping[seat] || `${seat}Status`;
   };
 
+  // Helper function to format title as "Div Type" (e.g. "O1 Water Outing")
+  const getOutingTitle = (): string => {
+    // First try to use the existing Name property if it exists
+    if (outing?.properties?.Name?.title?.length && outing.properties.Name.title[0].plain_text) {
+      return outing.properties.Name.title[0].plain_text;
+    }
+    
+    // Otherwise, construct from Div and Type
+    const divValue = outing?.properties?.Div?.select?.name || "";
+    const typeValue = outing?.properties?.Type?.select?.name || "";
+    
+    if (divValue && typeValue) {
+      return `${divValue} ${typeValue}`;
+    } else if (divValue) {
+      return `${divValue} Outing`;
+    } else if (typeValue) {
+      return `${typeValue} Outing`;
+    }
+    
+    // Fallback if no data is available
+    return "Unnamed Outing";
+  };
+
+  // Helper function to get status colors
+  const getStatusColors = (status: string): { bg: string; text: string } => {
+    switch (status) {
+      // Outing statuses
+      case "Outing Confirmed":
+        return { bg: "#30FF78", text: "#006400" }; // Green bg, dark green text
+      case "Provisional Outing":
+        return { bg: "#CCEBFF", text: "#00008B" }; // Light blue bg, dark blue text
+      case "Outing Cancelled":
+        return { bg: "#FF7E7E", text: "#800000" }; // Light red bg, dark red text
+
+      // Rower availability statuses
+      case "Available":
+        return { bg: "#30FF78", text: "#006400" }; // Green bg, dark green text
+      case "Maybe Available":
+        return { bg: "#CCEBFF", text: "#00008B" }; // Light blue bg, dark blue text
+      case "Not Available":
+        return { bg: "#FF7E7E", text: "#800000" }; // Light red bg, dark red text
+
+      // Common statuses
+      case "Awaiting Approval":
+        return { bg: "#FFFACD", text: "#8B4513" }; // Light yellow bg, brown text
+
+      default:
+        return { bg: "#FFD9A8", text: "#000000" }; // Orange bg, black text for unknown status
+    }
+  };
+
   // Extract metadata properties according to Linear ticket EDW-20
   const div = outing?.properties?.Div?.select?.name || "No Div Assigned";
   const outingType = outing?.properties?.Type?.select?.name || "No Type Assigned";
   const outingStatus = outing?.properties?.OutingStatus?.status?.name || "Unknown Status";
   const shell = outing?.properties?.Shell?.select?.name || "No Shell Assigned";
+  
+  // Debug log to help verify title values
+  console.log(`🏆 Outing Title Components: Div="${div}", Type="${outingType}", Combined="${getOutingTitle()}"`);
 
   // Format date/time properties
   const startDateTime = outing?.properties?.StartDateTime?.date?.start || "";
@@ -110,6 +164,20 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
         if (matchedMember) {
           initialAssignments[seat] = matchedMember.name;
           console.log(`🎯 Pre-filled ${seat} with ${matchedMember.name}`);
+        }
+      }
+    });
+
+    // Get initial status values for each seat
+    seatLabels.forEach((seat) => {
+      const statusField = getStatusField(seat);
+      // Need to handle type safely since properties can have different types
+      const statusProperty = outing?.properties?.[statusField as keyof typeof outing.properties];
+      if (statusProperty && 'status' in statusProperty && initialAssignments[seat]) {
+        const statusValue = (statusProperty.status as { name: string })?.name;
+        if (statusValue) {
+          initialAssignments[`${seat}_status`] = statusValue;
+          console.log(`🔹 Pre-filled ${seat} status with ${statusValue}`);
         }
       }
     });
@@ -273,14 +341,15 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   };
 
   return (
-    <div className="bg-white w-full max-w-[350px]" style={{
+    <div className="w-full max-w-[350px]" style={{
       display: 'inline-flex',
       padding: '30px 20px',
       justifyContent: 'center',
       alignItems: 'center',
       gap: '10px',
       borderRadius: '12px',
-      border: '1px solid rgba(170, 170, 170, 0.45)'
+      border: '1px solid rgba(170, 170, 170, 0.45)',
+      backgroundColor: '#FFFFFF'
     }}>
       <div style={{
         display: "flex",
@@ -291,11 +360,18 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
         alignSelf: "stretch"
       }}>
         {/* Card Metadata */}
-        <div className="flex flex-col gap-4">
-          {/* Outing Title */}
-          <h3 className="text-xl font-extrabold text-black leading-tight">
-            O1 Water Outing
-          </h3>
+        <div className="flex flex-col" style={{ width: "100%", gap: "16px" }}>
+          {/* Outing Title in its own flexbox */}
+          <div className="flex flex-col" style={{ width: "100%", margin: 0, padding: 0 }}>
+            <h3 className="text-xl font-extrabold text-black leading-tight" style={{ margin: 0, padding: 0 }}>
+              {getOutingTitle()}
+            </h3>
+            {/* Optional: Show div and type as separate subtitle if needed 
+            <div className="text-sm text-gray-600" style={{ marginTop: '2px' }}>
+              {div !== "No Div Assigned" && outingType !== "No Type Assigned" ? `${div} · ${outingType}` : ''}
+            </div>
+            */}
+          </div>
 
           {/* Day, Time, Shell, Bank Rider & Status - Aligned in same flex container */}
           <div className="flex justify-between items-start" style={{ width: "100%" }}>
@@ -366,14 +442,23 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
               </div>
             </div>
 
-            {/* Status Badge - Now in same flex container */}
+            {/* Status Badge - Now in same flex container with dynamic color */}
             <div className="flex items-center justify-center" style={{
-              width: "83px",
+              width: "auto",
+              minWidth: "83px",
               borderRadius: "5.239px",
-              background: "#FFD9A8",
-              padding: "3px 10px"
+              background: getStatusColors(outingStatus).bg,
+              padding: "3px 10px",
+              transition: "background 0.2s ease-in-out"
             }}>
-              <span className="text-xs font-medium text-black text-center">Confirmed</span>
+              <span className="text-xs font-medium text-center" style={{
+                color: getStatusColors(outingStatus).text,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "120px",
+                display: "block"
+              }}>{outingStatus}</span>
             </div>
           </div>
         </div>
@@ -432,12 +517,13 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                       width: "100%",
                       borderRadius: "5px",
                       border: "0.5px solid #D9D9D9",
-                      background: "#FFF",
+                      background: currentStatus ? getStatusColors(currentStatus).bg : "#FFF",
                       height: "100%",
                       display: "flex",
                       alignItems: "center",
                       paddingLeft: "10px",
-                      paddingRight: "10px"
+                      paddingRight: "10px",
+                      transition: "all 0.2s ease-in-out" // Add smooth transition for background color changes
                     }}>
                       <select
                         style={{
@@ -445,7 +531,8 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                           outline: "none",
                           background: "transparent",
                           fontSize: "14px",
-                          color: "#1c1c1c",
+                          color: currentStatus ? getStatusColors(currentStatus).text : "#1c1c1c",
+                          fontWeight: isMemberSelected ? 500 : 400,
                           width: "100%",
                           WebkitAppearance: "none",
                           MozAppearance: "none",
@@ -491,10 +578,12 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: "transparent",
+                        background: currentStatus === "Available" ? `${getStatusColors("Available").bg}50` : "transparent",
+                        width: "33%",
                         border: "none",
                         padding: 0,
-                        height: "100%"
+                        height: "100%",
+                        borderRadius: "3px"
                       }}
                       className={`hover:opacity-80 transition-opacity duration-150 ${
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
@@ -511,10 +600,12 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: "transparent",
+                        background: currentStatus === "Maybe Available" ? `${getStatusColors("Maybe Available").bg}50` : "transparent",
+                        width: "33%",
                         border: "none",
                         padding: 0,
-                        height: "100%"
+                        height: "100%",
+                        borderRadius: "3px"
                       }}
                       className={`hover:opacity-80 transition-opacity duration-150 ${
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
@@ -531,10 +622,12 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        background: "transparent",
+                        background: currentStatus === "Not Available" ? `${getStatusColors("Not Available").bg}50` : "transparent",
+                        width: "33%",
                         border: "none",
                         padding: 0,
-                        height: "100%"
+                        height: "100%",
+                        borderRadius: "3px"
                       }}
                       className={`hover:opacity-80 transition-opacity duration-150 ${
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"

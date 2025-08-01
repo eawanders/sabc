@@ -88,10 +88,29 @@ export default function Page() {
   // Use the default week list (Week 1-8) as the display order
   const weeks = allWeeks;
 
-  const filtered = outings.filter(
-    o => o?.properties?.PublishOuting?.checkbox === true && // Only show published outings
-         o?.properties?.Week?.select?.name === selectedWeek
-  );
+  // Filter outings by publish status and week, then sort by date
+  const filtered = outings
+    .filter(
+      o => o?.properties?.PublishOuting?.checkbox === true && // Only show published outings
+           o?.properties?.Week?.select?.name === selectedWeek
+    )
+    .sort((a, b) => {
+      // Get start date strings, defaulting to empty string if not available
+      const aStartDate = a?.properties?.StartDateTime?.date?.start || "";
+      const bStartDate = b?.properties?.StartDateTime?.date?.start || "";
+
+      // If both have dates, compare them
+      if (aStartDate && bStartDate) {
+        return new Date(aStartDate).getTime() - new Date(bStartDate).getTime();
+      }
+
+      // If only one has a date, prioritize the one with a date
+      if (aStartDate) return -1;
+      if (bStartDate) return 1;
+
+      // If neither has a date, maintain original order
+      return 0;
+    });
 
   console.log("=== STATE DEBUG ===");
   console.log("Total outings:", outings.length);
@@ -103,25 +122,29 @@ export default function Page() {
   console.log("Filtered array:", filtered);
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-start p-4 sm:p-6 md:p-10">
-      <Header />
-      <section id="outings" className="w-full max-w-6xl mt-12">
-        <WeekTabs
-          selectedWeek={selectedWeek}
-          onChange={handleWeekChange}
-          weeks={weeks}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {filtered.map((outing) => (
-            <OutingCard
-              key={`${outing.id}-${selectedWeek}-${refreshKey}`}
-              outing={outing}
-              members={members}
-              onStateChange={handleStateChange}
+    <main className="min-h-screen flex flex-col items-center justify-start p-8 sm:p-10 md:p-12" style={{ backgroundColor: "#F3F1FE" }}>
+      <div className="w-full max-w-6xl flex flex-col items-center" style={{ gap: "32px", margin: "16px" }}>
+        <Header />
+        <section id="outings" className="w-full flex flex-col items-center">
+          <div className="flex flex-col items-center" style={{ gap: "24px", width: "100%" }}>
+            <WeekTabs
+              selectedWeek={selectedWeek}
+              onChange={handleWeekChange}
+              weeks={weeks}
             />
-          ))}
-        </div>
-      </section>
+            <div className="flex flex-wrap justify-center w-full" style={{ gap: "24px" }}>
+              {filtered.map((outing) => (
+                <OutingCard
+                  key={`${outing.id}-${selectedWeek}-${refreshKey}`}
+                  outing={outing}
+                  members={members}
+                  onStateChange={handleStateChange}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
