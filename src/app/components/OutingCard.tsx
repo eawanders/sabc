@@ -1,6 +1,12 @@
 import React from "react";
 import { Outing } from "@/types/outing";
 import { Member } from "@/types/members";
+import CheckCircle from "./icons/CheckCircle";
+import ColorWheel from "./icons/ColorWheel";
+import Cube from "./icons/Cube";
+import AvailableIcon from "./icons/AvailableIcon";
+import MaybeIcon from "./icons/MaybeIcon";
+import UnavailableIcon from "./icons/UnavailableIcon";
 
 interface OutingCardProps {
   outing: Outing;
@@ -267,127 +273,285 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 w-full">
-      <div className="mb-4">
-        {/* Simple Div title per updated EDW-20 requirements */}
-        <h3 className="text-xl font-bold text-gray-800">{div}</h3>
+    <div className="bg-white w-full max-w-[350px]" style={{
+      display: 'inline-flex',
+      padding: '30px 20px',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '10px',
+      borderRadius: '12px',
+      border: '1px solid rgba(170, 170, 170, 0.45)'
+    }}>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: "16px",
+        alignSelf: "stretch"
+      }}>
+        {/* Card Metadata */}
+        <div className="flex flex-col gap-4">
+          {/* Outing Title */}
+          <h3 className="text-xl font-extrabold text-black leading-tight">
+            O1 Water Outing
+          </h3>
 
-        {/* Outing Type */}
-        <p className="text-sm text-gray-600">Outing: {outingType}</p>
+          {/* Day, Time, Shell, Bank Rider & Status - Aligned in same flex container */}
+          <div className="flex justify-between items-start" style={{ width: "100%" }}>
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: "10px",
+                minWidth: "240px"
+              }}>
+              {/* Day */}
+              <div style={{
+                color: "#6F00FF",
+                textAlign: "center",
+                fontSize: "16px",
+                fontStyle: "normal",
+                fontWeight: 600,
+                lineHeight: "normal"
+              }}>
+                {startDateTime ? new Date(startDateTime).toLocaleDateString('en-GB', { weekday: 'long' }) : 'Wednesday'}
+              </div>
 
-        {/* Date */}
-        <p className="text-sm text-gray-600">
-          Date: {startDateTime ? new Date(startDateTime).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : 'TBD'}
-        </p>
-
-        {/* Time information */}
-        {(startTime || endTime) && (
-          <p className="text-sm text-gray-600">
-            Time: {startTime}{endTime && startTime ? ` – ${endTime}` : endTime}
-          </p>
-        )}
-
-        {/* Outing Status with color coding */}
-        <p className={`text-sm font-medium ${
-          outingStatus === 'Outing Confirmed' ? 'text-green-600' :
-          outingStatus === 'Provisional Outing' ? 'text-yellow-600' :
-          outingStatus === 'Outing Cancelled' ? 'text-red-600' :
-          'text-gray-600'
-        }`}>
-          Status: {outingStatus}
-        </p>
-
-        {/* Shell information */}
-        <p className="text-sm text-gray-600">Shell: {shell}</p>
-
-        {/* Session Details */}
-        {sessionDetails && sessionDetails !== "No session details" && (
-          <p className="text-sm text-gray-600">Session Details: {sessionDetails}</p>
-        )}
-
-        {/* Coach/Bank Rider as plain text */}
-        <p className="text-sm text-gray-600">Coach/Bank Rider: {bankRider}</p>
-      </div>      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {seatLabels.map((seat, idx) => {
-          const allKeys = Object.keys(outing?.properties || {});
-          console.log(`Checking seat: ${seat}`);
-          console.log("Available property keys:", allKeys);
-          console.log(`Does outing.properties have '${seat}'?`, getOutingProperty(seat) !== undefined);
-
-          // FIXED: Check if member is selected for this seat
-          const isMemberSelected = Boolean(assignments[seat]);
-          const currentStatus = assignments[`${seat}_status`];
-
-          return (
-            <div key={idx} className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-gray-700">
-                {seat}
-                {isMemberSelected && currentStatus && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({currentStatus})
+              {/* Details with Icons */}
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: "6px",
+                alignSelf: "stretch"
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  alignSelf: "stretch"
+                }}>
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <CheckCircle />
+                  </div>
+                  <span className="text-sm text-black whitespace-nowrap">
+                    {(startTime || endTime)
+                      ? `${startTime}${endTime && startTime ? `–${endTime}` : endTime}`
+                      : '07:00–09:00'}
                   </span>
-                )}
-              </label>
-              <select
-                className="border rounded px-2 py-1 text-sm"
-                value={assignments[seat] || ""}
-                onChange={(e) => handleAssignmentChange(seat, e.target.value)}
-              >
-                <option value="">-- Select Member --</option>
-                {members
-                  .filter((member) => {
-                    const assignedNames = Object.entries(assignments)
-                      .filter(([key]) => key !== seat)
-                      .map(([, name]) => name);
-                    return !assignedNames.includes(member.name) || member.name === assignments[seat];
-                  })
-                  .map((member) => (
-                    <option key={member.id} value={member.name}>
-                      {member.name}
-                    </option>
-                  ))}
-              </select>
-              <div className="flex gap-1 mt-1">
-                <button
-                  className={`text-xs px-2 py-1 rounded ${
-                    isMemberSelected
-                      ? "bg-green-200 hover:bg-green-300 cursor-pointer"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Available")}
-                  disabled={!isMemberSelected}
-                  title={isMemberSelected ? "Set as Available" : "Select a member first"}
-                >
-                  ✅
-                </button>
-                <button
-                  className={`text-xs px-2 py-1 rounded ${
-                    isMemberSelected
-                      ? "bg-yellow-200 hover:bg-yellow-300 cursor-pointer"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Maybe Available")}
-                  disabled={!isMemberSelected}
-                  title={isMemberSelected ? "Set as Maybe Available" : "Select a member first"}
-                >
-                  ❓
-                </button>
-                <button
-                  className={`text-xs px-2 py-1 rounded ${
-                    isMemberSelected
-                      ? "bg-red-200 hover:bg-red-300 cursor-pointer"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                  onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Not Available")}
-                  disabled={!isMemberSelected}
-                  title={isMemberSelected ? "Set as Not Available" : "Select a member first"}
-                >
-                  ❌
-                </button>
+                </div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  alignSelf: "stretch"
+                }}>
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <Cube />
+                  </div>
+                  <span className="text-sm text-black whitespace-nowrap">{shell}</span>
+                </div>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  alignSelf: "stretch"
+                }}>
+                  <div className="w-5 h-5 flex items-center justify-center">
+                    <ColorWheel />
+                  </div>
+                  <span className="text-sm text-black whitespace-nowrap">{bankRider}</span>
+                </div>
               </div>
             </div>
-          );
-        })}
+
+            {/* Status Badge - Now in same flex container */}
+            <div className="flex items-center justify-center" style={{
+              width: "83px",
+              borderRadius: "5.239px",
+              background: "#FFD9A8",
+              padding: "3px 10px"
+            }}>
+              <span className="text-xs font-medium text-black text-center">Confirmed</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Rowers Section */}
+        <div className="flex flex-col gap-4" style={{ width: "100%" }}>
+          <h4 className="text-md font-semibold text-black">Rowers</h4>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: "16px",
+            width: "100%"
+          }}>
+            {seatLabels.map((seat, idx) => {
+              const isMemberSelected = Boolean(assignments[seat]);
+              const currentStatus = assignments[`${seat}_status`];
+              return (
+                <div key={idx} style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  height: "36px",
+                  width: "100%"
+                }}>
+                  {/* Seat Label */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: "40px",
+                    height: "100%",
+                    background: "#F3F1FE",
+                    borderRadius: "5px",
+                    color: "#6f00ff",
+                    fontSize: "12px",
+                    fontWeight: 500
+                  }}>
+                    {seat === "Cox" ? "Cox" :
+                    seat === "Stroke" ? "S" :
+                    seat === "Bow" ? "B" :
+                    seat.includes("Seat") ? seat.split(" ")[0] :
+                    seat.includes("Sub") ? "S" + seat.substring(3) : seat}
+                  </div>
+
+                  {/* Member Select Dropdown */}
+                  <div style={{
+                    flexGrow: 1,
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center"
+                  }}>
+                    <div style={{
+                      width: "100%",
+                      borderRadius: "5px",
+                      border: "0.5px solid #D9D9D9",
+                      background: "#FFF",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      paddingLeft: "10px",
+                      paddingRight: "10px"
+                    }}>
+                      <select
+                        style={{
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          fontSize: "14px",
+                          color: "#1c1c1c",
+                          width: "100%",
+                          WebkitAppearance: "none",
+                          MozAppearance: "none",
+                          appearance: "none"
+                        }}
+                        value={assignments[seat] || ""}
+                        onChange={(e) => handleAssignmentChange(seat, e.target.value)}
+                      >
+                        <option value="">-- Select Member --</option>
+                        {members
+                          .filter((member) => {
+                            const assignedNames = Object.entries(assignments)
+                              .filter(([key]) => key !== seat)
+                              .map(([, name]) => name);
+                            return !assignedNames.includes(member.name) || member.name === assignments[seat];
+                          })
+                          .map((member) => (
+                            <option key={member.id} value={member.name}>
+                              {member.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Availability Icons */}
+                  <div style={{
+                    display: "flex",
+                    paddingLeft: "10px",
+                    paddingRight: "10px",
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "5px",
+                    borderRadius: "5px",
+                    border: "0.5px solid #D9D9D9",
+                    background: "#FFF",
+                    height: "100%",
+                    width: "110px"
+                  }}>
+                    <button
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        height: "100%"
+                      }}
+                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                        isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                      }`}
+                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Available")}
+                      disabled={!isMemberSelected}
+                      title={isMemberSelected ? "Set as Available" : "Select a member first"}
+                      type="button"
+                    >
+                      <AvailableIcon />
+                    </button>
+                    <button
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        height: "100%"
+                      }}
+                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                        isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                      }`}
+                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Maybe Available")}
+                      disabled={!isMemberSelected}
+                      title={isMemberSelected ? "Set as Maybe Available" : "Select a member first"}
+                      type="button"
+                    >
+                      <MaybeIcon />
+                    </button>
+                    <button
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        height: "100%"
+                      }}
+                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                        isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+                      }`}
+                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Not Available")}
+                      disabled={!isMemberSelected}
+                      title={isMemberSelected ? "Set as Not Available" : "Select a member first"}
+                      type="button"
+                    >
+                      <UnavailableIcon />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
