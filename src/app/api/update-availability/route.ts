@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const normalizedField = statusField.replace(/\s+/g, '');
 
   // Try different variations of the field name to ensure we find the right one
-  let actualPropertyName = statusFieldMapping[statusField] ||
+  const actualPropertyName = statusFieldMapping[statusField] ||
                           statusFieldMapping[normalizedField] ||
                           statusField;
 

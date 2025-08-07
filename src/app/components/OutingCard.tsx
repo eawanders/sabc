@@ -202,11 +202,13 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   const bankRider = bankRiderMember?.name || "None";
 
   // Helper function to extract status from Notion property
-  const extractStatusFromProperty = (property: any): string | null => {
+  const extractStatusFromProperty = (
+    property: { status?: { name?: string } } | null | undefined
+  ): string | null => {
     if (!property) return null;
 
     if (property && 'status' in property) {
-      return (property.status as { name: string })?.name || null;
+      return property.status?.name || null;
     }
 
     return null;
@@ -263,7 +265,11 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
 
       for (let i = 0; i < statusVariations.length; i++) {
         const property = statusVariations[i];
-        const extractedStatus = extractStatusFromProperty(property);
+        // Only pass to extractStatusFromProperty if it has a 'status' property
+        const extractedStatus =
+          property && typeof property === "object" && "status" in property
+            ? extractStatusFromProperty(property as { status?: { name?: string } })
+            : null;
 
         if (extractedStatus) {
           statusValue = extractedStatus;
