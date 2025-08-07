@@ -24,54 +24,62 @@
   /* Direct font-weight utility classes */
   .weight-thin {
     font-weight: 100 !important;
-    font-variation-settings: 'wght' 100 !important;
+    font-variation-settings: "wght" 100 !important;
   }
 
   .weight-extralight {
     font-weight: 200 !important;
-    font-variation-settings: 'wght' 200 !important;
+    font-variation-settings: "wght" 200 !important;
   }
 
   .weight-light {
     font-weight: 300 !important;
-    font-variation-settings: 'wght' 300 !important;
+    font-variation-settings: "wght" 300 !important;
   }
 
   .weight-normal {
     font-weight: 400 !important;
-    font-variation-settings: 'wght' 400 !important;
+    font-variation-settings: "wght" 400 !important;
   }
 
   .weight-medium {
     font-weight: 500 !important;
-    font-variation-settings: 'wght' 500 !important;
+    font-variation-settings: "wght" 500 !important;
   }
 
   .weight-semibold {
     font-weight: 600 !important;
-    font-variation-settings: 'wght' 600 !important;
+    font-variation-settings: "wght" 600 !important;
   }
 
   .weight-bold {
     font-weight: 700 !important;
-    font-variation-settings: 'wght' 700 !important;
+    font-variation-settings: "wght" 700 !important;
   }
 
   .weight-extrabold {
     font-weight: 800 !important;
-    font-variation-settings: 'wght' 800 !important;
+    font-variation-settings: "wght" 800 !important;
   }
 
   .weight-black {
     font-weight: 900 !important;
-    font-variation-settings: 'wght' 900 !important;
+    font-variation-settings: "wght" 900 !important;
   }
 
   /* Special heading classes for direct application */
   .thin-heading {
     font-weight: 100 !important;
-    font-variation-settings: 'wght' 100 !important;
+    font-variation-settings: "wght" 100 !important;
   }
+}
+
+/* Reset default margin and padding */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 :root {
