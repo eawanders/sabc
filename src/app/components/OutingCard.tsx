@@ -1,8 +1,8 @@
 import React from "react";
 import { Outing } from "@/types/outing";
 import { Member } from "@/types/members";
-import CheckCircle from "./icons/CheckCircle";
-import ColorWheel from "./icons/ColorWheel";
+import Clock from "./icons/Clock";
+import Rider from "./icons/Rider";
 import Cube from "./icons/Cube";
 import AvailableIcon from "./icons/AvailableIcon";
 import MaybeIcon from "./icons/MaybeIcon";
@@ -33,6 +33,7 @@ const seatLabels = [
 export default function OutingCard({ outing, members, onStateChange }: OutingCardProps) {
   const [assignments, setAssignments] = React.useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [isLoadingStatus, setIsLoadingStatus] = React.useState(false);
 
   // Helper function to safely access outing properties
   const getOutingProperty = React.useCallback((propertyName: string): unknown => {
@@ -60,17 +61,66 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     return statusFieldMapping[seat] || `${seat}Status`;
   };
 
+  // Helper function to get the actual backend property name for the status
+  const getNotionStatusField = (statusField: string): string => {
+    const notionFieldMapping: Record<string, string> = {
+      'CoxStatus': 'Cox Status',
+      'StrokeStatus': 'Stroke Status',
+      'BowStatus': 'Bow Status',
+      '7 SeatStatus': '7 Seat Status',
+      '6 SeatStatus': '6 Seat Status',
+      '5 SeatStatus': '5 Seat Status',
+      '4 SeatStatus': '4 Seat Status',
+      '3 SeatStatus': '3 Seat Status',
+      '2 SeatStatus': '2 Seat Status',
+      'Sub1Status': 'Sub 1 Status',
+      'Sub2Status': 'Sub 2 Status',
+      'Sub3Status': 'Sub 3 Status',
+      'Sub4Status': 'Sub 4 Status'
+    };
+
+    return notionFieldMapping[statusField] || statusField;
+  };
+
+  // Helper function to refresh the status for a specific seat from the backend
+  const refreshSeatStatus = async (seat: string) => {
+    try {
+      // This is a placeholder for how we'd implement direct status fetching
+      // In a real implementation, we might have an API endpoint to get just the status
+      // For now, we'll rely on the parent component's refresh mechanism
+
+      // Get the status field
+      const statusField = getStatusField(seat);
+      const notionStatusField = getNotionStatusField(statusField);
+
+      console.log(`🔄 Attempting to refresh status for ${seat} (${statusField} → ${notionStatusField})`);
+
+      // If onStateChange is defined, call it to refresh the entire outing
+      if (onStateChange) {
+        console.log(`🔄 Triggering parent refresh to update status for ${seat}`);
+        onStateChange();
+        return true;
+      } else {
+        console.warn(`⚠️ Cannot refresh status for ${seat} - no onStateChange handler provided`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`❌ Error refreshing status for ${seat}:`, error);
+      return false;
+    }
+  };
+
   // Helper function to format title as "Div Type" (e.g. "O1 Water Outing")
   const getOutingTitle = (): string => {
     // First try to use the existing Name property if it exists
     if (outing?.properties?.Name?.title?.length && outing.properties.Name.title[0].plain_text) {
       return outing.properties.Name.title[0].plain_text;
     }
-    
+
     // Otherwise, construct from Div and Type
     const divValue = outing?.properties?.Div?.select?.name || "";
     const typeValue = outing?.properties?.Type?.select?.name || "";
-    
+
     if (divValue && typeValue) {
       return `${divValue} ${typeValue}`;
     } else if (divValue) {
@@ -78,7 +128,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     } else if (typeValue) {
       return `${typeValue} Outing`;
     }
-    
+
     // Fallback if no data is available
     return "Unnamed Outing";
   };
@@ -86,13 +136,16 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   // Helper function to get status colors
   const getStatusColors = (status: string): { bg: string; text: string } => {
     switch (status) {
-      // Outing statuses
+      // Outing statuses - Updated with the new color scheme
       case "Outing Confirmed":
-        return { bg: "#30FF78", text: "#006400" }; // Green bg, dark green text
+      case "Confirmed":
+        return { bg: "#00C53E", text: "#FFFFFF" }; // Bright green with dark green text for contrast
       case "Provisional Outing":
-        return { bg: "#CCEBFF", text: "#00008B" }; // Light blue bg, dark blue text
+      case "Provisional":
+        return { bg: "#6F00FF", text: "#FFFFFF" }; // Purple with white text for contrast
       case "Outing Cancelled":
-        return { bg: "#FF7E7E", text: "#800000" }; // Light red bg, dark red text
+      case "Cancelled":
+        return { bg: "#8B4513", text: "#FFFFFF" }; // Brown with white text for contrast
 
       // Rower availability statuses
       case "Available":
@@ -116,7 +169,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   const outingType = outing?.properties?.Type?.select?.name || "No Type Assigned";
   const outingStatus = outing?.properties?.OutingStatus?.status?.name || "Unknown Status";
   const shell = outing?.properties?.Shell?.select?.name || "No Shell Assigned";
-  
+
   // Debug log to help verify title values
   console.log(`🏆 Outing Title Components: Div="${div}", Type="${outingType}", Combined="${getOutingTitle()}"`);
 
@@ -148,13 +201,27 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
   const bankRiderMember = bankRiderId ? members.find(m => m.id === bankRiderId) : null;
   const bankRider = bankRiderMember?.name || "None";
 
+  // Helper function to extract status from Notion property
+  const extractStatusFromProperty = (property: any): string | null => {
+    if (!property) return null;
+
+    if (property && 'status' in property) {
+      return (property.status as { name: string })?.name || null;
+    }
+
+    return null;
+  };
+
   // Initialize assignments from outing data - FIXED: Remove assignments from dependencies
   React.useEffect(() => {
     if (!outing || !members.length) return;
 
+    setIsLoadingStatus(true);
     console.log(`🔧 Initializing assignments for outing ${outing.id}`);
 
     const initialAssignments: Record<string, string> = {};
+
+    // First pass: Get all member assignments
     seatLabels.forEach((seat) => {
       const seatProp = getOutingProperty(seat);
       // The API returns arrays directly for relation properties, not {relation: [...]}
@@ -168,23 +235,63 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
       }
     });
 
-    // Get initial status values for each seat
+      // Second pass: Get all status values by looking for the actual Notion property names
     seatLabels.forEach((seat) => {
       const statusField = getStatusField(seat);
-      // Need to handle type safely since properties can have different types
-      const statusProperty = outing?.properties?.[statusField as keyof typeof outing.properties];
-      if (statusProperty && 'status' in statusProperty && initialAssignments[seat]) {
-        const statusValue = (statusProperty.status as { name: string })?.name;
-        if (statusValue) {
-          initialAssignments[`${seat}_status`] = statusValue;
-          console.log(`🔹 Pre-filled ${seat} status with ${statusValue}`);
+      const notionStatusField = getNotionStatusField(statusField);
+
+      // Try all possible ways the status could be stored
+      const statusVariations = [
+        // Try the mapped Notion property name (e.g. "Cox Status")
+        outing?.properties?.[notionStatusField as keyof typeof outing.properties],
+
+        // Try the frontend status field (e.g. "CoxStatus")
+        outing?.properties?.[statusField as keyof typeof outing.properties],
+
+        // Try with spaces removed (e.g. "CoxStatus" or "Cox Status" without spaces)
+        outing?.properties?.[statusField.replace(/\s+/g, '') as keyof typeof outing.properties],
+        outing?.properties?.[notionStatusField.replace(/\s+/g, '') as keyof typeof outing.properties],
+
+        // Try with different spacing patterns
+        outing?.properties?.[`${seat} Status` as keyof typeof outing.properties],
+        outing?.properties?.[`${seat}Status` as keyof typeof outing.properties]
+      ];
+
+      // Find the first status property that exists and has a value
+      let statusValue = null;
+      let sourceName = "";
+
+      for (let i = 0; i < statusVariations.length; i++) {
+        const property = statusVariations[i];
+        const extractedStatus = extractStatusFromProperty(property);
+
+        if (extractedStatus) {
+          statusValue = extractedStatus;
+          sourceName = ["mapped", "frontend", "no-space-frontend", "no-space-notion", "seat-space", "seat-no-space"][i];
+          break;
         }
       }
-    });
+
+      // Set the status if we found one
+      if (statusValue) {
+        initialAssignments[`${seat}_status`] = statusValue;
+        console.log(`🔹 Pre-filled ${seat} status with "${statusValue}" (source: ${sourceName})`);
+      } else {
+        console.log(`ℹ️ No status found for ${seat} under any variation`);
+
+        // If we have a member assigned but no status, default to "Awaiting Approval"
+        if (initialAssignments[seat]) {
+          initialAssignments[`${seat}_status`] = "Awaiting Approval";
+          console.log(`ℹ️ Default status set to "Awaiting Approval" for ${seat}`);
+        }
+      }
+    });    // Debug all Notion properties
+    console.log("📊 All Notion properties:", Object.keys(outing?.properties || {}));
 
     // Always update assignments when outing or members change
     setAssignments(initialAssignments);
     setIsInitialized(true);
+    setIsLoadingStatus(false);
     console.log(`✅ Assignments initialized:`, initialAssignments);
   }, [outing?.id, outing, members, getOutingProperty]); // FIXED: Added outing dependency
 
@@ -201,10 +308,17 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
 
     // FIXED: Update local state optimistically but handle rollback on error
     const previousAssignments = { ...assignments };
+
+    // Track if we're removing a member
+    const isRemovingMember = prevMemberName !== "" && memberName === "";
+
     setAssignments((prev) => {
       const updated = { ...prev };
       if (memberName === "") {
         delete updated[seat];
+        // Don't delete the status immediately when clearing a member
+        // We'll update it to "Awaiting Approval" later in the backend
+        // But visually we want to preserve status for UI consistency until API call completes
       } else {
         updated[seat] = memberName;
       }
@@ -234,6 +348,67 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
           : `✅ Seat ${seat} cleared`
       );
 
+      // Handle status update for both adding/changing a member OR removing a member
+      // The difference is that for removed members, we want to keep the status in the backend
+      // but visually show nothing in the UI
+      const statusField = getStatusField(seat);
+
+      if ((memberName !== "" && prevMemberName !== memberName) || isRemovingMember) {
+        // Always update to "Awaiting Approval" when there's a change (new member, change member, or remove member)
+        console.log(`🔁 Resetting ${statusField} to "Awaiting Approval" due to assignment change`);
+
+        // Optimistically update the UI first
+        setAssignments((prev) => {
+          const updated = { ...prev };
+
+          if (isRemovingMember) {
+            // If removing member, visually remove the status from UI
+            delete updated[`${seat}_status`];
+          } else {
+            // If adding/changing member, show the new status
+            updated[`${seat}_status`] = "Awaiting Approval";
+          }
+
+          return updated;
+        });
+
+        try {
+          // Even when removing a member, we set the status in the backend to "Awaiting Approval"
+          // to maintain consistency when the seat is assigned again
+          const res = await fetch("/api/update-availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              outingId: outing.id,
+              statusField,
+              status: "Awaiting Approval",
+            }),
+          });
+
+          if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Failed to reset availability: ${errorText}`);
+          }
+
+          console.log(`✅ ${statusField} reset to "Awaiting Approval"`);
+        } catch (err) {
+          console.error(`❌ Error resetting ${statusField}:`, err);
+          // Revert on error
+          setAssignments((prev) => {
+            const updated = { ...prev };
+
+            // Restore previous status
+            if (previousAssignments[`${seat}_status`]) {
+              updated[`${seat}_status`] = previousAssignments[`${seat}_status`];
+            } else {
+              delete updated[`${seat}_status`];
+            }
+
+            return updated;
+          });
+        }
+      }
+
       // FIXED: Notify parent of state change to refresh data
       if (onStateChange) {
         onStateChange();
@@ -242,44 +417,6 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
       console.error(`❌ Error updating seat ${seat}:`, err);
       // State already rolled back above
       return;
-    }
-
-    // Reset availability status whenever assignment changes (member changed, added, or removed)
-    if (prevMemberName !== memberName) {
-      const statusField = getStatusField(seat);
-      console.log(`🔁 Resetting ${statusField} to "Awaiting Approval" due to assignment change`);
-
-      try {
-        const res = await fetch("/api/update-availability", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            outingId: outing.id,
-            statusField,
-            status: "Awaiting Approval",
-          }),
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Failed to reset availability: ${errorText}`);
-        }
-
-        console.log(`✅ ${statusField} reset to Awaiting Approval`);
-
-        // Update local status in assignments
-        setAssignments((prev) => ({
-          ...prev,
-          [`${seat}_status`]: "Awaiting Approval",
-        }));
-
-        // FIXED: Notify parent of state change after reset
-        if (onStateChange) {
-          onStateChange();
-        }
-      } catch (err) {
-        console.error(`❌ Error resetting ${statusField}:`, err);
-      }
     }
   };
 
@@ -290,16 +427,36 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
       return;
     }
 
+    setIsLoadingStatus(true);
     const statusField = getStatusField(seat);
+    const notionStatusField = getNotionStatusField(statusField);
 
-    // Remove the property existence check as all status fields should exist in Notion
-    // The check was causing false negatives when members tried to update their status
-    console.log(`🔄 Updating availability for ${seat} (${statusField}) to ${status}`);
+    console.log(`🔄 Updating availability for ${seat} (${statusField} → ${notionStatusField}) to ${status}`);
+
+    // Store previous status in case we need to roll back
+    const previousStatus = assignments[`${seat}_status`];
+
+    // Log the member assigned to this seat for debugging
+    const memberForSeat = assignments[seat];
+    console.log(`🧑‍🚣 Member for ${seat}: "${memberForSeat}"`);
 
     try {
+      // Only update status if a member is assigned
+      if (memberForSeat) {
+        // Optimistically update the UI immediately
+        setAssignments((prev) => ({
+          ...prev,
+          [`${seat}_status`]: status,
+        }));
+      } else {
+        console.warn(`⚠️ Tried to update status for ${seat} but no member is assigned`);
+        return;
+      }
+
       console.log("🔄 Sending availability update with:", {
         outingId: outing.id,
         statusField,
+        notionStatusField,
         status,
       });
 
@@ -319,29 +476,38 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
         throw new Error(`Failed to update availability: ${errorText}`);
       }
 
-      console.log(`✅ ${statusField} updated to ${status}`);
-
-      // Update local state to reflect new status for this seat
-      setAssignments((prev) => ({
-        ...prev,
-        [`${seat}_status`]: status,
-      }));
+      const responseData = await res.json();
+      console.log(`✅ ${statusField} updated to ${status}`, responseData);
 
       // FIXED: Notify parent of state change to refresh data
       if (onStateChange) {
         onStateChange();
       }
+
+      // Get latest availability from backend to ensure consistency
+      await refreshSeatStatus(seat);
     } catch (err) {
       console.error(`❌ Error updating ${statusField}:`, err);
       // Show more detailed error information
       if (err instanceof Error) {
         console.error(`❌ Error details:`, err.message);
       }
-    }
-  };
 
-  return (
-    <div className="w-full max-w-[350px]" style={{
+      // Revert the optimistic update on failure - restore previous status if it existed
+      setAssignments((prev) => {
+        const updated = { ...prev };
+        if (previousStatus) {
+          updated[`${seat}_status`] = previousStatus;
+        } else {
+          delete updated[`${seat}_status`];
+        }
+        return updated;
+      });
+    } finally {
+      setIsLoadingStatus(false);
+    }
+  };  return (
+    <div className="w-full max-w-[350px] font-inter" style={{
       display: 'inline-flex',
       padding: '30px 20px',
       justifyContent: 'center',
@@ -349,7 +515,8 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
       gap: '10px',
       borderRadius: '12px',
       border: '1px solid rgba(170, 170, 170, 0.45)',
-      backgroundColor: '#FFFFFF'
+      backgroundColor: '#FFFFFF',
+      fontFamily: 'var(--font-inter), system-ui, sans-serif'
     }}>
       <div style={{
         display: "flex",
@@ -366,7 +533,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
             <h3 className="text-xl font-extrabold text-black leading-tight" style={{ margin: 0, padding: 0 }}>
               {getOutingTitle()}
             </h3>
-            {/* Optional: Show div and type as separate subtitle if needed 
+            {/* Optional: Show div and type as separate subtitle if needed
             <div className="text-sm text-gray-600" style={{ marginTop: '2px' }}>
               {div !== "No Div Assigned" && outingType !== "No Type Assigned" ? `${div} · ${outingType}` : ''}
             </div>
@@ -409,7 +576,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                   alignSelf: "stretch"
                 }}>
                   <div className="w-6 h-6 flex items-center justify-center">
-                    <CheckCircle />
+                    <Clock />
                   </div>
                   <span className="text-sm text-black whitespace-nowrap">
                     {(startTime || endTime)
@@ -435,7 +602,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                   alignSelf: "stretch"
                 }}>
                   <div className="w-5 h-5 flex items-center justify-center">
-                    <ColorWheel />
+                    <Rider />
                   </div>
                   <span className="text-sm text-black whitespace-nowrap">{bankRider}</span>
                 </div>
@@ -448,8 +615,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
               minWidth: "83px",
               borderRadius: "5.239px",
               background: getStatusColors(outingStatus).bg,
-              padding: "3px 10px",
-              transition: "background 0.2s ease-in-out"
+              padding: "3px 10px"
             }}>
               <span className="text-xs font-medium text-center" style={{
                 color: getStatusColors(outingStatus).text,
@@ -475,7 +641,32 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
           }}>
             {seatLabels.map((seat, idx) => {
               const isMemberSelected = Boolean(assignments[seat]);
-              const currentStatus = assignments[`${seat}_status`];
+
+              // Get the current status with proper fallback logic
+              let currentStatus = assignments[`${seat}_status`];
+
+              // For debugging - ensure we're looking at the right keys
+              if (isMemberSelected && !currentStatus) {
+                // List all keys in assignments that contain the word "status"
+                const statusKeys = Object.keys(assignments).filter(key => key.toLowerCase().includes("status"));
+                console.log(`🔍 Looking for status for ${seat}. Available status keys:`, statusKeys);
+              }
+
+              // Apply fallback if needed
+              if (!currentStatus && isMemberSelected) {
+                currentStatus = "Awaiting Approval";
+                console.log(`⚠️ No status found for ${seat}, using default: "Awaiting Approval"`);
+              }
+
+              // If there's no member selected, ensure we don't show any status
+              if (!isMemberSelected) {
+                currentStatus = "";
+                console.log(`ℹ️ No member for ${seat}, clearing status display`);
+              }
+
+              // Enhanced logging for better debugging
+              console.log(`🔄 Rendering seat ${seat}: Member=${assignments[seat] || "none"}, Status="${currentStatus || "none"}"`);
+
               return (
                 <div key={idx} style={{
                   display: "flex",
@@ -517,13 +708,12 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                       width: "100%",
                       borderRadius: "5px",
                       border: "0.5px solid #D9D9D9",
-                      background: currentStatus ? getStatusColors(currentStatus).bg : "#FFF",
+                      background: isLoadingStatus ? "#f5f5f5" : (currentStatus ? getStatusColors(currentStatus).bg : "#FFF"),
                       height: "100%",
                       display: "flex",
                       alignItems: "center",
                       paddingLeft: "10px",
-                      paddingRight: "10px",
-                      transition: "all 0.2s ease-in-out" // Add smooth transition for background color changes
+                      paddingRight: "10px"
                     }}>
                       <select
                         style={{
@@ -585,10 +775,11 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         height: "100%",
                         borderRadius: "3px"
                       }}
-                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                      className={`hover:opacity-80 ${
+                        isLoadingStatus ? "cursor-wait opacity-50" :
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
                       }`}
-                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Available")}
+                      onClick={() => !isLoadingStatus && isMemberSelected && handleAvailabilityUpdate(seat, "Available")}
                       disabled={!isMemberSelected}
                       title={isMemberSelected ? "Set as Available" : "Select a member first"}
                       type="button"
@@ -607,10 +798,11 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         height: "100%",
                         borderRadius: "3px"
                       }}
-                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                      className={`hover:opacity-80 ${
+                        isLoadingStatus ? "cursor-wait opacity-50" :
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
                       }`}
-                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Maybe Available")}
+                      onClick={() => !isLoadingStatus && isMemberSelected && handleAvailabilityUpdate(seat, "Maybe Available")}
                       disabled={!isMemberSelected}
                       title={isMemberSelected ? "Set as Maybe Available" : "Select a member first"}
                       type="button"
@@ -629,10 +821,11 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
                         height: "100%",
                         borderRadius: "3px"
                       }}
-                      className={`hover:opacity-80 transition-opacity duration-150 ${
+                      className={`hover:opacity-80 ${
+                        isLoadingStatus ? "cursor-wait opacity-50" :
                         isMemberSelected ? "cursor-pointer" : "cursor-not-allowed opacity-40"
                       }`}
-                      onClick={() => isMemberSelected && handleAvailabilityUpdate(seat, "Not Available")}
+                      onClick={() => !isLoadingStatus && isMemberSelected && handleAvailabilityUpdate(seat, "Not Available")}
                       disabled={!isMemberSelected}
                       title={isMemberSelected ? "Set as Not Available" : "Select a member first"}
                       type="button"

@@ -31,8 +31,22 @@ export async function POST(req: Request) {
     'Sub4Status': 'Sub 4 Status'
   };
 
-  const actualPropertyName = statusFieldMapping[statusField] || statusField;
+  // Try to normalize the status field name (remove spaces if present)
+  const normalizedField = statusField.replace(/\s+/g, '');
+
+  // Try different variations of the field name to ensure we find the right one
+  let actualPropertyName = statusFieldMapping[statusField] ||
+                          statusFieldMapping[normalizedField] ||
+                          statusField;
+
   console.log(`🔄 Mapping ${statusField} to ${actualPropertyName}`);
+
+  // For debugging - log all property names to help diagnose mapping issues
+  console.log(`📊 Status field mapping options:`, {
+    original: statusField,
+    normalized: normalizedField,
+    mapped: actualPropertyName
+  });
 
   try {
     const response = await notion.pages.update({

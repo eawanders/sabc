@@ -24,7 +24,8 @@ export default function WeekTabs({ weeks, selectedWeek, onChange }: WeekTabsProp
             background: "#6F00FF",
             color: week === selectedWeek ? "#FFFFFF" : "rgba(255, 255, 255, 0.7)",
             fontWeight: 600,
-            fontSize: "14px"
+            fontSize: "14px",
+            fontFamily: "var(--font-inter), system-ui, sans-serif"
           }}
         >
           {week}
