@@ -33,7 +33,7 @@ const Navbar = () => {
             fontWeight: '500',
             color: '#000',
           }}>
-            St Antony's College, Oxford Boat Club
+            St Antony&apos;s College, Oxford Boat Club
           </span>
         </div>
       </Link>
