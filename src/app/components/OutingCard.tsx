@@ -199,7 +199,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
     ? (outing.properties.CoachBankRider[0] as { id: string })?.id
     : null;
   const bankRiderMember = bankRiderId ? members.find(m => m.id === bankRiderId) : null;
-  const bankRider = bankRiderMember?.name || "None";
+  const bankRider = bankRiderMember?.name || "No Bank Rider/Coach";
 
   // Helper function to extract status from Notion property
   const extractStatusFromProperty = (
