@@ -1,6 +1,6 @@
 'use client';
 import Header from "@/components/Header";
-import WeekTabs from "@/components/WeekTabs";
+import OutingFilters from "@/components/OutingFilters";
 import OutingCard from "@/components/OutingCard";
 import { Outing } from "@/types/outing";
 import { Member } from "@/types/members";
@@ -9,7 +9,8 @@ import { useEffect, useState, useCallback } from "react";
 export default function Page() {
   const [outings, setOutings] = useState<Outing[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [selectedWeek, setSelectedWeek] = useState("Week 1");
+  const [selectedWeek, setSelectedWeek] = useState("All Weeks");
+  const [selectedTerm, setSelectedTerm] = useState("All Terms");
   const [refreshKey, setRefreshKey] = useState(0);
 
   // FIXED: Callback to refresh data when components make changes
@@ -18,11 +19,16 @@ export default function Page() {
     setRefreshKey(prev => prev + 1);
   }, []);
 
-  // FIXED: Force refresh when week changes to ensure state persistence
+  // Handle week change
   const handleWeekChange = (week: string) => {
     console.log(`🔄 Changing week from ${selectedWeek} to ${week}`);
     setSelectedWeek(week);
-    // Don't force refresh on week change, just filter
+  };
+
+  // Handle term change
+  const handleTermChange = (term: string) => {
+    console.log(`🔄 Changing term from ${selectedTerm} to ${term}`);
+    setSelectedTerm(term);
   };
 
   useEffect(() => {
@@ -44,6 +50,31 @@ export default function Page() {
 
         if (outingsData.outings && Array.isArray(outingsData.outings)) {
           console.log("🔍 Setting outings to state...");
+
+          // Analyze the outings data
+          const terms = new Set<string>();
+          const weeks = new Set<string>();
+
+          outingsData.outings.forEach((outing: Outing) => {
+            const termValue = outing?.properties?.Term?.select?.name;
+            const weekValue = outing?.properties?.Week?.select?.name;
+
+            if (termValue) terms.add(termValue);
+            if (weekValue) weeks.add(weekValue);
+          });
+
+          console.log("Terms in data:", Array.from(terms));
+          console.log("Weeks in data:", Array.from(weeks));
+
+          // Set initial selected values based on data
+          if (terms.size > 0 && !terms.has(selectedTerm)) {
+            setSelectedTerm(Array.from(terms)[0]);
+          }
+
+          if (weeks.size > 0 && !weeks.has(selectedWeek)) {
+            setSelectedWeek(Array.from(weeks)[0]);
+          }
+
           setOutings(outingsData.outings);
           console.log("🔍 Outings set to state!");
         } else {
@@ -67,33 +98,80 @@ export default function Page() {
     fetchData();
   }, [refreshKey]); // FIXED: Re-fetch data when refreshKey changes to get latest state
 
-  // FIXED: Always show Weeks 1-8 in correct order, regardless of published outings
-  const allWeeks = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8"];
+  // Default terms and weeks (from screenshots)
+  const allTerms = ["All Terms", "Michaelmas", "Hilary", "Trinity"];
+  const allWeeks = ["All Weeks", "Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7", "Week 8", "Week 9", "Week 10"];
 
-  // Get weeks that actually have published outings
-  const weeksWithOutings = Array.from(
+  // Extract all unique terms from outings data (including nulls)
+  const allTermsInData = Array.from(
     new Set(
-      outings
-        .filter(o => {
-          console.log("Checking outing:", o?.id, "PublishOuting:", o?.properties?.PublishOuting);
-          return o?.properties?.PublishOuting?.checkbox === true;
-        }) // Only include published outings
-        .map((o) => o?.properties?.Week?.select?.name)
-        .filter((name): name is string => Boolean(name))
+      outings.map((o) => o?.properties?.Term?.select?.name)
     )
-  );
+  ).filter((name): name is string => Boolean(name));
 
-  console.log("Weeks with published outings:", weeksWithOutings);
+  // Extract all unique weeks from outings data
+  const allWeeksInData = Array.from(
+    new Set(
+      outings.map((o) => o?.properties?.Week?.select?.name)
+    )
+  ).filter((name): name is string => Boolean(name));
 
-  // Use the default week list (Week 1-8) as the display order
-  const weeks = allWeeks;
+  // Always include "All Terms" and "All Weeks" options
+  const terms = ["All Terms", ...allTermsInData.length > 0 ? allTermsInData : allTerms.slice(1)];
+  const weeks = ["All Weeks", ...allWeeksInData.length > 0 ? allWeeksInData : allWeeks.slice(1)];  // If selected term isn't in the terms list, set it to the first available term
+  if (!terms.includes(selectedTerm) && terms.length > 0) {
+    setSelectedTerm(terms[0]);
+  }
 
-  // Filter outings by publish status and week, then sort by date
+  // If selected week isn't in the weeks list, set it to the first available week
+  if (!weeks.includes(selectedWeek) && weeks.length > 0) {
+    setSelectedWeek(weeks[0]);
+  }
+
+  console.log("All terms from data:", allTermsInData);
+  console.log("All weeks from data:", allWeeksInData);
+  console.log("Terms to display:", terms);
+  console.log("Weeks to display:", weeks);
+
+  // Debug the current state
+  console.log(`Current filters - Term: "${selectedTerm}", Week: "${selectedWeek}"`);
+  console.log(`Published outings count: ${outings.filter(o => o?.properties?.PublishOuting?.checkbox === true).length}`);
+
+  // Filter outings by publish status, term, and week, then sort by date
   const filtered = outings
-    .filter(
-      o => o?.properties?.PublishOuting?.checkbox === true && // Only show published outings
-           o?.properties?.Week?.select?.name === selectedWeek
-    )
+    .filter(o => {
+      try {
+        // Only show published outings
+        const isPublished = o?.properties?.PublishOuting?.checkbox === true;
+        if (!isPublished) return false;
+
+        // Debug outing details
+        console.log(`Checking outing ${o.id}:`);
+        console.log(`- Name: ${o?.properties?.Name?.title?.[0]?.plain_text || "Unnamed"}`);
+        console.log(`- Week: ${o?.properties?.Week?.select?.name || "No week"}`);
+        console.log(`- Term: ${o?.properties?.Term?.select?.name || "No term"}`);
+
+        // For week matching:
+        // 1. If "All Weeks" is selected, show outings from any week
+        // 2. If a specific week is selected, only show outings from that week
+        const outingWeek = o?.properties?.Week?.select?.name;
+        const weekMatch = selectedWeek === "All Weeks" || outingWeek === selectedWeek;
+        console.log(`- Week match: ${weekMatch} (selected: ${selectedWeek}, outing: ${outingWeek})`);
+        if (!weekMatch) return false;
+
+        // For term matching:
+        // 1. If "All Terms" is selected, show all outings regardless of term
+        // 2. If a specific term is selected, match outings with that term
+        const outingTerm = o?.properties?.Term?.select?.name;
+        const termMatch = selectedTerm === "All Terms" || outingTerm === selectedTerm;
+        console.log(`- Term match: ${termMatch} (selected: ${selectedTerm}, outing: ${outingTerm || "null"})`);        console.log(`- Result: ${weekMatch && termMatch ? "MATCH" : "FILTERED OUT"}`);
+
+        return weekMatch && termMatch;
+      } catch (err) {
+        console.error("Error filtering outing:", err);
+        return false;
+      }
+    })
     .sort((a, b) => {
       // Get start date strings, defaulting to empty string if not available
       const aStartDate = a?.properties?.StartDateTime?.date?.start || "";
@@ -116,34 +194,47 @@ export default function Page() {
   console.log("Total outings:", outings.length);
   console.log("Outings array:", outings);
   console.log("Published outings:", outings.filter(o => o?.properties?.PublishOuting?.checkbox === true).length);
+  console.log("Terms:", terms);
   console.log("Weeks:", weeks);
+  console.log("Selected term:", selectedTerm);
   console.log("Selected week:", selectedWeek);
   console.log("Filtered outings:", filtered.length);
   console.log("Filtered array:", filtered);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-start p-8 sm:p-10 md:p-12" style={{ backgroundColor: "#F3F1FE" }}>
-      <div className="w-full max-w-6xl flex flex-col items-center" style={{ gap: "32px", margin: "16px" }}>
-        <Header />
-        <section id="outings" className="w-full flex flex-col items-center">
-          <div className="flex flex-col items-center" style={{ gap: "24px", width: "100%" }}>
-            <WeekTabs
-              selectedWeek={selectedWeek}
-              onChange={handleWeekChange}
-              weeks={weeks}
-            />
-            <div className="flex flex-wrap justify-center w-full" style={{ gap: "24px" }}>
-              {filtered.map((outing) => (
-                <OutingCard
-                  key={`${outing.id}-${selectedWeek}-${refreshKey}`}
-                  outing={outing}
-                  members={members}
-                  onStateChange={handleStateChange}
-                />
-              ))}
-            </div>
+    <main className="min-h-screen flex flex-col items-center justify-start pt-4 pb-8" style={{ backgroundColor: "#F7F8FB" }}>
+      <div className="w-full" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px" }}>
+        <div className="max-w-[960px] mx-auto flex flex-col" style={{ gap: "32px" }}>
+          <div className="w-full flex flex-col mt-0 p-0">
+            <div className="w-full" style={{height: "24px" }}></div>
+            <Header />
           </div>
-        </section>
+          <section id="outings" className="w-full flex flex-col">
+            <div className="w-full flex flex-col" style={{ gap: "32px" }}>
+              <div className="w-full">
+                <OutingFilters
+                  selectedWeek={selectedWeek}
+                  selectedTerm={selectedTerm}
+                  onWeekChange={handleWeekChange}
+                  onTermChange={handleTermChange}
+                  availableWeeks={weeks}
+                  availableTerms={terms}
+                />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center" style={{ width: "100%" }}>
+                 {filtered.map((outing) => (
+                  <div style={{ width: "350px" }} key={`${outing.id}-${selectedWeek}-${refreshKey}`}>
+                    <OutingCard
+                      outing={outing}
+                      members={members}
+                      onStateChange={handleStateChange}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );

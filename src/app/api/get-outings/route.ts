@@ -59,6 +59,7 @@ export async function GET() {
     const outings = results.map((page) => ({
       id: page.id,
       properties: {
+        Term: getPropertyValue(page.properties['Term']),
         Week: getPropertyValue(page.properties['Week']),
         OutingID: getPropertyValue(page.properties['Outing ID']),
         Name: getPropertyValue(page.properties['Name']),

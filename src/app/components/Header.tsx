@@ -5,7 +5,7 @@ import { Heading1, Paragraph } from './ui/Text';
 
 export default function Header() {
   return (
-    <header className="w-full bg-white py-10 px-6 text-center">
+    <header className="w-full pt-32 pb-10 px-6 text-left">
       <Heading1
         font="inter"
         weight="medium"

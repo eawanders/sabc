@@ -29,8 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${notoSerif.variable} ${playfair.variable} ${robotoMono.variable}`}>
       <body
-        className="font-inter antialiased m-0 p-0 min-h-screen"
-        style={{ margin: 0, padding: 0 }}
+        className="font-inter antialiased min-h-screen px-4 sm:px-8 md:px-12 lg:px-16"
       >
         <Navbar />
         {children}
