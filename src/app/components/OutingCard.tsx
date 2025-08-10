@@ -513,7 +513,7 @@ export default function OutingCard({ outing, members, onStateChange }: OutingCar
       setIsLoadingStatus(false);
     }
   };  return (
-    <div className="w-full max-w-[350px] font-inter" style={{
+    <div className="w-full font-inter" style={{
       display: 'inline-flex',
       padding: '30px 20px',
       justifyContent: 'center',

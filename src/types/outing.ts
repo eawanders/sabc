@@ -52,6 +52,7 @@ export interface TitleProperty {
 export interface Outing {
   id: string;
   properties: {
+    Term?: SelectProperty;
     Week?: SelectProperty;
     Div?: SelectProperty;
     Type?: SelectProperty;
