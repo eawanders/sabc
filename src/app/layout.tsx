@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { gilroy } from "@/config/fonts";
 import "@/app/globals.css";
 import Sidebar from "@/app/(app shell)/sidebar/Sidebar";
+import Box from "@/components/ui/Box";
 
 export const metadata: Metadata = {
   title: "SABC — Outings",
@@ -20,9 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-bg text-foreground antialiased">
         <div className="flex min-h-screen">
           <Sidebar />
-          <main className="flex-1 min-h-screen max-h-screen overflow-y-auto bg-surface p-6">
+          <Box as="main" className="flex-1 min-h-screen max-h-screen overflow-y-auto bg-surface" p={24}>
             {children}
-          </main>
+          </Box>
         </div>
       </body>
     </html>

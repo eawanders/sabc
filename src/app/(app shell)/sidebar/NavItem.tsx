@@ -1,13 +1,15 @@
 import Link from "next/link";
+import React from "react";
 import { cn } from "@/lib/classnames";
+import { SpacingProps, getSpacingStyles } from "@/lib/spacing";
 
-type NavItemProps = {
+interface NavItemProps extends SpacingProps {
   href: string;
   label: string;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   active?: boolean;
   className?: string;
-};
+}
 
 export default function NavItem({
   href,
@@ -15,22 +17,53 @@ export default function NavItem({
   icon,
   active = false,
   className,
+  ...spacingProps
 }: NavItemProps) {
+  const textColor = active ? 'var(--Blue, #0177FB)' : '#7D8DA6';
+  const iconColor = active ? '#0177FB' : '#7D8DA6';
+
   return (
     <Link
       href={href}
       className={cn(
-  // Make the item respect the fixed sidebar width and allow text to truncate
-  "group flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-fast ease-brand",
-        active
-          ? "bg-accent/60 text-heading"
-          : "text-muted hover:text-heading hover:bg-accent/40",
+        "group w-full min-w-0 text-sm transition-colors duration-fast ease-brand bg-white hover:bg-[#E1E8FF]",
         className
       )}
+      style={{
+        display: 'flex',
+        padding: '8px 30px',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: '10px',
+        borderRadius: '10px',
+        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.15)',
+        textDecoration: 'none',
+        maxWidth: '100%'
+      }}
       aria-current={active ? "page" : undefined}
     >
-      <span className="shrink-0 text-heading">{icon}</span>
-      <span className="truncate flex-1 min-w-0">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          lineHeight: 1
+        }}
+      >
+        {React.isValidElement(icon)
+          ? React.cloneElement(icon as React.ReactElement<any>, { stroke: iconColor })
+          : icon}
+      </div>
+      <span
+        className="truncate flex-1 min-w-0"
+        style={{
+          color: textColor,
+          fontFamily: 'Gilroy',
+          fontSize: '16px',
+          fontStyle: 'normal',
+          fontWeight: 300,
+          lineHeight: 'normal'
+        }}
+      >
         {label}
       </span>
     </Link>

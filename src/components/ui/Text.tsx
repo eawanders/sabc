@@ -1,13 +1,14 @@
 import React, { ReactNode } from 'react';
+import { SpacingProps, getSpacingStyles, removeSpacingProps } from '@/lib/spacing';
 
 type FontFamily = 'inter' | 'noto-serif' | 'playfair' | 'roboto-mono';
 type FontWeight = 'thin' | 'extralight' | 'light' | 'normal' | 'medium' | 'semibold' | 'bold' | 'extrabold' | 'black';
 type TextColor = 'default' | 'primary' | 'secondary' | 'light' | 'dark' | 'white' | 'black' | 'gray';
 type TextSize = 'xs' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl';
 
-interface TextProps {
+interface TextProps extends SpacingProps {
   children: ReactNode;
-  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span' | 'div';
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'p' | 'span' | 'div' | 'li';
   font?: FontFamily;
   weight?: FontWeight;
   size?: TextSize;
@@ -94,11 +95,13 @@ export const Text = ({
   tracking,
   className = '',
   style,
+  ...spacingProps
 }: TextProps) => {
   const Element = as;
 
   // Get the numeric weight value
   const fontWeightValue = getFontWeight(weight);
+  const spacingStyles = getSpacingStyles(spacingProps);
 
   const classes = [
     getFontFamily(font),
@@ -112,6 +115,7 @@ export const Text = ({
     <Element
       className={classes}
       style={{
+        ...spacingStyles,
         ...style,
         fontWeight: fontWeightValue,
         fontVariationSettings: `'wght' ${fontWeightValue}`
@@ -123,22 +127,22 @@ export const Text = ({
 };
 
 // Preset variants for common text styles
-export const Heading1 = (props: Omit<TextProps, 'as' | 'size'>) => (
-  <Text as="h1" size="4xl" weight="semibold" {...props} />
+export const Heading1 = (props: Omit<TextProps, 'as' | 'size'> & { size?: TextSize }) => (
+  <Text as="h1" size={props.size || "4xl"} weight="semibold" {...props} />
 );
 
-export const Heading2 = (props: Omit<TextProps, 'as' | 'size'>) => (
-  <Text as="h2" size="3xl" weight="semibold" {...props} />
+export const Heading2 = (props: Omit<TextProps, 'as' | 'size'> & { size?: TextSize }) => (
+  <Text as="h2" size={props.size || "3xl"} weight="semibold" {...props} />
 );
 
-export const Heading3 = (props: Omit<TextProps, 'as' | 'size'>) => (
-  <Text as="h3" size="2xl" weight="semibold" {...props} />
+export const Heading3 = (props: Omit<TextProps, 'as' | 'size'> & { size?: TextSize }) => (
+  <Text as="h3" size={props.size || "2xl"} weight="semibold" {...props} />
 );
 
-export const Paragraph = (props: Omit<TextProps, 'as' | 'size'>) => (
-  <Text as="p" size="base" {...props} />
+export const Paragraph = (props: Omit<TextProps, 'as' | 'size'> & { size?: TextSize }) => (
+  <Text as="p" size={props.size || "base"} {...props} />
 );
 
-export const Caption = (props: Omit<TextProps, 'as' | 'size'>) => (
-  <Text as="span" size="sm" color="light" {...props} />
+export const Caption = (props: Omit<TextProps, 'as' | 'size'> & { size?: TextSize }) => (
+  <Text as="span" size={props.size || "sm"} color="light" {...props} />
 );
