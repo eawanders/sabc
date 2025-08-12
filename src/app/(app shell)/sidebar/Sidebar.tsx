@@ -5,6 +5,7 @@ import NavItem from "./NavItem";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
+import Image from "next/image";
 
 /** Clock icon for schedule navigation */
 function ClockIcon(props: React.SVGProps<SVGSVGElement> & { stroke?: string }) {
@@ -56,13 +57,11 @@ export default function Sidebar() {
           gap: '16px',
           alignSelf: 'stretch'
         }}>
-          <img
+          <Image
             src="/sabc-logo.png"
             alt="SABC Logo"
-            style={{
-              width: '50px',
-              height: '50px'
-            }}
+            width={50}
+            height={50}
           />
           <div style={{
             color: '#000',

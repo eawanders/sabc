@@ -17,22 +17,22 @@ export const Box = forwardRef<HTMLElement, BoxProps>(({
   children,
   ...props
 }, ref) => {
-  const Component = as as any;
+  const Component = as;
   const spacingStyles = getSpacingStyles(props);
   const cleanProps = removeSpacingProps(props);
 
-  return (
-    <Component
-      ref={ref}
-      className={cn(className)}
-      style={{
+  return React.createElement(
+    Component,
+    {
+      ref,
+      className: cn(className),
+      style: {
         ...spacingStyles,
         ...style,
-      }}
-      {...cleanProps}
-    >
-      {children}
-    </Component>
+      },
+      ...cleanProps,
+    },
+    children
   );
 });
 
