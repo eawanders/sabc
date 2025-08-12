@@ -1,11 +1,11 @@
+// src/app/page.tsx
 import React from "react";
 
-export default function SchedulePage() {
+export default function HomePage() {
   return (
     <main className="min-h-[60vh]">
       <h1 className="sr-only">Home</h1>
-      <div className="p-6 text-sm text-gray-500">
-      </div>
+      {/* Empty main page - content to be added */}
     </main>
   );
 }
