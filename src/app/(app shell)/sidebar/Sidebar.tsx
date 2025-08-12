@@ -72,7 +72,7 @@ export default function Sidebar() {
             fontWeight: 800,
             lineHeight: 'normal'
           }}>
-            St Antony's Boat Club
+            St Antony&apos;s Boat Club
           </div>
         </div>
       </Box>

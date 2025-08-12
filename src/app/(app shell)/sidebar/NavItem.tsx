@@ -50,7 +50,7 @@ export default function NavItem({
         }}
       >
         {React.isValidElement(icon)
-          ? React.cloneElement(icon as React.ReactElement<any>, { stroke: iconColor })
+          ? React.cloneElement(icon as React.ReactElement<React.SVGProps<SVGSVGElement>>, { stroke: iconColor })
           : icon}
       </div>
       <span

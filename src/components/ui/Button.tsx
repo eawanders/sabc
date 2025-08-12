@@ -12,7 +12,6 @@ export interface ButtonProps extends SpacingProps {
   disabled?: boolean;
   type?: 'button' | 'submit' | 'reset';
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  [key: string]: any;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({

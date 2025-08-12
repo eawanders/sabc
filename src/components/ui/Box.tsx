@@ -3,12 +3,11 @@ import React, { forwardRef } from 'react';
 import { SpacingProps, getSpacingStyles, removeSpacingProps } from '@/lib/spacing';
 import { cn } from '@/lib/classnames';
 
-export interface BoxProps extends SpacingProps {
+export interface BoxProps extends SpacingProps, React.HTMLAttributes<HTMLElement> {
   as?: keyof React.JSX.IntrinsicElements;
   className?: string;
   style?: React.CSSProperties;
   children?: React.ReactNode;
-  [key: string]: any; // Allow other HTML attributes
 }
 
 export const Box = forwardRef<HTMLElement, BoxProps>(({

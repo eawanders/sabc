@@ -88,7 +88,7 @@ export function getSpacingStyles(props: SpacingProps): React.CSSProperties {
 /**
  * Removes spacing props from an object, useful for cleaning props before passing to DOM elements
  */
-export function removeSpacingProps<T extends Record<string, any>>(
+export function removeSpacingProps<T extends SpacingProps>(
   props: T
 ): Omit<T, keyof SpacingProps> {
   const {

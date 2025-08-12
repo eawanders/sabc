@@ -3,12 +3,11 @@ import React, { forwardRef } from 'react';
 import { SpacingProps, getSpacingStyles, removeSpacingProps } from '@/lib/spacing';
 import { cn } from '@/lib/classnames';
 
-export interface CardProps extends SpacingProps {
+export interface CardProps extends SpacingProps, React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   style?: React.CSSProperties;
   children?: React.ReactNode;
   variant?: 'default' | 'outlined' | 'elevated';
-  [key: string]: any;
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(({
