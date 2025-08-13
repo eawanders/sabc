@@ -42,7 +42,18 @@ export default function ActionButton({
         border: 'none',
         borderRadius: '6px',
         background: '#E1E8FF',
-        cursor: disabled ? 'not-allowed' : 'pointer'
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        transition: 'background-color 0.2s ease'
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#D1DAFF';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.background = '#E1E8FF';
+        }
       }}
     >
       <div style={{

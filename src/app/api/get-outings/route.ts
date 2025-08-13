@@ -10,9 +10,13 @@ const notion = new Client({
 
 export async function GET() {
   try {
+    console.log('🔍 Querying Notion database:', process.env.NOTION_OUTINGS_DB_ID);
+
     const response = await notion.databases.query({
       database_id: process.env.NOTION_OUTINGS_DB_ID!,
     })
+
+    console.log('📊 Raw Notion response:', response.results.length, 'records');
 
     const results = response.results.filter(
       (r): r is PageObjectResponse => 'properties' in r
