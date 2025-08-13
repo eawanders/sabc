@@ -16,7 +16,7 @@ export interface RelationProperty {
 export interface StatusProperty {
   status?: {
     id: string;
-    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional Outing' | 'Outing Confirmed' | 'Outing Cancelled';
+    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional Outing' | 'Provisional' | 'Outing Confirmed' | 'Confirmed' | 'Outing Cancelled' | 'Cancelled';
     color: string;
   };
 }
