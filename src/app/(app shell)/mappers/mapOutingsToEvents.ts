@@ -152,7 +152,9 @@ function extractOutingId(outing: Outing): number {
 function extractSessionDetails(outing: Outing): string | undefined {
   const richText = outing.properties.SessionDetails?.rich_text;
   if (Array.isArray(richText) && richText.length > 0) {
-    return richText.map((text: any) => text.plain_text || '').join('');
+    return (richText as { plain_text?: string }[])
+      .map(text => text.plain_text || '')
+      .join('');
   }
   return undefined;
 }
