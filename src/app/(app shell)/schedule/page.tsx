@@ -7,6 +7,7 @@ import { useCalendarData } from "../hooks/useCalendarData";
 import CalendarHeader from "./CalendarHeader";
 import CalendarWeek from "./CalendarWeek";
 import OutingDrawer from "./OutingDrawer";
+import Sheet from "@/components/ui/Sheet";
 
 export default function SchedulePage() {
 	const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -64,13 +65,11 @@ export default function SchedulePage() {
 				}}
 			>
 				{/* Calendar Header */}
-				<CalendarHeader
-					currentWeek={currentWeek}
-					onPreviousWeek={goToPreviousWeek}
-					onNextWeek={goToNextWeek}
-				/>
-
-				{/* Calendar Grid */}
+			<CalendarHeader
+				currentWeek={currentWeek}
+				onPreviousWeek={goToPreviousWeek}
+				onNextWeek={goToNextWeek}
+			/>				{/* Calendar Grid */}
 				<CalendarWeek
 					calendarDays={calendarDays}
 					onEventClick={handleEventClick}
