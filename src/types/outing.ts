@@ -103,3 +103,46 @@ export interface Member {
   name: string;
   role?: string;
 }
+
+// Enhanced types for detailed outing view
+export enum SeatType {
+  Cox = 'Cox',
+  Stroke = 'Stroke',
+  Bow = 'Bow',
+  Seat2 = '2 Seat',
+  Seat3 = '3 Seat',
+  Seat4 = '4 Seat',
+  Seat5 = '5 Seat',
+  Seat6 = '6 Seat',
+  Seat7 = '7 Seat',
+  CoachBankRider = 'Coach/Bank Rider',
+  Sub1 = 'Sub 1',
+  Sub2 = 'Sub 2',
+  Sub3 = 'Sub 3',
+  Sub4 = 'Sub 4'
+}
+
+export enum AvailabilityStatus {
+  Available = 'Available',
+  MaybeAvailable = 'Maybe Available',
+  AwaitingApproval = 'Awaiting Approval',
+  NotAvailable = 'Not Available',
+  Provisional = 'Provisional',
+  Confirmed = 'Confirmed',
+  Cancelled = 'Cancelled'
+}
+
+export interface SeatAssignment {
+  seatType: SeatType;
+  member: Member | null;
+  availabilityStatus: AvailabilityStatus | null;
+  isAvailable: boolean;
+}
+
+export interface DetailedOuting extends Outing {
+  created_time: string;
+  last_edited_time: string;
+  seatAssignments: SeatAssignment[];
+  sessionDetailsText: string;
+  availableSeats: SeatType[];
+}
