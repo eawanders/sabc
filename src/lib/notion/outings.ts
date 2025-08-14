@@ -13,12 +13,12 @@ export async function getOutingById(id: string): Promise<Outing | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/get-outing/${id}`);
-    
+
     if (!response.ok) {
       console.error(`Failed to fetch outing ${id}:`, response.status, response.statusText);
       return null;
     }
-    
+
     const data = await response.json();
     return data.outing as Outing;
   } catch (error) {
@@ -33,18 +33,18 @@ export async function getOutingById(id: string): Promise<Outing | null> {
 export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
   try {
     if (memberIds.length === 0) return [];
-    
+
     // Fetch all members first
     const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/get-members`);
-    
+
     if (!response.ok) {
       console.error('Failed to fetch members:', response.status);
       return [];
     }
-    
+
     const data = await response.json();
     const allMembers = data.members as Array<{id: string; name: string; email: string; memberType: string}>;
-    
+
     // Convert to our Member type and filter to only requested IDs
     return allMembers
       .filter(member => memberIds.includes(member.id))
@@ -67,29 +67,29 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
     // Fetch the basic outing data
     const outing = await getOutingById(id);
     if (!outing) return null;
-    
+
     // Extract all member IDs from relations
     const memberIds = new Set<string>();
     const seatFields: (keyof typeof outing.properties)[] = [
-      'Cox', 'Stroke', 'Bow', '2 Seat', '3 Seat', '4 Seat', 
-      '5 Seat', '6 Seat', '7 Seat', 'CoachBankRider', 
+      'Cox', 'Stroke', 'Bow', '2 Seat', '3 Seat', '4 Seat',
+      '5 Seat', '6 Seat', '7 Seat', 'CoachBankRider',
       'Sub1', 'Sub2', 'Sub3', 'Sub4'
     ];
-    
+
     seatFields.forEach(field => {
       const relation = outing.properties[field] as { relation: { id: string }[] } | undefined;
       if (relation?.relation) {
         relation.relation.forEach(rel => memberIds.add(rel.id));
       }
     });
-    
+
     // Fetch member details
     const members = await getMembersByIds(Array.from(memberIds));
     const memberMap = new Map(members.map(m => [m.id, m]));
-    
+
     // Create seat assignments
     const seatAssignments: SeatAssignment[] = [];
-    
+
     const seatMappings: { seatType: SeatType; relationField: keyof typeof outing.properties; statusField: keyof typeof outing.properties }[] = [
       { seatType: SeatType.Cox, relationField: 'Cox', statusField: 'CoxStatus' },
       { seatType: SeatType.Stroke, relationField: 'Stroke', statusField: 'StrokeStatus' },
@@ -106,32 +106,37 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
       { seatType: SeatType.Sub3, relationField: 'Sub3', statusField: 'Sub3Status' },
       { seatType: SeatType.Sub4, relationField: 'Sub4', statusField: 'Sub4Status' },
     ];
-    
+
     seatMappings.forEach(({ seatType, relationField, statusField }) => {
       const relation = outing.properties[relationField] as { relation: { id: string }[] } | undefined;
-      const status = outing.properties[statusField] as { status: { name: string } } | undefined;
-      
+      const status = outing.properties[statusField] as { status: { name: string } | null } | undefined;
+
       const memberId = relation?.relation?.[0]?.id;
       const member = memberId ? memberMap.get(memberId) || null : null;
-      const availabilityStatus = status?.status?.name as AvailabilityStatus || null;
-      
+      const availabilityStatus = status?.status?.name as AvailabilityStatus || AvailabilityStatus.AwaitingApproval;
+
+      // A seat is available for assignment if:
+      // 1. No member is assigned AND status is "Awaiting Approval"
+      // (If someone is assigned, the seat is taken regardless of status)
+      const isAvailable = !member && availabilityStatus === AvailabilityStatus.AwaitingApproval;
+
       seatAssignments.push({
         seatType,
         member,
         availabilityStatus,
-        isAvailable: !member || !memberId
+        isAvailable
       });
     });
-    
+
     // Extract session details text
     const sessionDetails = outing.properties.SessionDetails as { rich_text: unknown[]; plain_text?: string } | undefined;
     const sessionDetailsText = sessionDetails?.plain_text || '';
-    
+
     // Determine available seats
     const availableSeats = seatAssignments
       .filter(assignment => assignment.isAvailable)
       .map(assignment => assignment.seatType);
-    
+
     const detailedOuting: DetailedOuting = {
       ...outing,
       created_time: (outing as any).created_time || new Date().toISOString(),
@@ -140,7 +145,7 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
       sessionDetailsText,
       availableSeats
     };
-    
+
     return detailedOuting;
   } catch (error) {
     console.error('Error creating detailed outing:', error);
@@ -153,33 +158,40 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
  */
 export function getAvailableSeats(outing: Outing): SeatType[] {
   const availableSeats: SeatType[] = [];
-  
-  const seatMappings: { seatType: SeatType; relationField: keyof typeof outing.properties }[] = [
-    { seatType: SeatType.Cox, relationField: 'Cox' },
-    { seatType: SeatType.Stroke, relationField: 'Stroke' },
-    { seatType: SeatType.Bow, relationField: 'Bow' },
-    { seatType: SeatType.Seat2, relationField: '2 Seat' },
-    { seatType: SeatType.Seat3, relationField: '3 Seat' },
-    { seatType: SeatType.Seat4, relationField: '4 Seat' },
-    { seatType: SeatType.Seat5, relationField: '5 Seat' },
-    { seatType: SeatType.Seat6, relationField: '6 Seat' },
-    { seatType: SeatType.Seat7, relationField: '7 Seat' },
-    { seatType: SeatType.CoachBankRider, relationField: 'CoachBankRider' },
-    { seatType: SeatType.Sub1, relationField: 'Sub1' },
-    { seatType: SeatType.Sub2, relationField: 'Sub2' },
-    { seatType: SeatType.Sub3, relationField: 'Sub3' },
-    { seatType: SeatType.Sub4, relationField: 'Sub4' },
+
+  const seatMappings: { seatType: SeatType; relationField: keyof typeof outing.properties; statusField: keyof typeof outing.properties }[] = [
+    { seatType: SeatType.Cox, relationField: 'Cox', statusField: 'CoxStatus' },
+    { seatType: SeatType.Stroke, relationField: 'Stroke', statusField: 'StrokeStatus' },
+    { seatType: SeatType.Bow, relationField: 'Bow', statusField: 'BowStatus' },
+    { seatType: SeatType.Seat2, relationField: '2 Seat', statusField: '2 Seat Status' },
+    { seatType: SeatType.Seat3, relationField: '3 Seat', statusField: '3 Seat Status' },
+    { seatType: SeatType.Seat4, relationField: '4 Seat', statusField: '4 Seat Status' },
+    { seatType: SeatType.Seat5, relationField: '5 Seat', statusField: '5 Seat Status' },
+    { seatType: SeatType.Seat6, relationField: '6 Seat', statusField: '6 Seat Status' },
+    { seatType: SeatType.Seat7, relationField: '7 Seat', statusField: '7 Seat Status' },
+    { seatType: SeatType.CoachBankRider, relationField: 'CoachBankRider', statusField: 'BankRiderStatus' },
+    { seatType: SeatType.Sub1, relationField: 'Sub1', statusField: 'Sub1Status' },
+    { seatType: SeatType.Sub2, relationField: 'Sub2', statusField: 'Sub2Status' },
+    { seatType: SeatType.Sub3, relationField: 'Sub3', statusField: 'Sub3Status' },
+    { seatType: SeatType.Sub4, relationField: 'Sub4', statusField: 'Sub4Status' },
   ];
-  
-  seatMappings.forEach(({ seatType, relationField }) => {
+
+  seatMappings.forEach(({ seatType, relationField, statusField }) => {
     const relation = outing.properties[relationField] as { relation: { id: string }[] } | undefined;
+    const status = outing.properties[statusField] as { status: { name: string } | null } | undefined;
+
     const hasAssignment = relation?.relation && relation.relation.length > 0;
-    
-    if (!hasAssignment) {
+    const availabilityStatus = status?.status?.name as AvailabilityStatus || AvailabilityStatus.AwaitingApproval;
+
+    // A seat is available for assignment if:
+    // 1. No member is assigned AND status is "Awaiting Approval"
+    const isAvailable = !hasAssignment && availabilityStatus === AvailabilityStatus.AwaitingApproval;
+
+    if (isAvailable) {
       availableSeats.push(seatType);
     }
   });
-  
+
   return availableSeats;
 }
 
@@ -203,6 +215,6 @@ export function getSeatFieldNames(seatType: SeatType): { relationField: string; 
     [SeatType.Sub3]: { relationField: 'Sub 3', statusField: 'Sub 3 Status' },
     [SeatType.Sub4]: { relationField: 'Sub 4', statusField: 'Sub 4 Status' },
   };
-  
+
   return mapping[seatType];
 }

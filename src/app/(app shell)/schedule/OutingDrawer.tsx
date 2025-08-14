@@ -2,11 +2,31 @@
 
 import React from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
+import { AvailabilityStatus } from '@/types/outing';
 
 interface OutingDrawerProps {
   outingId: string;
   isOpen: boolean;
   onClose: () => void;
+}
+
+function getStatusColor(status: AvailabilityStatus | null): string {
+  switch (status) {
+    case AvailabilityStatus.Available:
+      return 'text-green-600';
+    case AvailabilityStatus.AwaitingApproval:
+      return 'text-blue-600';
+    case AvailabilityStatus.NotAvailable:
+      return 'text-red-600';
+    case AvailabilityStatus.Confirmed:
+      return 'text-green-700';
+    case AvailabilityStatus.Provisional:
+      return 'text-yellow-600';
+    case AvailabilityStatus.Cancelled:
+      return 'text-red-700';
+    default:
+      return 'text-muted-foreground';
+  }
 }
 
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
@@ -57,7 +77,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                 <p><strong>Division:</strong> {(outing.properties.Div as any)?.select?.name || 'N/A'}</p>
                 <p><strong>Type:</strong> {(outing.properties.Type as any)?.select?.name || 'N/A'}</p>
                 <p><strong>Shell:</strong> {(outing.properties.Shell as any)?.select?.name || 'N/A'}</p>
-                <p><strong>Status:</strong> {(outing.properties.OutingStatus as any)?.status?.name || 'N/A'}</p>
+                <p><strong>Status:</strong> {(outing.properties.OutingStatus as any)?.status?.name || 'Provisional'}</p>
               </div>
             </div>
 
@@ -81,11 +101,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                         <div>
                           <p className="text-sm">{assignment.member.name}</p>
                           {assignment.availabilityStatus && (
-                            <p className="text-xs text-muted-foreground">{assignment.availabilityStatus}</p>
+                            <p className={`text-xs ${getStatusColor(assignment.availabilityStatus)}`}>
+                              {assignment.availabilityStatus}
+                            </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Available</span>
+                        <div>
+                          <p className="text-sm text-muted-foreground">No assignment</p>
+                          <p className={`text-xs ${getStatusColor(assignment.availabilityStatus)}`}>
+                            {assignment.availabilityStatus}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -96,11 +123,16 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             {/* Available Seats Count */}
             <div className="p-4 bg-primary/10 rounded-lg">
               <p className="text-sm">
-                <strong>{outing.availableSeats.length}</strong> seats available for assignment
+                <strong>{outing.availableSeats.length}</strong> seat{outing.availableSeats.length !== 1 ? 's' : ''} available for assignment
               </p>
               {outing.availableSeats.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {outing.availableSeats.join(', ')}
+                  Open positions: {outing.availableSeats.join(', ')}
+                </p>
+              )}
+              {outing.availableSeats.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  All positions are assigned or unavailable
                 </p>
               )}
             </div>

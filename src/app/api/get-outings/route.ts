@@ -73,7 +73,7 @@ export async function GET() {
         StartDateTime: getPropertyValue(page.properties['Start Date/Time']),
         EndDateTime: getPropertyValue(page.properties['End Date/Time']),
         PublishOuting: getPropertyValue(page.properties['Publish Outing']),
-        OutingStatus: getPropertyValue(page.properties['Outing Status']),
+        OutingStatus: getPropertyValue(page.properties['Status']),
         SessionDetails: getPropertyValue(page.properties['Session Details']),
         Cox: getPropertyValue(page.properties['Cox']),
         CoxStatus: getPropertyValue(page.properties['Cox Status']),

@@ -53,23 +53,23 @@ export async function GET(
           return { multi_select: typedProperty.multi_select };
         case 'relation':
           // Return the relation array with relation IDs
-          return { 
+          return {
             relation: typedProperty.relation as { id: string }[],
             has_more: typedProperty.has_more || false
           };
         case 'rich_text':
-          const richText = typedProperty.rich_text as Array<{ 
+          const richText = typedProperty.rich_text as Array<{
             type: string;
             text?: { content: string };
-            plain_text: string; 
+            plain_text: string;
           }> | undefined;
-          return { 
+          return {
             rich_text: richText || [],
             plain_text: richText?.map((rt) => rt.plain_text).join('') ?? ''
           };
         case 'title':
           const title = typedProperty.title as Array<{ plain_text: string }> | undefined;
-          return { 
+          return {
             title: title || [],
             plain_text: title?.map((t) => t.plain_text).join('') ?? ''
           };
@@ -105,8 +105,8 @@ export async function GET(
         StartDateTime: getPropertyValue(page.properties['Start Date/Time']),
         EndDateTime: getPropertyValue(page.properties['End Date/Time']),
         PublishOuting: getPropertyValue(page.properties['Publish Outing']),
-        OutingStatus: getPropertyValue(page.properties['Outing Status']),
-        SessionDetails: getPropertyValue(page.properties['Session Details']),
+        OutingStatus: getPropertyValue(page.properties['Status']),
+        SessionDetails: getPropertyValue(page.properties['Details']),
 
         // Crew positions with assignments and status
         Cox: getPropertyValue(page.properties['Cox']),
@@ -115,7 +115,7 @@ export async function GET(
         StrokeStatus: getPropertyValue(page.properties['Stroke Status']),
         Bow: getPropertyValue(page.properties['Bow']),
         BowStatus: getPropertyValue(page.properties['Bow Status']),
-        
+
         // Numbered seats
         '2 Seat': getPropertyValue(page.properties['2 Seat']),
         '2 Seat Status': getPropertyValue(page.properties['2 Seat Status']),
@@ -150,18 +150,18 @@ export async function GET(
     return NextResponse.json({ outing })
   } catch (error) {
     console.error('Error fetching outing details from Notion:', error)
-    
+
     // Handle specific Notion API errors
     if (error && typeof error === 'object' && 'code' in error) {
       const notionError = error as { code: string; message: string };
-      
+
       if (notionError.code === 'object_not_found') {
         return NextResponse.json(
           { error: 'Outing not found' },
           { status: 404 }
         )
       }
-      
+
       if (notionError.code === 'unauthorized') {
         return NextResponse.json(
           { error: 'Unauthorized access to outing' },
@@ -169,7 +169,7 @@ export async function GET(
         )
       }
     }
-    
+
     return NextResponse.json(
       { error: 'Failed to fetch outing details' },
       { status: 500 }

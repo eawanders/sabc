@@ -16,9 +16,9 @@ export interface RelationProperty {
 export interface StatusProperty {
   status?: {
     id: string;
-    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional Outing' | 'Provisional' | 'Outing Confirmed' | 'Confirmed' | 'Outing Cancelled' | 'Cancelled';
+    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional' | 'Confirmed' | 'Cancelled';
     color: string;
-  };
+  } | null;
 }
 
 export interface DateProperty {
@@ -127,6 +127,13 @@ export enum AvailabilityStatus {
   MaybeAvailable = 'Maybe Available',
   AwaitingApproval = 'Awaiting Approval',
   NotAvailable = 'Not Available',
+  // These are also used for outing-level status
+  Provisional = 'Provisional',
+  Confirmed = 'Confirmed',
+  Cancelled = 'Cancelled'
+}
+
+export enum OutingStatus {
   Provisional = 'Provisional',
   Confirmed = 'Confirmed',
   Cancelled = 'Cancelled'

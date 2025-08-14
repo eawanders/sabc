@@ -29,7 +29,7 @@ export function useOutingDetails(outingId: string | null): UseOutingDetailsResul
     try {
       console.log('🔍 Fetching outing details for ID:', outingId);
       const detailedOuting = await getOutingWithMembers(outingId);
-      
+
       if (detailedOuting) {
         setOuting(detailedOuting);
         console.log('✅ Successfully loaded outing details:', detailedOuting.properties.Name);
