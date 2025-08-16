@@ -1,48 +1,41 @@
-// src/app/api/get-outings/route.ts
-import { NextResponse } from 'next/server'
+// src/app/api/get-outing/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
-import { Outing } from '@/types/outing'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 })
 
-export async function GET() {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    console.log('🔍 Fetching outings from Notion database...')
+    const { id } = await params;
+    console.log('🔍 Fetching individual outing:', id);
 
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set')
+    if (!id) {
       return NextResponse.json(
-        { error: 'Missing Notion token configuration', success: false },
-        { status: 500 }
+        { error: 'Outing ID is required' },
+        { status: 400 }
       )
     }
 
-    if (!process.env.NOTION_OUTINGS_DB_ID) {
-      console.error('❌ NOTION_OUTINGS_DB_ID is not set')
-      return NextResponse.json(
-        { error: 'Missing Notion outings database ID configuration', success: false },
-        { status: 500 }
-      )
-    }
-
-    console.log('🗄️ Querying database:', process.env.NOTION_OUTINGS_DB_ID)
-
-    const response = await notion.databases.query({
-      database_id: process.env.NOTION_OUTINGS_DB_ID!,
-      page_size: 100, // Increase page size for better performance
+    // Fetch the individual page from Notion
+    const response = await notion.pages.retrieve({
+      page_id: id,
     })
 
-    console.log('📊 Raw Notion response:', response.results.length, 'records')
+    // Type guard to ensure we have properties
+    if (!('properties' in response)) {
+      return NextResponse.json(
+        { error: 'Invalid page response' },
+        { status: 404 }
+      )
+    }
 
-    const results = response.results.filter(
-      (r): r is PageObjectResponse => 'properties' in r
-    )
-
-    console.log(`📋 Filtered results: ${results.length} valid pages`)
+    const page = response as PageObjectResponse;
 
     const getPropertyValue = (property: unknown) => {
       if (!property || typeof property !== 'object' || property === null) return undefined;
@@ -59,14 +52,27 @@ export async function GET() {
         case 'multi_select':
           return { multi_select: typedProperty.multi_select };
         case 'relation':
-          // Return the relation array directly for frontend compatibility
-          return typedProperty.relation;
+          // Return the relation array with relation IDs
+          return {
+            relation: typedProperty.relation as { id: string }[],
+            has_more: typedProperty.has_more || false
+          };
         case 'rich_text':
-          const richText = typedProperty.rich_text as Array<{ plain_text: string }> | undefined;
-          return richText?.map((rt) => rt.plain_text).join('') ?? '';
+          const richText = typedProperty.rich_text as Array<{
+            type: string;
+            text?: { content: string };
+            plain_text: string;
+          }> | undefined;
+          return {
+            rich_text: richText || [],
+            plain_text: richText?.map((rt) => rt.plain_text).join('') ?? ''
+          };
         case 'title':
           const title = typedProperty.title as Array<{ plain_text: string }> | undefined;
-          return title?.map((t) => t.plain_text).join('') ?? '';
+          return {
+            title: title || [],
+            plain_text: title?.map((t) => t.plain_text).join('') ?? ''
+          };
         case 'date':
           return { date: typedProperty.date };
         case 'checkbox':
@@ -82,9 +88,13 @@ export async function GET() {
       }
     };
 
-    const outings = results.map((page) => ({
+    // Map all properties with full detail
+    const outing = {
       id: page.id,
+      created_time: page.created_time,
+      last_edited_time: page.last_edited_time,
       properties: {
+        // Basic outing info
         Term: getPropertyValue(page.properties['Term']),
         Week: getPropertyValue(page.properties['Week']),
         OutingID: getPropertyValue(page.properties['Outing ID']),
@@ -96,13 +106,17 @@ export async function GET() {
         EndDateTime: getPropertyValue(page.properties['End Date/Time']),
         PublishOuting: getPropertyValue(page.properties['Publish Outing']),
         OutingStatus: getPropertyValue(page.properties['Status']),
-        SessionDetails: getPropertyValue(page.properties['Session Details']),
+        SessionDetails: getPropertyValue(page.properties['Details']),
+
+        // Crew positions with assignments and status
         Cox: getPropertyValue(page.properties['Cox']),
         CoxStatus: getPropertyValue(page.properties['Cox Status']),
         Stroke: getPropertyValue(page.properties['Stroke']),
         StrokeStatus: getPropertyValue(page.properties['Stroke Status']),
         Bow: getPropertyValue(page.properties['Bow']),
         BowStatus: getPropertyValue(page.properties['Bow Status']),
+
+        // Numbered seats
         '2 Seat': getPropertyValue(page.properties['2 Seat']),
         '2 Seat Status': getPropertyValue(page.properties['2 Seat Status']),
         '3 Seat': getPropertyValue(page.properties['3 Seat']),
@@ -115,6 +129,8 @@ export async function GET() {
         '6 Seat Status': getPropertyValue(page.properties['6 Seat Status']),
         '7 Seat': getPropertyValue(page.properties['7 Seat']),
         '7 Seat Status': getPropertyValue(page.properties['7 Seat Status']),
+
+        // Coach and substitutes
         CoachBankRider: getPropertyValue(page.properties['Coach/Bank Rider']),
         BankRiderStatus: getPropertyValue(page.properties['Bank Rider Status']),
         Sub1: getPropertyValue(page.properties['Sub 1']),
@@ -126,33 +142,36 @@ export async function GET() {
         Sub4: getPropertyValue(page.properties['Sub 4']),
         Sub4Status: getPropertyValue(page.properties['Sub 4 Status']),
       },
-    })) as Outing[]
+    };
 
-    console.log(`📤 Returning ${outings.length} outings`)
-    console.log("📤 First outing summary:", outings[0] ? {
-      id: outings[0].id,
-      name: outings[0].properties?.Name,
-      div: outings[0].properties?.Div?.select?.name,
-      type: outings[0].properties?.Type?.select?.name
-    } : "None")
+    console.log(`✅ Successfully fetched outing details for ${id}`);
+    console.log(`📊 Outing data:`, JSON.stringify(outing, null, 2));
 
-    return NextResponse.json({ outings })
+    return NextResponse.json({ outing })
   } catch (error) {
-    console.error('❌ Error fetching outings from Notion:', error)
+    console.error('Error fetching outing details from Notion:', error)
 
-    // More detailed error information
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const errorStack = error instanceof Error ? error.stack : ''
+    // Handle specific Notion API errors
+    if (error && typeof error === 'object' && 'code' in error) {
+      const notionError = error as { code: string; message: string };
 
-    console.error('❌ Error details:', {
-      message: errorMessage,
-      stack: errorStack,
-      notionToken: process.env.NOTION_TOKEN ? 'Present' : 'Missing',
-      databaseId: process.env.NOTION_OUTINGS_DB_ID ? 'Present' : 'Missing'
-    })
+      if (notionError.code === 'object_not_found') {
+        return NextResponse.json(
+          { error: 'Outing not found' },
+          { status: 404 }
+        )
+      }
+
+      if (notionError.code === 'unauthorized') {
+        return NextResponse.json(
+          { error: 'Unauthorized access to outing' },
+          { status: 403 }
+        )
+      }
+    }
 
     return NextResponse.json(
-      { error: 'Failed to fetch outings' },
+      { error: 'Failed to fetch outing details' },
       { status: 500 }
     )
   }

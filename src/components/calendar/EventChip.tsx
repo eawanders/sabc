@@ -12,7 +12,7 @@ interface EventChipProps {
 }
 
 export default function EventChip({ event, onClick }: EventChipProps) {
-  const handleSignUp = () => {
+    const handleSignUp = () => {
     onClick?.(event);
   };
 
