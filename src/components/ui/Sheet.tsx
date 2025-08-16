@@ -110,7 +110,8 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
 
   const sheetContent = (
     <div
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-[9999]"
+      style={{ pointerEvents: 'auto' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'sheet-title' : undefined}
@@ -126,7 +127,7 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
       <div
         style={{
           display: 'flex',
-          padding: '32px',
+          padding: '0px',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'flex-end',
@@ -149,44 +150,72 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
           style={{
             background: '#FFF',
             boxShadow: '-16px 0 34px 0 rgba(176, 179, 189, 0.10)',
-            // Responsive sizing
-            width: isMobile ? '100%' : '400px',
-            maxWidth: isMobile ? '100%' : '400px',
-            height: '100%',
-            maxHeight: '100vh'
+            // Custom flexbox layout as requested
+            display: 'flex',
+            width: '370px',
+            height: '900px',
+            padding: '32px',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: '32px',
+            flexGrow: 1,
           }}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header with close button */}
-          <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-            {title && (
-              <h2 id="sheet-title" className="text-lg font-semibold text-gray-900">
-                {title}
-              </h2>
-            )}
+          {/* 1. Close Button Container */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="focus:outline-none"
               aria-label="Close drawer"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
             >
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                viewBox="0 0 14 14"
                 fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
+                xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
               >
-                <path d="m18 6-12 12"/>
-                <path d="m6 6 12 12"/>
+                <path
+                  d="M0.708885 13.2912L6.80595 7.19415M12.903 1.09708L6.80595 7.19415M6.80595 7.19415L0.708885 1.09708M6.80595 7.19415L12.903 13.2912"
+                  stroke="#7D8DA6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </button>
           </div>
 
-          {/* Sheet body content */}
-          <div className="flex-1 px-6 py-4">
+          {/* 2. Outing Details Header Container */}
+          {title && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-start',
+              alignItems: 'flex-start',
+              width: '100%'
+            }}>
+              <h2
+                id="sheet-title"
+                style={{
+                  color: '#161736',
+                  fontFamily: 'Gilroy',
+                  fontSize: '18px',
+                  fontStyle: 'normal',
+                  fontWeight: 800,
+                  lineHeight: 'normal',
+                  margin: 0
+                }}
+              >
+                {title}
+              </h2>
+            </div>
+          )}
+
+          {/* 3. Sheet Content Container */}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto' }}>
             {children}
           </div>
         </div>
@@ -194,7 +223,26 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
     </div>
   );
 
-  // For now, render directly instead of portal to avoid SSR issues
-  // TODO: Investigate portal timing issue in Next.js SSR environment
-  return sheetContent;
+  // Use portal to render at document body level to avoid parent container constraints
+  if (typeof window !== 'undefined' && isMounted) {
+    // Create or get portal container
+    let portalContainer = document.getElementById('sheet-portal-root');
+    if (!portalContainer) {
+      portalContainer = document.createElement('div');
+      portalContainer.id = 'sheet-portal-root';
+      portalContainer.style.position = 'fixed';
+      portalContainer.style.top = '0';
+      portalContainer.style.left = '0';
+      portalContainer.style.width = '100vw';
+      portalContainer.style.height = '100vh';
+      portalContainer.style.pointerEvents = 'none';
+      portalContainer.style.zIndex = '9999';
+      document.body.appendChild(portalContainer);
+    }
+
+    return createPortal(sheetContent, portalContainer);
+  }
+
+  // Fallback for SSR or before mount
+  return null;
 }

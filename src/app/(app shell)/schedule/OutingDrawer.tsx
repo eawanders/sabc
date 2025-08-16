@@ -62,6 +62,291 @@ function getOutingStatusColor(status: string | null): string {
   }
 }
 
+// Helper function to get just the number/short name for seat display
+const getSeatDisplayName = (seat: string): string => {
+  // Extract number from seat names like "2 Seat", "3 Seat", etc.
+  if (seat.includes(' Seat')) {
+    return seat.replace(' Seat', '');
+  }
+  // Keep special positions as-is but shorten if needed
+  switch (seat) {
+    case 'Stroke':
+      return 'S';
+    case 'Sub1':
+      return 'Sub';
+    case 'Sub2':
+      return 'Sub';
+    case 'Sub3':
+      return 'Sub';
+    case 'Sub4':
+      return 'Sub';
+    case 'Bow':
+      return 'B';
+    default:
+      return seat; // Cox, Bow stay as-is
+  }
+};
+
+// RowerRow component for individual seat assignments
+interface RowerRowProps {
+  seat: string;
+  selectedMember: string;
+  isSubmitting: boolean;
+  members: any[];
+  membersLoading: boolean;
+  assignments: Record<string, string>;
+  onAssignmentChange: (seat: string, memberName: string) => void;
+  onAvailabilityUpdate: (seat: string, status: string) => void;
+  isLoadingStatus: boolean;
+}
+
+const RowerRow: React.FC<RowerRowProps> = ({
+  seat,
+  selectedMember,
+  isSubmitting,
+  members,
+  membersLoading,
+  assignments,
+  onAssignmentChange,
+  onAvailabilityUpdate,
+  isLoadingStatus
+}) => {
+  const isMemberSelected = Boolean(selectedMember);
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      alignSelf: 'stretch'
+    }}>
+      {/* 1. Seat Number/Label */}
+      <div style={{
+        display: 'flex',
+        width: '40px',
+        padding: '8px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '10px',
+        borderRadius: '5px',
+        background: '#F3F1FE',
+        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)'
+      }}>
+        <span style={{
+          color: '#6F00FF',
+          fontFamily: 'Gilroy',
+          fontSize: '13px',
+          fontStyle: 'normal',
+          fontWeight: 300,
+          lineHeight: 'normal'
+        }}>
+          {getSeatDisplayName(seat)}
+        </span>
+      </div>
+
+      {/* 2. Rower Dropdown */}
+      <div style={{
+        display: 'flex',
+        padding: '4px 10px',
+        alignItems: 'center',
+        gap: '10px',
+        flex: '1 0 0',
+        alignSelf: 'stretch',
+        borderRadius: '5px',
+        background: '#FFF',
+        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)',
+        position: 'relative'
+      }}>
+        {/* Custom styled select wrapper */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flex: '1 0 0',
+          position: 'relative'
+        }}>
+          <select
+            style={{
+              width: '100%',
+              border: 'none',
+              outline: 'none',
+              backgroundColor: 'transparent',
+              color: '#7D8DA6',
+              fontFamily: 'Gilroy',
+              fontSize: '13px',
+              fontStyle: 'normal',
+              fontWeight: 300,
+              lineHeight: 'normal',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+              paddingRight: '20px'
+            }}
+            value={selectedMember || ""}
+            onChange={(e) => onAssignmentChange(seat, e.target.value)}
+            disabled={isSubmitting || membersLoading}
+          >
+            <option value="">
+              {membersLoading ? 'Loading members...' : 'Select member'}
+            </option>
+            {members
+              .filter((member) => {
+                const assignedNames = Object.entries(assignments)
+                  .filter(([key]) => key !== seat)
+                  .map(([, name]) => name);
+                return !assignedNames.includes(member.name) || member.name === selectedMember;
+            })
+            .map((member) => (
+              <option key={member.id} value={member.name}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Custom dropdown arrow */}
+          <div style={{
+            position: 'absolute',
+            right: '0',
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <svg width="9" height="6" viewBox="0 0 9 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M1.33325 1.13828L4.83325 4.63828L8.33325 1.13828" stroke="#7D8DA6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Availability Buttons (Yes/No) - Always visible */}
+      <div style={{
+        display: 'flex',
+        gap: '4px'
+      }}>
+        {/* Yes Button */}
+        <div
+          style={{
+            display: 'flex',
+            width: '32.333px',
+            height: '31px',
+            padding: '3px 10px',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+            borderRadius: '5px',
+            background: assignments[`${seat}_status`] === "Available" ? '#00C53E' : '#FFF',
+            opacity: assignments[`${seat}_status`] === "Available" ? 0.75 : 1,
+            boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)',
+            cursor: isMemberSelected && !isLoadingStatus ? 'pointer' : 'not-allowed'
+          }}
+          onClick={() => {
+            if (isMemberSelected && !isLoadingStatus) {
+              onAvailabilityUpdate(seat, "Available");
+            }
+          }}
+        >
+          <svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M2.90259 7.40216L4.95814 9.45772L10.097 4.31883"
+              stroke={
+                assignments[`${seat}_status`] === "Available"
+                  ? "#FFFFFF"  // White when selected
+                  : !isMemberSelected
+                    ? "rgba(0, 197, 62, 0.5)"  // No member selected: 50% opacity
+                    : "#00C53E"                // Member selected: 100% opacity
+              }
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* No Button */}
+        <div
+          style={{
+            display: 'flex',
+            width: '32.333px',
+            height: '31px',
+            padding: '3px 10px',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '10px',
+            borderRadius: '5px',
+            background: assignments[`${seat}_status`] === "Not Available" ? 'rgba(254, 100, 112, 1)' : '#FFF',
+            boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)',
+            cursor: isMemberSelected && !isLoadingStatus ? 'pointer' : 'not-allowed'
+          }}
+          onClick={() => {
+            if (isMemberSelected && !isLoadingStatus) {
+              onAvailabilityUpdate(seat, "Not Available");
+            }
+          }}
+        >
+          <svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M4.1392 9.58241L6.83334 6.88828M9.52747 4.19414L6.83334 6.88828M6.83334 6.88828L4.1392 4.19414M6.83334 6.88828L9.52747 9.58241"
+              stroke={
+                assignments[`${seat}_status`] === "Not Available"
+                  ? "#FFFFFF"  // White when selected
+                  : !isMemberSelected
+                    ? "rgba(254, 100, 112, 0.5)"  // No member selected: 50% opacity
+                    : "#FE6470"                   // Member selected: 100% opacity
+              }
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper function to get pill background color based on type and value
+const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
+  if (type === 'status') {
+    switch (value) {
+      case 'Confirmed':
+        return { background: '#10B981' }; // Green
+      case 'Provisional':
+        return { background: '#F59E0B' }; // Yellow/Orange
+      case 'Cancelled':
+        return { background: '#EF4444' }; // Red
+      default:
+        return { background: '#6B7280' }; // Gray
+    }
+  }
+  // Shell pills use the primary blue color
+  return { background: '#4C6FFF' }; // Primary blue
+};
+
+// Pill component
+const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'shell' | 'status'; value: string | null }) => (
+  <div style={{
+    display: 'flex',
+    padding: '4px 12px',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
+    alignSelf: 'stretch',
+    borderRadius: '6px',
+    ...getPillStyle(type, value)
+  }}>
+    <span style={{
+      color: 'white',
+      fontFamily: 'Gilroy',
+      fontSize: '12px',
+      fontStyle: 'normal',
+      fontWeight: 600,
+      lineHeight: 'normal'
+    }}>
+      {children}
+    </span>
+  </div>
+);
+
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading } = useMembers();
@@ -71,8 +356,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [submittingSeats, setSubmittingSeats] = useState<Set<string>>(new Set());
-  const [submittingAvailability, setSubmittingAvailability] = useState(false);
-  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus | null>(null);
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
 
   // Use a ref to track current outing ID to prevent unnecessary re-initialization
@@ -140,12 +423,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Helper function to format title as "Div Type" (e.g. "O1 Water Outing")
   const getOutingTitle = (): string => {
-    // First try to use the existing Name property if it exists
-    if (outing?.properties?.Name?.title?.length && outing.properties.Name.title[0].plain_text) {
-      return outing.properties.Name.title[0].plain_text;
-    }
-
-    // Otherwise, construct from Div and Type
+    // Construct from Div and Type properties (like event item headers)
     const divValue = outing?.properties?.Div?.select?.name || "";
     const typeValue = outing?.properties?.Type?.select?.name || "";
 
@@ -157,7 +435,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       return `${typeValue} Outing`;
     }
 
-    // Fallback if no data is available
+    // Fallback to Name property if Div/Type are not available
+    if (outing?.properties?.Name?.title?.length && outing.properties.Name.title[0].plain_text) {
+      return outing.properties.Name.title[0].plain_text;
+    }
+
+    // Final fallback if no data is available
     return "Unnamed Outing";
   };
 
@@ -557,45 +840,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     }
   };
 
-  // Global availability update handler
-  const handleGlobalAvailabilityUpdate = async (status: AvailabilityStatus) => {
-    if (submittingAvailability || !outing) return;
-
-    try {
-      setSubmittingAvailability(true);
-      setAvailabilityStatus(status); // Optimistic update
-
-      const response = await fetch('/api/update-availability', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          outingId: outing.id,
-          memberId: 'current-user-id', // TODO: Get actual current user ID
-          availabilityStatus: status,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.status}`);
-      }
-
-      const result = await response.json();
-      console.log('Availability update successful:', result);
-
-      // Refresh data to get updated state
-      await refresh();
-
-    } catch (error) {
-      console.error('Availability update failed:', error);
-      setAvailabilityStatus(null); // Revert optimistic update
-      alert('Failed to update availability. Please try again.');
-    } finally {
-      setSubmittingAvailability(false);
-    }
-  };
-
   return (
     <Sheet
       isOpen={isOpen}
@@ -616,249 +860,211 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       )}
 
       {outing && (
-        <div className="space-y-6">
-          {/* Basic Info Card */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <h3 className="font-semibold text-lg mb-3 text-gray-900">
-              {getOutingTitle()}
-            </h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">Division:</span>
-                <p className="text-gray-900">{(outing.properties.Div as any)?.select?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Type:</span>
-                <p className="text-gray-900">{(outing.properties.Type as any)?.select?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Shell:</span>
-                <p className="text-gray-900">{(outing.properties.Shell as any)?.select?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Status:</span>
-                <p className={`font-medium ${getOutingStatusColor((outing.properties.OutingStatus as any)?.status?.name)}`}>
-                  {(outing.properties.OutingStatus as any)?.status?.name || 'Provisional'}
-                </p>
-              </div>
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* 4. Outing Details Section - Sticky */}
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+            backgroundColor: '#FFFFF',
+            paddingBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Outing Details Card */}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                {/* Parent flexbox to arrange details and pills side by side */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  alignSelf: 'stretch'
+                }}>
+                  {/* Left side - Outing Details */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '6px'
+                  }}>
+                    {/* 1. Div + Type (e.g., O1 Water Outing) */}
+                    <h3 style={{
+                      color: '#161736',
+                      fontFamily: 'Gilroy',
+                      fontSize: '18px',
+                    fontStyle: 'normal',
+                    fontWeight: 600,
+                    lineHeight: 'normal',
+                    margin: 0
+                  }}>
+                    {getOutingTitle()}
+                  </h3>
 
-          {/* Session Details */}
-          {outing.sessionDetailsText && (
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-              <h4 className="font-medium mb-2 text-gray-900">Session Details</h4>
-              <p className="text-sm text-gray-700 leading-relaxed">{outing.sessionDetailsText}</p>
-            </div>
-          )}
+                  {/* 2. Date/Time (e.g., Date: Wednesday 10:00-12:00) */}
+                  <div style={{
+                    color: '#425466',
+                    fontFamily: 'Gilroy',
+                    fontSize: '14px',
+                    fontStyle: 'normal',
+                    fontWeight: 500,
+                    lineHeight: 'normal'
+                  }}>
+                    <span style={{ fontWeight: 600 }}>Date:</span> {(() => {
+                      const startDate = (outing.properties.StartDateTime as any)?.date?.start;
+                      const endDate = (outing.properties.EndDateTime as any)?.date?.end;
 
-          {/* Interactive Seat Assignments with Member Selection */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <h4 className="font-medium mb-4 text-gray-900">Crew Assignments</h4>
-            <div className="space-y-4">
-              {seatLabels.map((seat) => {
-                const isMemberSelected = Boolean(assignments[seat]);
-                let currentStatus = assignments[`${seat}_status`];
+                      if (startDate) {
+                        const start = new Date(startDate);
+                        const dayName = start.toLocaleDateString('en-US', { weekday: 'long' });
+                        const startTime = start.toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: false
+                        });
 
-                // Apply fallback if needed
-                if (!currentStatus && isMemberSelected) {
-                  currentStatus = "Awaiting Approval";
-                  console.log(`⚠️ No status found for ${seat}, using default: "Awaiting Approval"`);
-                }
-
-                // If there's no member selected, ensure we don't show any status
-                if (!isMemberSelected) {
-                  currentStatus = "";
-                }
-
-                const isSubmitting = submittingSeats.has(seat);
-
-                return (
-                  <div key={seat} className="border rounded-lg p-4 bg-gray-50 border-gray-200">
-                    {/* Seat Header */}
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-gray-800">{seat}</span>
-                      </div>
-
-                      {/* Status Indicator */}
-                      {currentStatus && (
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(currentStatus as AvailabilityStatus)} bg-white`}>
-                          {currentStatus}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Member Assignment Row */}
-                    <div className="space-y-3">
-                      {/* Member Selection Dropdown */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <select
-                            className="w-full text-sm border border-gray-200 rounded px-3 py-2"
-                            value={assignments[seat] || ""}
-                            onChange={(e) => handleAssignmentChange(seat, e.target.value)}
-                            disabled={isSubmitting || membersLoading}
-                          >
-                            <option value="">
-                              {membersLoading ? 'Loading members...' : 'Select a member...'}
-                            </option>
-                            {members
-                              .filter((member) => {
-                                const assignedNames = Object.entries(assignments)
-                                  .filter(([key]) => key !== seat)
-                                  .map(([, name]) => name);
-                                return !assignedNames.includes(member.name) || member.name === assignments[seat];
-                              })
-                              .map((member) => (
-                                <option key={member.id} value={member.name}>
-                                  {member.name} ({member.memberType})
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Availability Controls */}
-                      {isMemberSelected && (
-                        <div className="flex gap-2">
-                          <Button
-                            variant={currentStatus === "Available" ? "primary" : "outline"}
-                            size="sm"
-                            onClick={() => handleAvailabilityUpdate(seat, "Available")}
-                            disabled={isLoadingStatus}
-                            className="flex-1"
-                          >
-                            Available
-                          </Button>
-                          <Button
-                            variant={currentStatus === "Maybe Available" ? "primary" : "outline"}
-                            size="sm"
-                            onClick={() => handleAvailabilityUpdate(seat, "Maybe Available")}
-                            disabled={isLoadingStatus}
-                            className="flex-1"
-                          >
-                            Maybe
-                          </Button>
-                          <Button
-                            variant={currentStatus === "Not Available" ? "primary" : "outline"}
-                            size="sm"
-                            onClick={() => handleAvailabilityUpdate(seat, "Not Available")}
-                            disabled={isLoadingStatus}
-                            className="flex-1"
-                          >
-                            Not Available
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                        if (endDate) {
+                          const end = new Date(endDate);
+                          const endTime = end.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: false
+                          });
+                          return `${dayName} ${startTime}–${endTime}`;
+                        }
+                        return `${dayName} ${startTime}`;
+                      }
+                      return 'Date not set';
+                    })()}
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* Global Availability Form */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-            <h4 className="font-medium mb-4 text-gray-900">Set Your Overall Availability</h4>
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-4">
-                Let the coaches know if you're available for this outing
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Button
-                  variant={availabilityStatus === AvailabilityStatus.Available ? "primary" : "outline"}
-                  size="sm"
-                  onClick={() => handleGlobalAvailabilityUpdate(AvailabilityStatus.Available)}
-                  disabled={submittingAvailability}
-                  className="w-full"
-                >
-                  {submittingAvailability && availabilityStatus === AvailabilityStatus.Available ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Updating...
-                    </div>
-                  ) : (
-                    "Available"
-                  )}
-                </Button>
-
-                <Button
-                  variant={availabilityStatus === AvailabilityStatus.MaybeAvailable ? "primary" : "outline"}
-                  size="sm"
-                  onClick={() => handleGlobalAvailabilityUpdate(AvailabilityStatus.MaybeAvailable)}
-                  disabled={submittingAvailability}
-                  className="w-full"
-                >
-                  {submittingAvailability && availabilityStatus === AvailabilityStatus.MaybeAvailable ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Updating...
-                    </div>
-                  ) : (
-                    "Maybe"
-                  )}
-                </Button>
-
-                <Button
-                  variant={availabilityStatus === AvailabilityStatus.NotAvailable ? "primary" : "outline"}
-                  size="sm"
-                  onClick={() => handleGlobalAvailabilityUpdate(AvailabilityStatus.NotAvailable)}
-                  disabled={submittingAvailability}
-                  className="w-full"
-                >
-                  {submittingAvailability && availabilityStatus === AvailabilityStatus.NotAvailable ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Updating...
-                    </div>
-                  ) : (
-                    "Not Available"
-                  )}
-                </Button>
-              </div>
-
-              {availabilityStatus && !submittingAvailability && (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-sm text-green-800">
-                    ✓ Availability updated to: <strong>{availabilityStatus}</strong>
-                  </p>
+                  {/* 3. Bank Rider/Coach */}
+                  <div style={{
+                    color: '#425466',
+                    fontFamily: 'Gilroy',
+                    fontSize: '14px',
+                    fontStyle: 'normal',
+                    fontWeight: 500,
+                    lineHeight: 'normal'
+                  }}>
+                    <span style={{ fontWeight: 600 }}>Bank Rider:</span> {(() => {
+                      const bankRiderRelation = (outing.properties.CoachBankRider as any)?.relation;
+                      if (bankRiderRelation && bankRiderRelation.length > 0) {
+                        // For now, we'll show the relation ID since we need to match it with members
+                        // This would ideally be resolved to actual member names
+                        const member = members.find(m => m.id === bankRiderRelation[0].id);
+                        return member ? member.name : 'Loading...';
+                      }
+                      return 'None';
+                    })()}
+                  </div>
                 </div>
-              )}
+
+                {/* Right side - Pills */}
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '8px'
+                }}>
+                  {/* 4. Shell - Pill Component */}
+                  <Pill type="shell" value={(outing.properties.Shell as any)?.select?.name || null}>
+                    {(outing.properties.Shell as any)?.select?.name || 'N/A'}
+                  </Pill>
+
+                  {/* 5. Outing Status - Pill Component */}
+                  <Pill type="status" value={(outing.properties.OutingStatus as any)?.status?.name || null}>
+                    {(outing.properties.OutingStatus as any)?.status?.name || 'Provisional'}
+                  </Pill>
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Session Details */}
+            {outing.sessionDetailsText && (
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p style={{
+                  color: '#425466',
+                  fontFamily: 'Gilroy',
+                  fontSize: '14px',
+                  fontStyle: 'normal',
+                  fontWeight: 400,
+                  lineHeight: '1.4',
+                  margin: 0
+                }}>{outing.sessionDetailsText}</p>
+              </div>
+            )}
             </div>
           </div>
 
-          {/* Available Seats Summary */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h4 className="font-medium text-blue-900">Assignment Summary</h4>
-            </div>
-            <p className="text-sm text-blue-800">
-              <strong>{outing.availableSeats.length}</strong> position{outing.availableSeats.length !== 1 ? 's' : ''} available for signup
-            </p>
-            {outing.availableSeats.length > 0 && (
-              <p className="text-xs text-blue-700 mt-1">
-                Open: {outing.availableSeats.join(', ')}
-              </p>
-            )}
-            {outing.availableSeats.length === 0 && (
-              <p className="text-xs text-blue-700 mt-1">
-                All positions are assigned or unavailable
-              </p>
-            )}
-          </div>
+          {/* 5. Crew Assignments Section - Scrollable */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            paddingTop: '16px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Rowers Section */}
+            <h4 style={{
+              color: '#161736',
+              fontFamily: 'Gilroy',
+              fontSize: '18px',
+              fontStyle: 'normal',
+              fontWeight: 800,
+              lineHeight: 'normal',
+              margin: '0 0 16px 0'
+            }}>Rowers</h4>
 
-          {/* Debug Info - Show only in development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-gray-400 bg-gray-100 p-2 rounded text-center">
-              <p>ID: {outingId.slice(-8)}</p>
-              <p>Updated: {new Date(outing.last_edited_time).toLocaleString()}</p>
+            {/* Interactive Seat Assignments with Member Selection - Dropdowns Container */}
+            <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {seatLabels.filter(seat => !seat.startsWith('Sub')).map((seat) => (
+                  <RowerRow
+                    key={seat}
+                    seat={seat}
+                    selectedMember={assignments[seat]}
+                    isSubmitting={submittingSeats.has(seat)}
+                    members={members}
+                    membersLoading={membersLoading}
+                    assignments={assignments}
+                    onAssignmentChange={handleAssignmentChange}
+                    onAvailabilityUpdate={handleAvailabilityUpdate}
+                    isLoadingStatus={isLoadingStatus}
+                  />
+                ))}
+              </div>
             </div>
-          )}
+
+            {/* Subs Section */}
+            <h4 style={{
+              color: '#161736',
+              fontFamily: 'Gilroy',
+              fontSize: '18px',
+              fontStyle: 'normal',
+              fontWeight: 800,
+              lineHeight: 'normal',
+              margin: '0 0 16px 0'
+            }}>Subs</h4>
+
+            {/* Subs Assignments Container */}
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {seatLabels.filter(seat => seat.startsWith('Sub')).map((seat) => (
+                  <RowerRow
+                    key={seat}
+                    seat={seat}
+                    selectedMember={assignments[seat]}
+                    isSubmitting={submittingSeats.has(seat)}
+                    members={members}
+                    membersLoading={membersLoading}
+                    assignments={assignments}
+                    onAssignmentChange={handleAssignmentChange}
+                    onAvailabilityUpdate={handleAvailabilityUpdate}
+                    isLoadingStatus={isLoadingStatus}
+                  />
+                ))}
+              </div>
+            </div>
+            </div>
+          </div>
         </div>
       )}
     </Sheet>

@@ -51,43 +51,45 @@ export default function SchedulePage() {
 	}
 
 	return (
-		<main className="h-screen flex flex-col justify-center items-center px-[100px] overflow-hidden">
-			<h1 className="sr-only">Schedule</h1>
+		<>
+			<main className="h-screen flex flex-col justify-center items-center px-[100px] overflow-hidden">
+				<h1 className="sr-only">Schedule</h1>
 
-			{/* Main Content Container */}
-			<div
-				className="w-full max-w-7xl flex-shrink-0"
-				style={{
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'flex-start',
-					gap: '32px'
-				}}
-			>
-				{/* Calendar Header */}
-			<CalendarHeader
-				currentWeek={currentWeek}
-				onPreviousWeek={goToPreviousWeek}
-				onNextWeek={goToNextWeek}
-			/>				{/* Calendar Grid */}
-				<CalendarWeek
-					calendarDays={calendarDays}
-					onEventClick={handleEventClick}
-					loading={loading}
-				/>
+				{/* Main Content Container */}
+				<div
+					className="w-full max-w-7xl flex-shrink-0"
+					style={{
+						display: 'flex',
+						flexDirection: 'column',
+						alignItems: 'flex-start',
+						gap: '32px'
+					}}
+				>
+					{/* Calendar Header */}
+				<CalendarHeader
+					currentWeek={currentWeek}
+					onPreviousWeek={goToPreviousWeek}
+					onNextWeek={goToNextWeek}
+				/>				{/* Calendar Grid */}
+					<CalendarWeek
+						calendarDays={calendarDays}
+						onEventClick={handleEventClick}
+						loading={loading}
+					/>
 
-				{/* No events message */}
-				{!loading && !stats.hasEvents && (
-					<div className="text-center py-12">
-						<p className="text-muted-foreground mb-2">No outings scheduled for this week</p>
-						<p className="text-sm text-muted-foreground">
-							Check back later or navigate to a different week
-						</p>
-					</div>
-				)}
-			</div>
+					{/* No events message */}
+					{!loading && !stats.hasEvents && (
+						<div className="text-center py-12">
+							<p className="text-muted-foreground mb-2">No outings scheduled for this week</p>
+							<p className="text-sm text-muted-foreground">
+								Check back later or navigate to a different week
+							</p>
+						</div>
+					)}
+				</div>
+			</main>
 
-			{/* Event Details Drawer */}
+			{/* Event Details Drawer - Rendered outside main container */}
 			{selectedEvent && (
 				<OutingDrawer
 					outingId={selectedEvent.originalOuting}
@@ -95,6 +97,6 @@ export default function SchedulePage() {
 					onClose={handleCloseDrawer}
 				/>
 			)}
-		</main>
+		</>
 	);
 }
