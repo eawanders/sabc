@@ -1,15 +1,10 @@
 // src/lib/notion/outings.ts
-import { Client } from '@notionhq/client';
-import { Outing, DetailedOuting, SeatType, AvailabilityStatus, SeatAssignment, Member } from '@/types/outing';
-
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-});
+import { Outing, RawOuting, DetailedOuting, SeatType, AvailabilityStatus, SeatAssignment, Member } from '@/types/outing';
 
 /**
  * Fetch a single outing by ID with basic data
  */
-export async function getOutingById(id: string): Promise<Outing | null> {
+export async function getOutingById(id: string): Promise<RawOuting | null> {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/get-outing/${id}`);
@@ -20,7 +15,7 @@ export async function getOutingById(id: string): Promise<Outing | null> {
     }
 
     const data = await response.json();
-    return data.outing as Outing;
+    return data.outing as RawOuting;
   } catch (error) {
     console.error('Error fetching outing by ID:', error);
     return null;
@@ -139,8 +134,8 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
 
     const detailedOuting: DetailedOuting = {
       ...outing,
-      created_time: (outing as any).created_time || new Date().toISOString(),
-      last_edited_time: (outing as any).last_edited_time || new Date().toISOString(),
+      created_time: outing.created_time || new Date().toISOString(),
+      last_edited_time: outing.last_edited_time || new Date().toISOString(),
       seatAssignments,
       sessionDetailsText,
       availableSeats

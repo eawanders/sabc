@@ -98,6 +98,12 @@ export interface Outing {
   };
 }
 
+// Raw outing data from Notion API (includes timestamps)
+export interface RawOuting extends Outing {
+  created_time: string;
+  last_edited_time: string;
+}
+
 export interface Member {
   id: string;
   name: string;

@@ -4,6 +4,24 @@ import { Client } from '@notionhq/client'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { Member } from '@/types/members'
 
+// Notion property type interfaces
+interface NotionTitle {
+  type: 'title'
+  title: Array<{ plain_text: string }>
+}
+
+interface NotionEmail {
+  type: 'email'
+  email: string
+}
+
+interface NotionSelect {
+  type: 'select'
+  select: { name: string } | null
+}
+
+type NotionProperty = NotionTitle | NotionEmail | NotionSelect
+
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 })
@@ -45,11 +63,11 @@ export async function GET() {
     console.log(`📋 Filtered results: ${results.length} valid pages`)
 
     // Helper function to safely extract property values
-    const getPropertyValue = (page: PageObjectResponse, propertyName: string, expectedType: string): any => {
+    const getPropertyValue = (page: PageObjectResponse, propertyName: string, expectedType: string): NotionProperty | null => {
       const property = page.properties[propertyName]
       if (!property || typeof property !== 'object') return null
 
-      const typedProperty = property as any
+      const typedProperty = property as NotionProperty
       if (typedProperty.type !== expectedType) return null
 
       return typedProperty
@@ -60,21 +78,21 @@ export async function GET() {
         // Safely extract name with fallbacks
         let name = ''
         const nameProperty = getPropertyValue(page, 'Full Name', 'title')
-        if (nameProperty?.title && Array.isArray(nameProperty.title)) {
-          name = nameProperty.title.map((t: any) => t.plain_text || '').join('').trim()
+        if (nameProperty && nameProperty.type === 'title' && nameProperty.title && Array.isArray(nameProperty.title)) {
+          name = nameProperty.title.map((t: { plain_text: string }) => t.plain_text || '').join('').trim()
         }
 
         // Safely extract email with fallbacks
         let email = ''
         const emailProperty = getPropertyValue(page, 'Email Address', 'email')
-        if (emailProperty?.email) {
+        if (emailProperty && emailProperty.type === 'email' && emailProperty.email) {
           email = emailProperty.email.trim()
         }
 
         // Safely extract member type with fallbacks
         let memberType = ''
         const memberTypeProperty = getPropertyValue(page, 'Member Type', 'select')
-        if (memberTypeProperty?.select?.name) {
+        if (memberTypeProperty && memberTypeProperty.type === 'select' && memberTypeProperty.select?.name) {
           memberType = memberTypeProperty.select.name.trim()
         }
 

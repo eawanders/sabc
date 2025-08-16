@@ -3,9 +3,32 @@
 import React, { useState } from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
 import { useMembers } from '@/hooks/useMembers';
-import { AvailabilityStatus } from '@/types/outing';
+import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
-import { Button } from '@/components/ui/Button';
+
+// Type definitions for Notion properties
+interface NotionDate {
+  date: {
+    start: string;
+    end?: string;
+  };
+}
+
+interface NotionSelect {
+  select: {
+    name: string;
+  };
+}
+
+interface NotionStatus {
+  status: {
+    name: string;
+  };
+}
+
+interface NotionRelation {
+  relation: Array<{ id: string }>;
+}
 
 interface OutingDrawerProps {
   outingId: string;
@@ -29,38 +52,6 @@ const seatLabels = [
   "Sub3",
   "Sub4",
 ];
-
-function getStatusColor(status: AvailabilityStatus | null): string {
-  switch (status) {
-    case AvailabilityStatus.Available:
-      return 'text-green-600';
-    case AvailabilityStatus.AwaitingApproval:
-      return 'text-blue-600';
-    case AvailabilityStatus.NotAvailable:
-      return 'text-red-600';
-    case AvailabilityStatus.Confirmed:
-      return 'text-green-700';
-    case AvailabilityStatus.Provisional:
-      return 'text-yellow-600';
-    case AvailabilityStatus.Cancelled:
-      return 'text-red-700';
-    default:
-      return 'text-muted-foreground';
-  }
-}
-
-function getOutingStatusColor(status: string | null): string {
-  switch (status) {
-    case 'Confirmed':
-      return 'text-green-700';
-    case 'Provisional':
-      return 'text-yellow-600';
-    case 'Cancelled':
-      return 'text-red-700';
-    default:
-      return 'text-gray-700';
-  }
-}
 
 // Helper function to get just the number/short name for seat display
 const getSeatDisplayName = (seat: string): string => {
@@ -92,7 +83,7 @@ interface RowerRowProps {
   seat: string;
   selectedMember: string;
   isSubmitting: boolean;
-  members: any[];
+  members: Member[];
   membersLoading: boolean;
   assignments: Record<string, string>;
   onAssignmentChange: (seat: string, memberName: string) => void;
@@ -355,7 +346,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
-  const [submittingSeats, setSubmittingSeats] = useState<Set<string>>(new Set());
+  const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
 
   // Use a ref to track current outing ID to prevent unnecessary re-initialization
@@ -909,8 +900,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     lineHeight: 'normal'
                   }}>
                     <span style={{ fontWeight: 600 }}>Date:</span> {(() => {
-                      const startDate = (outing.properties.StartDateTime as any)?.date?.start;
-                      const endDate = (outing.properties.EndDateTime as any)?.date?.end;
+                      const startDate = (outing.properties.StartDateTime as NotionDate)?.date?.start;
+                      const endDate = (outing.properties.EndDateTime as NotionDate)?.date?.end;
 
                       if (startDate) {
                         const start = new Date(startDate);
@@ -946,7 +937,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     lineHeight: 'normal'
                   }}>
                     <span style={{ fontWeight: 600 }}>Bank Rider:</span> {(() => {
-                      const bankRiderRelation = (outing.properties.CoachBankRider as any)?.relation;
+                      const bankRiderRelation = (outing.properties.CoachBankRider as NotionRelation)?.relation;
                       if (bankRiderRelation && bankRiderRelation.length > 0) {
                         // For now, we'll show the relation ID since we need to match it with members
                         // This would ideally be resolved to actual member names
@@ -966,13 +957,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   gap: '8px'
                 }}>
                   {/* 4. Shell - Pill Component */}
-                  <Pill type="shell" value={(outing.properties.Shell as any)?.select?.name || null}>
-                    {(outing.properties.Shell as any)?.select?.name || 'N/A'}
+                  <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null}>
+                    {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
                   </Pill>
 
                   {/* 5. Outing Status - Pill Component */}
-                  <Pill type="status" value={(outing.properties.OutingStatus as any)?.status?.name || null}>
-                    {(outing.properties.OutingStatus as any)?.status?.name || 'Provisional'}
+                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null}>
+                    {(outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
                   </Pill>
                 </div>
               </div>
