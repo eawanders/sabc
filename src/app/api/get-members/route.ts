@@ -4,41 +4,146 @@ import { Client } from '@notionhq/client'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { Member } from '@/types/members'
 
+// Notion property type interfaces
+interface NotionTitle {
+  type: 'title'
+  title: Array<{ plain_text: string }>
+}
+
+interface NotionEmail {
+  type: 'email'
+  email: string
+}
+
+interface NotionSelect {
+  type: 'select'
+  select: { name: string } | null
+}
+
+type NotionProperty = NotionTitle | NotionEmail | NotionSelect
+
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
 })
 
 export async function GET() {
   try {
+    console.log('🔍 Fetching members from Notion database...')
+
+    // Validate environment variables
+    if (!process.env.NOTION_TOKEN) {
+      console.error('❌ NOTION_TOKEN is not set')
+      return NextResponse.json(
+        { error: 'Missing Notion token configuration' },
+        { status: 500 }
+      )
+    }
+
+    if (!process.env.NOTION_MEMBERS_DB_ID) {
+      console.error('❌ NOTION_MEMBERS_DB_ID is not set')
+      return NextResponse.json(
+        { error: 'Missing Notion members database ID configuration' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗄️ Querying database: ${process.env.NOTION_MEMBERS_DB_ID}`)
+
     const response = await notion.databases.query({
       database_id: process.env.NOTION_MEMBERS_DB_ID!,
+      page_size: 100, // Increase page size for better performance
     })
+
+    console.log(`📊 Raw response: Found ${response.results.length} total results`)
 
     const results = response.results.filter(
       (r): r is PageObjectResponse => 'properties' in r
     )
 
-    const members: Member[] = results.map((page) => ({
-      id: page.id,
-      name:
-        page.properties['Full Name'].type === 'title'
-          ? page.properties['Full Name'].title.map(t => t.plain_text).join('')
-          : '',
-      email:
-        page.properties['Email Address'].type === 'email'
-          ? page.properties['Email Address'].email || ''
-          : '',
-      memberType:
-        page.properties['Member Type'].type === 'select'
-          ? page.properties['Member Type'].select?.name || ''
-          : '',
-    }))
+    console.log(`📋 Filtered results: ${results.length} valid pages`)
 
-    return NextResponse.json({ members })
+    // Helper function to safely extract property values
+    const getPropertyValue = (page: PageObjectResponse, propertyName: string, expectedType: string): NotionProperty | null => {
+      const property = page.properties[propertyName]
+      if (!property || typeof property !== 'object') return null
+
+      const typedProperty = property as NotionProperty
+      if (typedProperty.type !== expectedType) return null
+
+      return typedProperty
+    }
+
+    const members: Member[] = results.map((page) => {
+      try {
+        // Safely extract name with fallbacks
+        let name = ''
+        const nameProperty = getPropertyValue(page, 'Full Name', 'title')
+        if (nameProperty && nameProperty.type === 'title' && nameProperty.title && Array.isArray(nameProperty.title)) {
+          name = nameProperty.title.map((t: { plain_text: string }) => t.plain_text || '').join('').trim()
+        }
+
+        // Safely extract email with fallbacks
+        let email = ''
+        const emailProperty = getPropertyValue(page, 'Email Address', 'email')
+        if (emailProperty && emailProperty.type === 'email' && emailProperty.email) {
+          email = emailProperty.email.trim()
+        }
+
+        // Safely extract member type with fallbacks
+        let memberType = ''
+        const memberTypeProperty = getPropertyValue(page, 'Member Type', 'select')
+        if (memberTypeProperty && memberTypeProperty.type === 'select' && memberTypeProperty.select?.name) {
+          memberType = memberTypeProperty.select.name.trim()
+        }
+
+        const member: Member = {
+          id: page.id,
+          name,
+          email,
+          memberType,
+        }
+
+        console.log(`👤 Processed member: ${member.name} (${member.memberType})`)
+        return member
+      } catch (memberError) {
+        console.error('❌ Error processing member:', memberError, 'Page ID:', page.id)
+        // Return a valid member object even if there's an error
+        return {
+          id: page.id,
+          name: 'Unknown Member',
+          email: '',
+          memberType: 'Unknown',
+        }
+      }
+    }).filter(member => member.name && member.name !== 'Unknown Member') // Filter out invalid members
+
+    console.log(`✅ Successfully processed ${members.length} members`)
+
+    return NextResponse.json({
+      members,
+      total: members.length,
+      success: true
+    })
   } catch (error) {
-    console.error('Error fetching members from Notion:', error)
+    console.error('❌ Error fetching members from Notion:', error)
+
+    // More detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : ''
+
+    console.error('❌ Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      notionToken: process.env.NOTION_TOKEN ? 'Present' : 'Missing',
+      databaseId: process.env.NOTION_MEMBERS_DB_ID ? 'Present' : 'Missing'
+    })
+
     return NextResponse.json(
-      { error: 'Failed to fetch members' },
+      {
+        error: 'Failed to fetch members',
+        details: errorMessage,
+        success: false
+      },
       { status: 500 }
     )
   }

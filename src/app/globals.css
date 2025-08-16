@@ -2,100 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Text styling system */
-@layer components {
-  /* Font family classes */
-  .font-noto-serif {
-    font-family: var(--font-noto-serif), Georgia, serif;
-  }
-
-  .font-inter {
-    font-family: var(--font-inter), system-ui, sans-serif;
-  }
-
-  .font-playfair {
-    font-family: var(--font-playfair), Georgia, serif;
-  }
-
-  .font-roboto-mono {
-    font-family: var(--font-roboto-mono), monospace;
-  }
-
-  /* Direct font-weight utility classes */
-  .weight-thin {
-    font-weight: 100 !important;
-    font-variation-settings: "wght" 100 !important;
-  }
-
-  .weight-extralight {
-    font-weight: 200 !important;
-    font-variation-settings: "wght" 200 !important;
-  }
-
-  .weight-light {
-    font-weight: 300 !important;
-    font-variation-settings: "wght" 300 !important;
-  }
-
-  .weight-normal {
-    font-weight: 400 !important;
-    font-variation-settings: "wght" 400 !important;
-  }
-
-  .weight-medium {
-    font-weight: 500 !important;
-    font-variation-settings: "wght" 500 !important;
-  }
-
-  .weight-semibold {
-    font-weight: 600 !important;
-    font-variation-settings: "wght" 600 !important;
-  }
-
-  .weight-bold {
-    font-weight: 700 !important;
-    font-variation-settings: "wght" 700 !important;
-  }
-
-  .weight-extrabold {
-    font-weight: 800 !important;
-    font-variation-settings: "wght" 800 !important;
-  }
-
-  .weight-black {
-    font-weight: 900 !important;
-    font-variation-settings: "wght" 900 !important;
-  }
-
-  /* Special heading classes for direct application */
-  .thin-heading {
-    font-weight: 100 !important;
-    font-variation-settings: "wght" 100 !important;
-  }
-}
-
-/* Reset default margin and padding */
-html,
-body {
+/* Reset default margins and padding */
+* {
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  box-sizing: border-box;
 }
 
+/* ------------------------------
+	 CSS Variables (Design Tokens)
+	 ------------------------------ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand */
+  --color-brand: #0177fb;
+  --color-brand-foreground: #ffffff;
+  --color-accent: #e1e8ff;
+
+  /* Neutrals */
+  --color-bg: #ffffff; /* app background */
+  --color-surface: #ffffff; /* card surface */
+  --color-surface-muted: rgba(246, 247, 249, 0.6); /* calendar canvas */
+  --color-foreground: #425466; /* default text */
+  --color-heading: #27272e; /* headings */
+  --color-muted: #848585; /* secondary text */
+  --color-border: #7d8da6;
+
+  /* Semantics (solid) */
+  --color-success: #00c53e;
+  --color-warning: #fe6470;
+  --color-danger: #d92d20;
+  --color-info: #2e90fa;
+
+  /* Semantics (soft backgrounds) */
+  --color-success-soft: rgba(0, 197, 62, 0.1);
+  --color-warning-soft: rgba(254, 100, 112, 0.1);
+  --color-danger-soft: rgba(217, 45, 32, 0.1);
+  --color-info-soft: rgba(46, 144, 250, 0.1);
+
+  /* Availability (aliases) */
+  --color-available: var(--color-success);
+  --color-maybe: #ffb020;
+  --color-unavailable: var(--color-warning);
+
+  /* Calendar */
+  --color-event-water-bg: #ffffff;
+  --color-event-erg-bg: #0177fb;
+  --color-provisional-outline: rgba(66, 84, 102, 1);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 3px 18px 0 rgba(174, 174, 174, 0.16);
+  --shadow-md: 0 9px 44px 0 rgba(174, 174, 174, 0.2);
+  --shadow-lg: 0 16px 64px 0 rgba(174, 174, 174, 0.24);
+
+  /* Focus ring */
+  --ring-color: var(--color-brand);
+  --ring-offset: 2px;
+  --ring-width: 2px;
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 280ms;
+  --motion-ease: ease-in-out;
+
+  /* Layout */
+  --container-max: 1200px;
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 60px;
+  --drawer-width: 380px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Set base text size/line-height per spec */
+html {
+  font-size: 14px; /* base = 14px */
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  @apply antialiased;
+  background: var(--color-bg);
+  color: var(--color-foreground);
+  font-family: var(--font-gilroy), system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Headings color */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--color-heading);
+}
+
+/* Focus style (box-shadow ring) */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--ring-offset) rgba(0, 0, 0, 0),
+    0 0 0 calc(var(--ring-width) + var(--ring-offset)) var(--ring-color);
+  transition: box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+/* Utility helpers */
+.shadow-token-sm {
+  box-shadow: var(--shadow-sm);
+}
+.shadow-token-md {
+  box-shadow: var(--shadow-md);
+}
+.shadow-token-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.rounded-token {
+  border-radius: var(--radius-md);
+}
+.rounded-soft {
+  border-radius: var(--radius-lg);
+}
+
+/* Font utilities */
+.font-gilroy-extrabold {
+  font-family: var(--font-gilroy), system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  font-weight: 800;
 }

@@ -10,13 +10,39 @@ const notion = new Client({
 
 export async function GET() {
   try {
+    console.log('🔍 Fetching outings from Notion database...')
+
+    // Validate environment variables
+    if (!process.env.NOTION_TOKEN) {
+      console.error('❌ NOTION_TOKEN is not set')
+      return NextResponse.json(
+        { error: 'Missing Notion token configuration', success: false },
+        { status: 500 }
+      )
+    }
+
+    if (!process.env.NOTION_OUTINGS_DB_ID) {
+      console.error('❌ NOTION_OUTINGS_DB_ID is not set')
+      return NextResponse.json(
+        { error: 'Missing Notion outings database ID configuration', success: false },
+        { status: 500 }
+      )
+    }
+
+    console.log('🗄️ Querying database:', process.env.NOTION_OUTINGS_DB_ID)
+
     const response = await notion.databases.query({
       database_id: process.env.NOTION_OUTINGS_DB_ID!,
+      page_size: 100, // Increase page size for better performance
     })
+
+    console.log('📊 Raw Notion response:', response.results.length, 'records')
 
     const results = response.results.filter(
       (r): r is PageObjectResponse => 'properties' in r
     )
+
+    console.log(`📋 Filtered results: ${results.length} valid pages`)
 
     const getPropertyValue = (property: unknown) => {
       if (!property || typeof property !== 'object' || property === null) return undefined;
@@ -69,7 +95,7 @@ export async function GET() {
         StartDateTime: getPropertyValue(page.properties['Start Date/Time']),
         EndDateTime: getPropertyValue(page.properties['End Date/Time']),
         PublishOuting: getPropertyValue(page.properties['Publish Outing']),
-        OutingStatus: getPropertyValue(page.properties['Outing Status']),
+        OutingStatus: getPropertyValue(page.properties['Status']),
         SessionDetails: getPropertyValue(page.properties['Session Details']),
         Cox: getPropertyValue(page.properties['Cox']),
         CoxStatus: getPropertyValue(page.properties['Cox Status']),
@@ -102,12 +128,29 @@ export async function GET() {
       },
     })) as Outing[]
 
-    console.log(`📤 Returning ${outings.length} outings`);
-    console.log("📤 First outing:", outings[0] ? JSON.stringify(outings[0], null, 2) : "None");
+    console.log(`📤 Returning ${outings.length} outings`)
+    console.log("📤 First outing summary:", outings[0] ? {
+      id: outings[0].id,
+      name: outings[0].properties?.Name,
+      div: outings[0].properties?.Div?.select?.name,
+      type: outings[0].properties?.Type?.select?.name
+    } : "None")
 
     return NextResponse.json({ outings })
   } catch (error) {
-    console.error('Error fetching outings from Notion:', error)
+    console.error('❌ Error fetching outings from Notion:', error)
+
+    // More detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : ''
+
+    console.error('❌ Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      notionToken: process.env.NOTION_TOKEN ? 'Present' : 'Missing',
+      databaseId: process.env.NOTION_OUTINGS_DB_ID ? 'Present' : 'Missing'
+    })
+
     return NextResponse.json(
       { error: 'Failed to fetch outings' },
       { status: 500 }
