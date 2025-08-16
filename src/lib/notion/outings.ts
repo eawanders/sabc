@@ -6,18 +6,25 @@ import { Outing, RawOuting, DetailedOuting, SeatType, AvailabilityStatus, SeatAs
  */
 export async function getOutingById(id: string): Promise<RawOuting | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const response = await fetch(`${baseUrl}/api/get-outing/${id}`);
+    console.log('🔍 getOutingById: Fetching outing with ID:', id);
+
+    // Use relative URL to work in all environments (localhost, staging, production)
+    const response = await fetch(`/api/get-outing/${id}`);
+
+    console.log('🔍 getOutingById: Response status:', response.status, response.statusText);
 
     if (!response.ok) {
-      console.error(`Failed to fetch outing ${id}:`, response.status, response.statusText);
+      const errorText = await response.text();
+      console.error(`❌ Failed to fetch outing ${id}:`, response.status, response.statusText, errorText);
       return null;
     }
 
     const data = await response.json();
+    console.log('✅ getOutingById: Successfully received data:', data);
+
     return data.outing as RawOuting;
   } catch (error) {
-    console.error('Error fetching outing by ID:', error);
+    console.error('❌ getOutingById: Error fetching outing by ID:', error);
     return null;
   }
 }
@@ -29,8 +36,8 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
   try {
     if (memberIds.length === 0) return [];
 
-    // Fetch all members first
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/get-members`);
+    // Fetch all members first - use relative URL to work in all environments
+    const response = await fetch(`/api/get-members`);
 
     if (!response.ok) {
       console.error('Failed to fetch members:', response.status);
