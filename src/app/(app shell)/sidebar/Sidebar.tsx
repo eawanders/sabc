@@ -68,12 +68,12 @@ export default function Sidebar() {
           <div style={{
             color: '#000',
             fontFamily: 'Gilroy',
-            fontSize: '17px',
+            fontSize: '32px',
             fontStyle: 'normal',
             fontWeight: 800,
             lineHeight: 'normal'
           }}>
-            St Antony&apos;s Boat Club
+            SABC
           </div>
         </div>
       </Box>
@@ -113,7 +113,7 @@ export default function Sidebar() {
           />
           <NavItem
             href="/flag-status"
-            label="ISIS Flags"
+            label="Isis Flag"
             icon={<FlagIcon />}
             active={!!isFlagStatus}
           />
