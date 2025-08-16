@@ -125,13 +125,10 @@ function extractStatus(outing: Outing): CalendarEvent['status'] {
   const status = outing.properties.OutingStatus?.status?.name;
 
   switch (status) {
-    case 'Provisional Outing':
     case 'Provisional':
       return 'Provisional Outing';
-    case 'Outing Confirmed':
     case 'Confirmed':
       return 'Outing Confirmed';
-    case 'Outing Cancelled':
     case 'Cancelled':
       return 'Outing Cancelled';
     default:

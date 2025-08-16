@@ -16,9 +16,9 @@ export interface RelationProperty {
 export interface StatusProperty {
   status?: {
     id: string;
-    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional Outing' | 'Provisional' | 'Outing Confirmed' | 'Confirmed' | 'Outing Cancelled' | 'Cancelled';
+    name: 'Available' | 'Maybe Available' | 'Awaiting Approval' | 'Not Available' | 'Provisional' | 'Confirmed' | 'Cancelled';
     color: string;
-  };
+  } | null;
 }
 
 export interface DateProperty {
@@ -98,8 +98,64 @@ export interface Outing {
   };
 }
 
+// Raw outing data from Notion API (includes timestamps)
+export interface RawOuting extends Outing {
+  created_time: string;
+  last_edited_time: string;
+}
+
 export interface Member {
   id: string;
   name: string;
   role?: string;
+}
+
+// Enhanced types for detailed outing view
+export enum SeatType {
+  Cox = 'Cox',
+  Stroke = 'Stroke',
+  Bow = 'Bow',
+  Seat2 = '2 Seat',
+  Seat3 = '3 Seat',
+  Seat4 = '4 Seat',
+  Seat5 = '5 Seat',
+  Seat6 = '6 Seat',
+  Seat7 = '7 Seat',
+  CoachBankRider = 'Coach/Bank Rider',
+  Sub1 = 'Sub 1',
+  Sub2 = 'Sub 2',
+  Sub3 = 'Sub 3',
+  Sub4 = 'Sub 4'
+}
+
+export enum AvailabilityStatus {
+  Available = 'Available',
+  MaybeAvailable = 'Maybe Available',
+  AwaitingApproval = 'Awaiting Approval',
+  NotAvailable = 'Not Available',
+  // These are also used for outing-level status
+  Provisional = 'Provisional',
+  Confirmed = 'Confirmed',
+  Cancelled = 'Cancelled'
+}
+
+export enum OutingStatus {
+  Provisional = 'Provisional',
+  Confirmed = 'Confirmed',
+  Cancelled = 'Cancelled'
+}
+
+export interface SeatAssignment {
+  seatType: SeatType;
+  member: Member | null;
+  availabilityStatus: AvailabilityStatus | null;
+  isAvailable: boolean;
+}
+
+export interface DetailedOuting extends Outing {
+  created_time: string;
+  last_edited_time: string;
+  seatAssignments: SeatAssignment[];
+  sessionDetailsText: string;
+  availableSeats: SeatType[];
 }
