@@ -2,6 +2,8 @@
 "use client";
 
 import NavItem from "./NavItem";
+import SwimIcon from "./SwimIcon";
+import PersonIcon from "./PersonIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
@@ -115,6 +117,18 @@ export default function Sidebar() {
             icon={<FlagIcon />}
             active={!!isFlagStatus}
           />
+            <NavItem
+              href="/swim-tests"
+              label="Swim Tests"
+              icon={<SwimIcon />}
+              active={pathname?.startsWith("/swim-tests")}
+            />
+              <NavItem
+                href="/membership"
+                  label="Members"
+                  icon={<PersonIcon />}
+                  active={pathname?.startsWith("/membership")}
+              />
         </div>
 
         <ActionButton onClick={() => router.push('/feedback')}>
