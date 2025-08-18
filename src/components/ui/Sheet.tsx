@@ -16,9 +16,14 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
   useEffect(() => {
     if (!isOpen) return;
     function handleClick(e: MouseEvent) {
-      // If click is outside the sheet content, close
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        onClose();
+    // Ignore clicks on calendar arrow buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-calendar-arrow]')) {
+      return;
+    }
+    // If click is outside the sheet content, close
+    if (sheetRef.current && !sheetRef.current.contains(target)) {
+      onClose();
       }
     }
     document.addEventListener('mousedown', handleClick);

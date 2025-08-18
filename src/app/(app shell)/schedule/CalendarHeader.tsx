@@ -47,6 +47,7 @@ export default function CalendarHeader({
           className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
           style={{ padding: '6px', borderRadius: '4px' }}
           aria-label="Previous week"
+          data-calendar-arrow
         >
           <LeftArrow />
         </button>
@@ -57,6 +58,7 @@ export default function CalendarHeader({
           className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
           style={{ padding: '6px', borderRadius: '4px' }}
           aria-label="Next week"
+          data-calendar-arrow
         >
           <RightArrow />
         </button>
