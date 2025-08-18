@@ -123,7 +123,7 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
   const sheetContent = (
     <div
       className="fixed inset-0 z-[9999]"
-      style={{ pointerEvents: 'auto' }}
+      style={{ pointerEvents: 'none' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'sheet-title' : undefined}
@@ -171,6 +171,7 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             alignItems: 'stretch',
             gap: '64px',
             flexGrow: 1,
+            pointerEvents: 'auto',
           }}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
