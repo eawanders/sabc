@@ -12,6 +12,18 @@ interface SheetProps {
 }
 
 export default function Sheet({ isOpen, onClose, children, className = '', title }: SheetProps) {
+  // Global click listener to close drawer when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClick(e: MouseEvent) {
+      // If click is outside the sheet content, close
+      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen, onClose]);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -116,10 +128,10 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
       aria-modal="true"
       aria-labelledby={title ? 'sheet-title' : undefined}
     >
-      {/* Backdrop overlay with blur */}
+      {/* Backdrop overlay with blur, pointer-events none so it doesn't block app */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out"
-        onClick={onClose}
+        style={{ pointerEvents: 'none' }}
         aria-hidden="true"
       />
 
