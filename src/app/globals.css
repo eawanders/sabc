@@ -114,6 +114,11 @@ h6 {
   transition: box-shadow var(--motion-fast) var(--motion-ease);
 }
 
+select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* Utility helpers */
 .shadow-token-sm {
   box-shadow: var(--shadow-sm);

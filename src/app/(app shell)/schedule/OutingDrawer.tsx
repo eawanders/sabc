@@ -1,6 +1,7 @@
+import { formatTimeRange } from '@/lib/date';
 // src/app/(app shell)/schedule/OutingDrawer.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
 import { useMembers } from '@/hooks/useMembers';
 import { Member } from '@/types/members';
@@ -89,6 +90,7 @@ interface RowerRowProps {
   onAssignmentChange: (seat: string, memberName: string) => void;
   onAvailabilityUpdate: (seat: string, status: string) => void;
   isLoadingStatus: boolean;
+  outingType?: string;
 }
 
 const RowerRow: React.FC<RowerRowProps> = ({
@@ -100,9 +102,14 @@ const RowerRow: React.FC<RowerRowProps> = ({
   assignments,
   onAssignmentChange,
   onAvailabilityUpdate,
-  isLoadingStatus
+  isLoadingStatus,
+  outingType
 }) => {
   const isMemberSelected = Boolean(selectedMember);
+
+  // Get the current outing type from window.__OUTING_TYPE (set in OutingDrawer render)
+  // Show seat number for subs always, and for rowers only when Water Outing
+  const showSeatNumber = seat.startsWith('Sub') || outingType === 'Water Outing';
 
   return (
     <div style={{
@@ -111,29 +118,31 @@ const RowerRow: React.FC<RowerRowProps> = ({
       gap: '8px',
       alignSelf: 'stretch'
     }}>
-      {/* 1. Seat Number/Label */}
-      <div style={{
-        display: 'flex',
-        width: '40px',
-        padding: '8px',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '10px',
-        borderRadius: '5px',
-        background: '#F3F1FE',
-        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)'
-      }}>
-        <span style={{
-          color: '#6F00FF',
-          fontFamily: 'Gilroy',
-          fontSize: '13px',
-          fontStyle: 'normal',
-          fontWeight: 300,
-          lineHeight: 'normal'
+      {/* 1. Seat Number/Label (only for Water Outing or Sub seats) */}
+      {showSeatNumber && (
+        <div style={{
+          display: 'flex',
+          width: '40px',
+          padding: '8px',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '10px',
+          borderRadius: '5px',
+          background: '#F3F1FE',
+          boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)'
         }}>
-          {getSeatDisplayName(seat)}
-        </span>
-      </div>
+          <span style={{
+            color: '#6F00FF',
+            fontFamily: 'Gilroy',
+            fontSize: '13px',
+            fontStyle: 'normal',
+            fontWeight: 300,
+            lineHeight: 'normal'
+          }}>
+            {getSeatDisplayName(seat)}
+          </span>
+        </div>
+      )}
 
       {/* 2. Rower Dropdown */}
       <div style={{
@@ -346,8 +355,16 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+
   const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!loading && outing) {
+      setHasLoadedOnce(true);
+    }
+  }, [loading, outing]);
 
   // Use a ref to track current outing ID to prevent unnecessary re-initialization
   const currentOutingIdRef = React.useRef<string | null>(null);
@@ -831,22 +848,30 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     }
   };
 
+
+  useEffect(() => {
+    if (!loading && outing) {
+      setHasLoadedOnce(true);
+    }
+  }, [loading, outing]);
+
   return (
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Outing Details"
+      title={<span style={{fontSize: '2rem', fontWeight: 700, display: 'block', color: '#161736', fontFamily: 'Gilroy'}}>{(() => {
+        const type = outing?.properties?.Type?.select?.name || '';
+        if (type === 'Water Outing') return 'Outing Details';
+        if (type === 'Erg Session') return 'Erg Details';
+        if (type === 'Tank Session') return 'Tank Details';
+        if (type === 'Gym Session') return 'Gym Details';
+        return 'Outing Details';
+      })()}</span>}
     >
-      {loading && (
+      {loading && !isLoadingStatus && !hasLoadedOnce && (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-2 text-sm text-muted-foreground">Loading outing details...</span>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-          <p className="text-sm text-destructive">{error}</p>
+          <span className="ml-2 text-sm text-muted-foreground">Loading session details...</span>
         </div>
       )}
 
@@ -882,13 +907,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       color: '#161736',
                       fontFamily: 'Gilroy',
                       fontSize: '18px',
-                    fontStyle: 'normal',
-                    fontWeight: 600,
-                    lineHeight: 'normal',
-                    margin: 0
-                  }}>
-                    {getOutingTitle()}
-                  </h3>
+                      fontStyle: 'normal',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: 0
+                    }}>
+                      {getOutingTitle()}
+                    </h3>
 
                   {/* 2. Date/Time (e.g., Date: Wednesday 10:00-12:00) */}
                   <div style={{
@@ -900,29 +925,28 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     lineHeight: 'normal'
                   }}>
                     <span style={{ fontWeight: 600 }}>Date:</span> {(() => {
-                      const startDate = (outing.properties.StartDateTime as NotionDate)?.date?.start;
-                      const endDate = (outing.properties.EndDateTime as NotionDate)?.date?.end;
-
+                      const startDateObj = outing.properties.StartDateTime as NotionDate;
+                      const endDateObj = outing.properties.EndDateTime as NotionDate;
+                      console.log('[OutingDrawer] Outing properties:', outing.properties);
+                      console.log('[OutingDrawer] StartDateTime object:', startDateObj);
+                      console.log('[OutingDrawer] EndDateTime object:', endDateObj);
+                      const startDate = startDateObj?.date?.start;
+                      // Use EndDateTime.date.start as the end time
+                      const endDate = endDateObj?.date?.start;
+                      console.log('[OutingDrawer] StartDateTime:', startDate);
+                      console.log('[OutingDrawer] EndDateTime:', endDate);
                       if (startDate) {
                         const start = new Date(startDate);
-                        const dayName = start.toLocaleDateString('en-US', { weekday: 'long' });
-                        const startTime = start.toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: false
-                        });
-
+                        const dayName = start.toLocaleDateString('en-GB', { weekday: 'long' });
                         if (endDate) {
                           const end = new Date(endDate);
-                          const endTime = end.toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            hour12: false
-                          });
-                          return `${dayName} ${startTime}–${endTime}`;
+                          console.log('[OutingDrawer] Rendering time range:', start, end);
+                          return `${dayName} ${formatTimeRange(start, end)}`;
                         }
-                        return `${dayName} ${startTime}`;
+                        console.log('[OutingDrawer] Only start time available:', start);
+                        return `${dayName} ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
                       }
+                      console.log('[OutingDrawer] No start date available');
                       return 'Date not set';
                     })()}
                   </div>
@@ -936,7 +960,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     fontWeight: 500,
                     lineHeight: 'normal'
                   }}>
-                    <span style={{ fontWeight: 600 }}>Bank Rider:</span> {(() => {
+                    <span style={{ fontWeight: 600 }}>{outing?.properties?.Type?.select?.name === 'Water Outing' ? 'Bank Rider' : 'Coach'}:</span> {(() => {
                       const bankRiderRelation = (outing.properties.CoachBankRider as NotionRelation)?.relation;
                       if (bankRiderRelation && bankRiderRelation.length > 0) {
                         // For now, we'll show the relation ID since we need to match it with members
@@ -956,10 +980,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   alignItems: 'flex-end',
                   gap: '8px'
                 }}>
-                  {/* 4. Shell - Pill Component */}
-                  <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null}>
-                    {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
-                  </Pill>
+                  {/* 4. Shell - Pill Component (only for Water Outing) */}
+                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null}>
+                      {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
+                    </Pill>
+                  )}
 
                   {/* 5. Outing Status - Pill Component */}
                   <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null}>
@@ -986,6 +1012,14 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
           </div>
 
+          {/* Show loading indicator below outing details if updating rower/availability */}
+          {isLoadingStatus && (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
+            </div>
+          )}
+
           {/* 5. Crew Assignments Section - Scrollable */}
           <div style={{
             flex: 1,
@@ -994,6 +1028,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Rowers Section */}
+            {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
               color: '#161736',
               fontFamily: 'Gilroy',
@@ -1002,25 +1037,33 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               fontWeight: 800,
               lineHeight: 'normal',
               margin: '0 0 16px 0'
-            }}>Rowers</h4>
+            }}>{
+              (outing?.properties?.Type?.select?.name === 'Water') ? 'Rowers' : 'Attendees'
+            }</h4>
 
             {/* Interactive Seat Assignments with Member Selection - Dropdowns Container */}
             <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {seatLabels.filter(seat => !seat.startsWith('Sub')).map((seat) => (
-                  <RowerRow
-                    key={seat}
-                    seat={seat}
-                    selectedMember={assignments[seat]}
-                    isSubmitting={submittingSeats.has(seat)}
-                    members={members}
-                    membersLoading={membersLoading}
-                    assignments={assignments}
-                    onAssignmentChange={handleAssignmentChange}
-                    onAvailabilityUpdate={handleAvailabilityUpdate}
-                    isLoadingStatus={isLoadingStatus}
-                  />
-                ))}
+                {seatLabels
+                  .filter(seat => !seat.startsWith('Sub'))
+                  .filter(seat =>
+                    outing?.properties?.Type?.select?.name === 'Water Outing' || seat !== 'Cox'
+                  )
+                  .map((seat) => (
+                    <RowerRow
+                      key={seat}
+                      seat={seat}
+                      selectedMember={assignments[seat]}
+                      isSubmitting={submittingSeats.has(seat)}
+                      members={members}
+                      membersLoading={membersLoading}
+                      assignments={assignments}
+                      onAssignmentChange={handleAssignmentChange}
+                      onAvailabilityUpdate={handleAvailabilityUpdate}
+                      isLoadingStatus={isLoadingStatus}
+                      outingType={outing?.properties?.Type?.select?.name}
+                    />
+                  ))}
               </div>
             </div>
 
@@ -1050,6 +1093,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     onAssignmentChange={handleAssignmentChange}
                     onAvailabilityUpdate={handleAvailabilityUpdate}
                     isLoadingStatus={isLoadingStatus}
+                    outingType={outing?.properties?.Type?.select?.name}
                   />
                 ))}
               </div>

@@ -23,12 +23,8 @@ export default function CalendarHeader({
       style={{ gap: '16px' }}
     >
       {/* Title */}
-      <h1
-        className="font-semibold text-foreground"
-        style={{ fontSize: '20px' }}
-      >
-        Outing Schedule
-      </h1>
+      <h1 className="text-3xl font-bold mb-4">Outing Schedule</h1>
+
 
       {/* Week Display and Navigation Controls */}
       <div

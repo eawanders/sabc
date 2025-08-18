@@ -8,7 +8,7 @@ interface SheetProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
-  title?: string;
+  title?: React.ReactNode;
 }
 
 export default function Sheet({ isOpen, onClose, children, className = '', title }: SheetProps) {
@@ -157,14 +157,28 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             padding: '32px',
             flexDirection: 'column',
             alignItems: 'stretch',
-            gap: '32px',
+            gap: '64px',
             flexGrow: 1,
           }}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 1. Close Button Container */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+          {/* 1+2. Title and Close Button in Flexbox */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
+            {title && (
+              <h2
+                id="sheet-title"
+                style={{
+                  color: '#161736',
+                  fontFamily: 'Gilroy',
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  margin: 0
+                }}
+              >
+                {title}
+              </h2>
+            )}
             <button
               onClick={onClose}
               className="focus:outline-none"
@@ -188,31 +202,6 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
               </svg>
             </button>
           </div>
-
-          {/* 2. Outing Details Header Container */}
-          {title && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-start',
-              alignItems: 'flex-start',
-              width: '100%'
-            }}>
-              <h2
-                id="sheet-title"
-                style={{
-                  color: '#161736',
-                  fontFamily: 'Gilroy',
-                  fontSize: '18px',
-                  fontStyle: 'normal',
-                  fontWeight: 800,
-                  lineHeight: 'normal',
-                  margin: 0
-                }}
-              >
-                {title}
-              </h2>
-            </div>
-          )}
 
           {/* 3. Sheet Content Container */}
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto' }}>
