@@ -61,10 +61,17 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
   }
 }
 
+// Simple in-memory cache for outing details
+const outingDetailsCache = new Map<string, DetailedOuting>();
+
 /**
  * Convert raw outing data to detailed outing with populated member data
  */
 export async function getOutingWithMembers(id: string): Promise<DetailedOuting | null> {
+  // Return cached outing if available
+  if (outingDetailsCache.has(id)) {
+    return outingDetailsCache.get(id)!;
+  }
   try {
     // Fetch the basic outing data
     const outing = await getOutingById(id);
