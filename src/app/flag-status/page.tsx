@@ -39,7 +39,7 @@ export default async function FlagStatusPage() {
     <main
       style={{
         display: 'flex',
-        padding: '180px 100px',
+        padding: '100px',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
