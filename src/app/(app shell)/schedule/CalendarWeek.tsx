@@ -14,7 +14,7 @@ interface CalendarWeekProps {
 export default function CalendarWeek({ calendarDays, onEventClick, loading }: CalendarWeekProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-7 gap-4 h-96">
+  <div className="grid grid-cols-7 gap-4">
         {Array.from({ length: 7 }).map((_, index) => (
           <div key={index} className="animate-pulse">
             <div className="h-6 bg-muted rounded mb-3"></div>
@@ -30,7 +30,7 @@ export default function CalendarWeek({ calendarDays, onEventClick, loading }: Ca
 
   return (
     <div
-      className="grid grid-cols-7 gap-4 min-h-96"
+      className="grid grid-cols-7 gap-4 justify-center items-center"
       style={{
         display: 'flex',
         padding: '32px',

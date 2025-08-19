@@ -52,19 +52,28 @@ export default function SchedulePage() {
 
 	return (
 		<>
-			<main className="h-screen flex flex-col justify-center items-center px-[100px] overflow-hidden">
-				<h1 className="sr-only">Schedule</h1>
+	       <main
+		       style={{
+			       display: 'flex',
+			       flexDirection: 'column',
+			       justifyContent: 'center',
+			       gap: '32px',
+			       boxSizing: 'border-box',
+			       overflow: 'hidden',
+		       }}
+	       >
+			       <h1 className="sr-only">Schedule</h1>
 
-				{/* Main Content Container */}
-				<div
-					className="w-full max-w-7xl flex-shrink-0"
-					style={{
-						display: 'flex',
+			       <div
+				       style={{
+					       width: '100%',
+					       display: 'flex',
 						flexDirection: 'column',
-						alignItems: 'flex-start',
-						gap: '32px'
-					}}
-				>
+
+					       gap: '32px',
+					       flexShrink: 1,
+				       }}
+			       >
 					{/* Calendar Header */}
 				<CalendarHeader
 					currentWeek={currentWeek}
@@ -79,10 +88,10 @@ export default function SchedulePage() {
 
 					{/* No events message */}
 					{!loading && !stats.hasEvents && (
-						<div className="text-center py-12">
-							<p className="text-muted-foreground mb-2">No outings scheduled for this week</p>
+						<div className="text-center py-12" style={{ width: '100%' }}>
+							<p className="text-muted-foreground mb-2">No outings scheduled for this week.</p>
 							<p className="text-sm text-muted-foreground">
-								Check back later or navigate to a different week
+								Check back later or navigate to a different week.
 							</p>
 						</div>
 					)}

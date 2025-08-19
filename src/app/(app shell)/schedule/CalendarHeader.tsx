@@ -23,12 +23,8 @@ export default function CalendarHeader({
       style={{ gap: '16px' }}
     >
       {/* Title */}
-      <h1
-        className="font-semibold text-foreground"
-        style={{ fontSize: '20px' }}
-      >
-        Outing Schedule
-      </h1>
+      <h1 className="text-3xl font-bold mb-4">Outing Schedule</h1>
+
 
       {/* Week Display and Navigation Controls */}
       <div
@@ -51,6 +47,7 @@ export default function CalendarHeader({
           className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
           style={{ padding: '6px', borderRadius: '4px' }}
           aria-label="Previous week"
+          data-calendar-arrow
         >
           <LeftArrow />
         </button>
@@ -61,6 +58,7 @@ export default function CalendarHeader({
           className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
           style={{ padding: '6px', borderRadius: '4px' }}
           aria-label="Next week"
+          data-calendar-arrow
         >
           <RightArrow />
         </button>
