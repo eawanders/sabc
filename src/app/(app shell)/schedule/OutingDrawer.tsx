@@ -166,22 +166,22 @@ const RowerRow: React.FC<RowerRowProps> = ({
           position: 'relative'
         }}>
           <select
-            style={{
-              width: '100%',
-              border: 'none',
-              outline: 'none',
-              backgroundColor: 'transparent',
-              color: '#7D8DA6',
-              fontFamily: 'Gilroy',
-              fontSize: '13px',
-              fontStyle: 'normal',
-              fontWeight: 300,
-              lineHeight: 'normal',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              MozAppearance: 'none',
-              paddingRight: '20px'
-            }}
+              style={{
+                width: '100%',
+                border: 'none',
+                outline: 'none',
+                backgroundColor: 'transparent',
+                color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
+                fontFamily: 'Gilroy',
+                fontSize: '13px',
+                fontStyle: 'normal',
+                fontWeight: isMemberSelected ? 700 : 300,
+                lineHeight: 'normal',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                MozAppearance: 'none',
+                paddingRight: '20px'
+              }}
             value={selectedMember || ""}
             onChange={(e) => onAssignmentChange(seat, e.target.value)}
             disabled={isSubmitting || membersLoading}
@@ -646,6 +646,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Mark this seat as having a pending optimistic update
     setPendingOptimisticUpdates(prev => new Set([...prev, seat]));
 
+    setIsLoadingStatus(true); // Start loading state for Notion update
+
     setAssignments((prev) => {
       const updated = { ...prev };
       if (memberName === "") {
@@ -670,6 +672,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       if (!res.ok) {
         // Rollback on error
         setAssignments(previousAssignments);
+        setIsLoadingStatus(false); // End loading state on error
         throw new Error("Failed to update Notion");
       }
 
@@ -678,6 +681,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           ? `✅ Seat ${seat} updated with ${memberName}`
           : `✅ Seat ${seat} cleared`
       );
+      setIsLoadingStatus(false); // End loading state on success
 
       // Handle status update for both adding/changing a member OR removing a member
       const statusField = getStatusField(seat);
