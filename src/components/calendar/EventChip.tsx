@@ -21,7 +21,7 @@ export default function EventChip({ event, onClick }: EventChipProps) {
     buttonText = 'Confirmed';
     buttonTextColor = '#FFFFFF';
   } else if (event.status === 'Outing Cancelled') {
-    buttonBg = '#FE6470';
+    buttonBg = '#EF4444';
     buttonText = 'Cancelled';
     buttonTextColor = '#FFFFFF';
   }

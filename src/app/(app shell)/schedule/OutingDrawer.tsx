@@ -274,7 +274,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
             alignItems: 'center',
             gap: '10px',
             borderRadius: '5px',
-            background: assignments[`${seat}_status`] === "Not Available" ? 'rgba(254, 100, 112, 1)' : '#FFF',
+            background: assignments[`${seat}_status`] === "Not Available" ? '#EF4444' : '#FFF',
             boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)',
             cursor: isMemberSelected && !isLoadingStatus ? 'pointer' : 'not-allowed'
           }}
@@ -292,7 +292,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   ? "#FFFFFF"  // White when selected
                   : !isMemberSelected
                     ? "rgba(254, 100, 112, 0.5)"  // No member selected: 50% opacity
-                    : "#FE6470"                   // Member selected: 100% opacity
+                    : "#EF4444"                   // Member selected: 100% opacity
               }
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -309,7 +309,7 @@ const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
   if (type === 'status') {
     switch (value) {
       case 'Confirmed':
-        return { background: '#10B981' }; // Green
+        return { background: '#00C53E' }; // Green
       case 'Provisional':
         return { background: '#F59E0B' }; // Yellow/Orange
       case 'Cancelled':
