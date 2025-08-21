@@ -12,6 +12,19 @@ interface EventChipProps {
 }
 
 export default function EventChip({ event, onClick }: EventChipProps) {
+  // Button style and text based on outing status
+  let buttonBg = undefined;
+  let buttonText = 'Sign up';
+  let buttonTextColor = undefined;
+  if (event.status === 'Outing Confirmed') {
+    buttonBg = '#00C53E';
+    buttonText = 'Confirmed';
+    buttonTextColor = '#FFFFFF';
+  } else if (event.status === 'Outing Cancelled') {
+    buttonBg = '#FE6470';
+    buttonText = 'Cancelled';
+    buttonTextColor = '#FFFFFF';
+  }
     const handleSignUp = () => {
     onClick?.(event);
   };
@@ -68,59 +81,14 @@ export default function EventChip({ event, onClick }: EventChipProps) {
       </div>
 
       {/* Sign up Button */}
-      {isErgType ? (
-        <button
-          onClick={handleSignUp}
-          className="w-full transition-all duration-200 hover:bg-gray-100"
-          style={{
-            display: 'flex',
-            padding: '12px 8px',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '10px',
-            alignSelf: 'stretch',
-            borderRadius: '6px',
-            border: '1px solid #FFF',
-            background: '#FFFFFF',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#F3F4F6';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#FFFFFF';
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            alignSelf: 'stretch'
-          }}>
-            <span style={{
-              color: '#4C6FFF',
-              fontFamily: 'Gilroy',
-              fontSize: '12px',
-              fontWeight: 800,
-              lineHeight: '12px'
-            }}>
-              Sign up
-            </span>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M2.90403 1.02903C3.02607 0.90699 3.22393 0.90699 3.34597 1.02903L7.09597 4.77903C7.21801 4.90107 7.21801 5.09893 7.09597 5.22097L3.34597 8.97097C3.22393 9.09301 3.02607 9.09301 2.90403 8.97097C2.78199 8.84893 2.78199 8.65107 2.90403 8.52903L6.43306 5L2.90403 1.47097C2.78199 1.34893 2.78199 1.15107 2.90403 1.02903Z"
-                fill="#4C6FFF"
-              />
-            </svg>
-          </div>
-        </button>
-      ) : (
-        <ActionButton onClick={handleSignUp} className="w-full">
-          Sign up
-        </ActionButton>
-      )}
+      <ActionButton
+        onClick={handleSignUp}
+        className="w-full"
+        style={{ background: buttonBg || (isErgType ? '#FFFFFF' : '#E1E8FF'), color: buttonTextColor || (isErgType ? '#4C6FFF' : 'var(--Theme-Primary-Default, #4C6FFF)') }}
+        arrowColor={buttonTextColor || '#4C6FFF'}
+      >
+        {buttonText}
+      </ActionButton>
     </div>
   );
 }
