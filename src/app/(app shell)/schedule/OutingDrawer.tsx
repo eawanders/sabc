@@ -236,7 +236,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
             gap: '10px',
             borderRadius: '5px',
             background: assignments[`${seat}_status`] === "Available" ? '#00C53E' : '#FFF',
-            opacity: assignments[`${seat}_status`] === "Available" ? 0.75 : 1,
+            opacity: assignments[`${seat}_status`] === "Available" ? 1 : 1,
             boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.10)',
             cursor: isMemberSelected && !isLoadingStatus ? 'pointer' : 'not-allowed'
           }}
