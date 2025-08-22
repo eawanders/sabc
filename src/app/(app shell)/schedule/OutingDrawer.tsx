@@ -1,9 +1,20 @@
+// Custom DropdownIndicator for react-select with thinner arrow
+import { components } from 'react-select';
+
+const DropdownIndicator = (props: any) => (
+  <components.DropdownIndicator {...props}>
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </components.DropdownIndicator>
+);
 import { formatTimeRange } from '@/lib/date';
 // src/app/(app shell)/schedule/OutingDrawer.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
 import { useMembers } from '@/hooks/useMembers';
+import Select from 'react-select';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
 
@@ -26,11 +37,6 @@ interface NotionStatus {
     name: string;
   };
 }
-
-interface NotionRelation {
-  relation: Array<{ id: string }>;
-}
-
 interface OutingDrawerProps {
   outingId: string;
   isOpen: boolean;
@@ -165,55 +171,103 @@ const RowerRow: React.FC<RowerRowProps> = ({
           flex: '1 0 0',
           position: 'relative'
         }}>
-          <select
-              style={{
-                width: '100%',
-                border: 'none',
-                outline: 'none',
-                backgroundColor: 'transparent',
-                color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
-                fontFamily: 'Gilroy',
-                fontSize: '13px',
-                fontStyle: 'normal',
-                fontWeight: isMemberSelected ? 700 : 300,
-                lineHeight: 'normal',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                paddingRight: '20px'
+          {/* Searchable member select using react-select */}
+          <div style={{ flex: '1 0 0' }}>
+            <Select
+              components={{ DropdownIndicator }}
+              options={[{ value: '', label: 'Select Member', member: null },
+                ...members
+                  .filter((member) => {
+                    const assignedNames = Object.entries(assignments)
+                      .filter(([key]) => key !== seat)
+                      .map(([, name]) => name);
+                    return !assignedNames.includes(member.name) || member.name === selectedMember;
+                  })
+                  .map((member) => ({ value: member.id, label: member.name, member }))
+              ]}
+              value={(() => {
+                if (!selectedMember) return { value: '', label: 'Select Member', member: null };
+                const filtered = members
+                  .filter((member) => {
+                    const assignedNames = Object.entries(assignments)
+                      .filter(([key]) => key !== seat)
+                      .map(([, name]) => name);
+                    return !assignedNames.includes(member.name) || member.name === selectedMember;
+                  })
+                  .map((member) => ({ value: member.id, label: member.name, member }));
+                return filtered.find(opt => opt.member.name === selectedMember) || { value: '', label: 'Select Member', member: null };
+              })()}
+              onChange={(option) => {
+                if (option && option.member) {
+                  onAssignmentChange(seat, option.member.name);
+                } else {
+                  onAssignmentChange(seat, "");
+                }
               }}
-            value={selectedMember || ""}
-            onChange={(e) => onAssignmentChange(seat, e.target.value)}
-            disabled={isSubmitting || membersLoading}
-          >
-            <option value="">
-              {membersLoading ? 'Loading members...' : 'Select member'}
-            </option>
-            {members
-              .filter((member) => {
-                const assignedNames = Object.entries(assignments)
-                  .filter(([key]) => key !== seat)
-                  .map(([, name]) => name);
-                return !assignedNames.includes(member.name) || member.name === selectedMember;
-            })
-            .map((member) => (
-              <option key={member.id} value={member.name}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Custom dropdown arrow */}
-          <div style={{
-            position: 'absolute',
-            right: '0',
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <svg width="9" height="6" viewBox="0 0 9 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M1.33325 1.13828L4.83325 4.63828L8.33325 1.13828" stroke="#7D8DA6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+              isDisabled={isSubmitting || membersLoading}
+              isLoading={membersLoading}
+              placeholder={membersLoading ? 'Loading members...' : 'Select member'}
+              styles={{
+                control: (base, state) => ({
+                  ...base,
+                  backgroundColor: 'transparent',
+                  color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
+                  fontFamily: 'Gilroy',
+                  fontSize: '13px',
+                  fontWeight: isMemberSelected ? 700 : 300,
+                  border: 'none',
+                  boxShadow: 'none',
+                  minHeight: '20px',
+                  height: '20px',
+                  padding: 0,
+                  alignItems: 'center',
+                }),
+                input: (base) => ({
+                  ...base,
+                  margin: 0,
+                  padding: 0,
+                  height: '20px',
+                  fontSize: '13px',
+                  lineHeight: '20px',
+                }),
+                indicatorsContainer: (base) => ({
+                  ...base,
+                  padding: 0,
+                  height: '20px',
+                  minHeight: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
+                  fontWeight: isMemberSelected ? 700 : 300,
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: '#7D8DA6',
+                  fontWeight: 300,
+                }),
+                indicatorSeparator: (base) => ({
+                  ...base,
+                  display: 'none',
+                }),
+                menu: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                  position: 'absolute',
+                }),
+                menuPortal: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                }),
+              }}
+              menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
+              filterOption={(option, inputValue) =>
+                option.label.toLowerCase().includes(inputValue.toLowerCase())
+              }
+            />
           </div>
         </div>
       </div>
