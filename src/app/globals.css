@@ -29,7 +29,7 @@
 
   /* Semantics (solid) */
   --color-success: #00c53e;
-  --color-warning: #EF4444;
+  --color-warning: #ef4444;
   --color-danger: #d92d20;
   --color-info: #2e90fa;
 
@@ -117,6 +117,21 @@ h6 {
 select:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Do not apply the global focus ring to native form inputs */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Kill focus outlines inside react-select controls (when we set classNamePrefix="rs") */
+.rs__control *:focus,
+.rs__control *:focus-visible {
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 /* Utility helpers */

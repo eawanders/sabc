@@ -4,7 +4,7 @@ import { components } from 'react-select';
 const DropdownIndicator = (props: any) => (
   <components.DropdownIndicator {...props}>
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   </components.DropdownIndicator>
 );
@@ -175,6 +175,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
           <div style={{ flex: '1 0 0' }}>
             <Select
               components={{ DropdownIndicator }}
+              classNamePrefix="rs"
               options={[{ value: '', label: 'Select Member', member: null },
                 ...members
                   .filter((member) => {
@@ -217,24 +218,28 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   fontWeight: isMemberSelected ? 700 : 300,
                   border: 'none',
                   boxShadow: 'none',
-                  minHeight: '20px',
-                  height: '20px',
+                  outline: 'none',
+                  minHeight: '24px',
+                  height: '24px',
                   padding: 0,
                   alignItems: 'center',
+                  display: 'flex',
+                  lineHeight: '24px',
                 }),
                 input: (base) => ({
                   ...base,
                   margin: 0,
                   padding: 0,
-                  height: '20px',
+                  height: '24px',
                   fontSize: '13px',
-                  lineHeight: '20px',
+                  lineHeight: '24px',
+                  boxShadow: 'none',
+                  outline: 'none',
                 }),
                 indicatorsContainer: (base) => ({
                   ...base,
-                  padding: 0,
-                  height: '20px',
-                  minHeight: '20px',
+                  height: '24px',
+                  minHeight: '24px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -281,9 +286,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
         <div
           style={{
             display: 'flex',
-            width: '32.333px',
-            height: '31px',
-            padding: '3px 10px',
+            width: '32px',
+            height: '32px',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
@@ -320,9 +324,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
         <div
           style={{
             display: 'flex',
-            width: '32.333px',
-            height: '31px',
-            padding: '3px 10px',
+            width: '32px',
+            height: '32px',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
