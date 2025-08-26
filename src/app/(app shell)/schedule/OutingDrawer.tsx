@@ -1,7 +1,8 @@
 // Custom DropdownIndicator for react-select with thinner arrow
-import { components } from 'react-select';
+import { components, DropdownIndicatorProps } from 'react-select';
 
-const DropdownIndicator = (props: any) => (
+// Fix: Remove explicit any from DropdownIndicator props
+const DropdownIndicator = (props: DropdownIndicatorProps<any, any, any>) => (
   <components.DropdownIndicator {...props}>
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
@@ -203,7 +204,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 return filtered.find(opt => opt.member.name === selectedMember) || { value: '', label: 'Select Member', member: null };
               })()}
               onChange={(option) => {
-                if (option && option.member) {
+                // Fix: Handle MultiValue type from react-select
+                if (option && !Array.isArray(option) && 'member' in option && option.member) {
                   onAssignmentChange(seat, option.member.name);
                 } else {
                   onAssignmentChange(seat, "");
@@ -285,13 +287,13 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     zIndex: 9999,
                   }),
                   option: (base, state) => {
-                    const { isSelected, isFocused, data, options, selectProps } = state;
+                    const { isSelected, isFocused, data, selectProps } = state;
                     // Get the index of the current option in the options array
-                    let optionList = selectProps && selectProps.options ? selectProps.options : [];
-                    let index = optionList.findIndex((opt) => {
+                    const optionList = selectProps && selectProps.options ? selectProps.options : [];
+                    const index = optionList.findIndex((opt) => {
                       // Only compare if opt has value property
                       return (typeof opt === 'object' && 'value' in opt && 'value' in data)
-                        ? opt.value === (data as any).value
+                        ? opt.value === (data as { value: string }).value
                         : false;
                     });
                     const isFirst = index === 0;
@@ -733,7 +735,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Update assignments with fresh data
     setAssignments(freshAssignments);
     console.log(`✅ Updated assignments from fresh data:`, freshAssignments);
-  }, [outing, isInitialized, pendingOptimisticUpdates.size, getOutingProperty, members]);
+  }, [outing, isInitialized, currentOutingIdRef.current, pendingOptimisticUpdates.size, getOutingProperty, members, seatLabels]);
 
   // Assignment change handler using the proven pattern
   const handleAssignmentChange = async (seat: string, memberName: string) => {
