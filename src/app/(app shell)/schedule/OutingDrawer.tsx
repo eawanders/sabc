@@ -1,9 +1,27 @@
+// Custom DropdownIndicator for react-select with thinner arrow
+import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
+
+// Remove explicit any from DropdownIndicatorProps usage
+const DropdownIndicator = (
+  props: DropdownIndicatorProps<
+    { value: string; label: string; member: Member | null },
+    false,
+    GroupBase<{ value: string; label: string; member: Member | null }>
+  >
+) => (
+  <components.DropdownIndicator {...props}>
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  </components.DropdownIndicator>
+);
 import { formatTimeRange } from '@/lib/date';
 // src/app/(app shell)/schedule/OutingDrawer.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
 import { useMembers } from '@/hooks/useMembers';
+import Select from 'react-select';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
 
@@ -26,11 +44,10 @@ interface NotionStatus {
     name: string;
   };
 }
-
+// Add missing NotionRelation type
 interface NotionRelation {
   relation: Array<{ id: string }>;
 }
-
 interface OutingDrawerProps {
   outingId: string;
   isOpen: boolean;
@@ -165,55 +182,158 @@ const RowerRow: React.FC<RowerRowProps> = ({
           flex: '1 0 0',
           position: 'relative'
         }}>
-          <select
-              style={{
-                width: '100%',
-                border: 'none',
-                outline: 'none',
-                backgroundColor: 'transparent',
-                color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
-                fontFamily: 'Gilroy',
-                fontSize: '13px',
-                fontStyle: 'normal',
-                fontWeight: isMemberSelected ? 700 : 300,
-                lineHeight: 'normal',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                MozAppearance: 'none',
-                paddingRight: '20px'
+          {/* Searchable member select using react-select */}
+          <div style={{ flex: '1 0 0' }}>
+            <Select
+              components={{ DropdownIndicator }}
+              classNamePrefix="rs"
+              options={[{ value: '', label: 'Select Member', member: null },
+                ...members
+                  .filter((member) => {
+                    const assignedNames = Object.entries(assignments)
+                      .filter(([key]) => key !== seat)
+                      .map(([, name]) => name);
+                    return !assignedNames.includes(member.name) || member.name === selectedMember;
+                  })
+                  .map((member) => ({ value: member.id, label: member.name, member }))
+              ]}
+              value={(() => {
+                if (!selectedMember) return { value: '', label: 'Select Member', member: null };
+                const filtered = members
+                  .filter((member) => {
+                    const assignedNames = Object.entries(assignments)
+                      .filter(([key]) => key !== seat)
+                      .map(([, name]) => name);
+                    return !assignedNames.includes(member.name) || member.name === selectedMember;
+                  })
+                  .map((member) => ({ value: member.id, label: member.name, member }));
+                return filtered.find(opt => opt.member.name === selectedMember) || { value: '', label: 'Select Member', member: null };
+              })()}
+              onChange={(option) => {
+                // Fix: Handle MultiValue type from react-select
+                if (option && !Array.isArray(option) && 'member' in option && option.member) {
+                  onAssignmentChange(seat, option.member.name);
+                } else {
+                  onAssignmentChange(seat, "");
+                }
               }}
-            value={selectedMember || ""}
-            onChange={(e) => onAssignmentChange(seat, e.target.value)}
-            disabled={isSubmitting || membersLoading}
-          >
-            <option value="">
-              {membersLoading ? 'Loading members...' : 'Select member'}
-            </option>
-            {members
-              .filter((member) => {
-                const assignedNames = Object.entries(assignments)
-                  .filter(([key]) => key !== seat)
-                  .map(([, name]) => name);
-                return !assignedNames.includes(member.name) || member.name === selectedMember;
-            })
-            .map((member) => (
-              <option key={member.id} value={member.name}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Custom dropdown arrow */}
-          <div style={{
-            position: 'absolute',
-            right: '0',
-            pointerEvents: 'none',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <svg width="9" height="6" viewBox="0 0 9 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M1.33325 1.13828L4.83325 4.63828L8.33325 1.13828" stroke="#7D8DA6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+              isDisabled={isSubmitting || membersLoading}
+              isLoading={membersLoading}
+              placeholder={membersLoading ? 'Loading members...' : 'Select member'}
+              styles={{
+                control: (base, state) => ({
+                  ...base,
+                  backgroundColor: 'transparent',
+                  color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
+                  fontFamily: 'Gilroy',
+                  fontSize: '13px',
+                  fontWeight: isMemberSelected ? 700 : 300,
+                  border: 'none',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  minHeight: '24px',
+                  height: '24px',
+                  padding: 0,
+                  alignItems: 'center',
+                  display: 'flex',
+                  lineHeight: '24px',
+                }),
+                input: (base) => ({
+                  ...base,
+                  margin: 0,
+                  padding: 0,
+                  height: '24px',
+                  fontSize: '13px',
+                  lineHeight: '24px',
+                  boxShadow: 'none',
+                  outline: 'none',
+                }),
+                indicatorsContainer: (base) => ({
+                  ...base,
+                  height: '24px',
+                  minHeight: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
+                  fontWeight: isMemberSelected ? 700 : 300,
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: '#7D8DA6',
+                  fontWeight: 300,
+                }),
+                indicatorSeparator: (base) => ({
+                  ...base,
+                  display: 'none',
+                }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                    position: 'absolute',
+                    border: 'none',
+                    boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
+                      left: 0,
+                      right: 0,
+                      width: '100%',
+                      minWidth: '100%',
+                      marginTop: '12px', // slight offset below input
+                  }),
+                  menuList: (base) => ({
+                    ...base,
+                    border: 'none',
+                    boxShadow: 'none',
+                    padding: 0,
+                  }),
+                  menuPortal: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                  option: (base, state) => {
+                    const { isSelected, isFocused, data, selectProps } = state;
+                    // Get the index of the current option in the options array
+                    const optionList = selectProps && selectProps.options ? selectProps.options : [];
+                    const index = optionList.findIndex((opt) => {
+                      // Only compare if opt has value property
+                      return (typeof opt === 'object' && 'value' in opt && 'value' in data)
+                        ? opt.value === (data as { value: string }).value
+                        : false;
+                    });
+                    const isFirst = index === 0;
+                    const isLast = index === optionList.length - 1;
+                    let borderRadius = '0px';
+                    if ((isSelected || isFocused) && isFirst && isLast) {
+                      borderRadius = '5px'; // Only one item
+                    } else if ((isSelected || isFocused) && isFirst) {
+                      borderRadius = '5px 5px 0 0';
+                    } else if ((isSelected || isFocused) && isLast) {
+                      borderRadius = '0 0 5px 5px';
+                    }
+                    return {
+                      ...base,
+                      backgroundColor: isSelected
+                        ? '#238AFF'
+                        : isFocused
+                          ? '#E6F0FF'
+                          : 'transparent',
+                      color: isSelected ? '#fff' : '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '13px',
+                      fontWeight: 300,
+                      padding: '8px 10px',
+                      borderRadius,
+                      transition: 'background 0.2s',
+                    };
+                  },
+              }}
+              menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
+              filterOption={(option, inputValue) =>
+                option.label.toLowerCase().includes(inputValue.toLowerCase())
+              }
+            />
           </div>
         </div>
       </div>
@@ -227,9 +347,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
         <div
           style={{
             display: 'flex',
-            width: '32.333px',
-            height: '31px',
-            padding: '3px 10px',
+            width: '32px',
+            height: '32px',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
@@ -266,9 +385,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
         <div
           style={{
             display: 'flex',
-            width: '32.333px',
-            height: '31px',
-            padding: '3px 10px',
+            width: '32px',
+            height: '32px',
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
@@ -623,7 +741,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Update assignments with fresh data
     setAssignments(freshAssignments);
     console.log(`✅ Updated assignments from fresh data:`, freshAssignments);
-  }, [outing, isInitialized, pendingOptimisticUpdates.size, getOutingProperty, members]);
+  }, [outing, isInitialized, currentOutingIdRef.current, pendingOptimisticUpdates.size, getOutingProperty, members, seatLabels]);
 
   // Assignment change handler using the proven pattern
   const handleAssignmentChange = async (seat: string, memberName: string) => {
