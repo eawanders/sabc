@@ -1,8 +1,14 @@
 // Custom DropdownIndicator for react-select with thinner arrow
-import { components, DropdownIndicatorProps } from 'react-select';
+import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
 
-// Fix: Remove explicit any from DropdownIndicator props
-const DropdownIndicator = (props: DropdownIndicatorProps<any, any, any>) => (
+// Remove explicit any from DropdownIndicatorProps usage
+const DropdownIndicator = (
+  props: DropdownIndicatorProps<
+    { value: string; label: string; member: Member | null },
+    false,
+    GroupBase<{ value: string; label: string; member: Member | null }>
+  >
+) => (
   <components.DropdownIndicator {...props}>
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
