@@ -37,6 +37,10 @@ interface NotionStatus {
     name: string;
   };
 }
+// Add missing NotionRelation type
+interface NotionRelation {
+  relation: Array<{ id: string }>;
+}
 interface OutingDrawerProps {
   outingId: string;
   isOpen: boolean;
@@ -258,15 +262,64 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   ...base,
                   display: 'none',
                 }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                  position: 'absolute',
-                }),
-                menuPortal: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                    position: 'absolute',
+                    border: 'none',
+                    boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
+                      left: 0,
+                      right: 0,
+                      width: '100%',
+                      minWidth: '100%',
+                      marginTop: '12px', // slight offset below input
+                  }),
+                  menuList: (base) => ({
+                    ...base,
+                    border: 'none',
+                    boxShadow: 'none',
+                    padding: 0,
+                  }),
+                  menuPortal: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                  option: (base, state) => {
+                    const { isSelected, isFocused, data, options, selectProps } = state;
+                    // Get the index of the current option in the options array
+                    let optionList = selectProps && selectProps.options ? selectProps.options : [];
+                    let index = optionList.findIndex((opt) => {
+                      // Only compare if opt has value property
+                      return (typeof opt === 'object' && 'value' in opt && 'value' in data)
+                        ? opt.value === (data as any).value
+                        : false;
+                    });
+                    const isFirst = index === 0;
+                    const isLast = index === optionList.length - 1;
+                    let borderRadius = '0px';
+                    if ((isSelected || isFocused) && isFirst && isLast) {
+                      borderRadius = '5px'; // Only one item
+                    } else if ((isSelected || isFocused) && isFirst) {
+                      borderRadius = '5px 5px 0 0';
+                    } else if ((isSelected || isFocused) && isLast) {
+                      borderRadius = '0 0 5px 5px';
+                    }
+                    return {
+                      ...base,
+                      backgroundColor: isSelected
+                        ? '#238AFF'
+                        : isFocused
+                          ? '#E6F0FF'
+                          : 'transparent',
+                      color: isSelected ? '#fff' : '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '13px',
+                      fontWeight: 300,
+                      padding: '8px 10px',
+                      borderRadius,
+                      transition: 'background 0.2s',
+                    };
+                  },
               }}
               menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
               filterOption={(option, inputValue) =>
