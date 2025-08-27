@@ -12,7 +12,20 @@ const flagToOutingStatus: Record<string, string> = {
     'Black': 'Cancelled',
 };
 
-export async function POST() {
+export async function POST(req: Request) {
+  // Require a shared secret token in the Authorization header
+  const authHeader = req.headers.get('authorization') || '';
+  const primary = process.env.UPDATE_OUTING_STATUS_SECRET || '';
+  const fallback = process.env.UPDATE_OUTING_STATUS_REPO || '';
+  if (!primary && !fallback) {
+    return NextResponse.json({ error: 'Server misconfiguration: missing UPDATE_OUTING_STATUS_SECRET (or UPDATE_OUTING_STATUS_REPO)' }, { status: 500 });
+  }
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const valid = (token && (token === primary || token === fallback));
+  if (!valid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   if (!OUTINGS_DB_ID) {
     return NextResponse.json({ error: 'Missing Notion outings database ID' }, { status: 500 });
   }
