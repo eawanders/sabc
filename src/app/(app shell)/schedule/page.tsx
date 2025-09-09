@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CalendarEvent } from "@/types/calendar";
 import { useCalendarRange } from "../hooks/useCalendarRange";
 import { useCalendarData } from "../hooks/useCalendarData";
@@ -8,9 +8,12 @@ import CalendarHeader from "./CalendarHeader";
 import CalendarWeek from "./CalendarWeek";
 import OutingDrawer from "./OutingDrawer";
 import Sheet from "@/components/ui/Sheet";
+import { getFlagStatus } from "../../../lib/flagStatus";
+import FlagStatusBanner from "../../../components/FlagStatusBanner";
 
 export default function SchedulePage() {
        const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+       const [flagData, setFlagData] = useState<{ status_text?: string; notices?: string | string[]; set_date?: string } | null>(null);
 
        // Calendar state management
        const {
@@ -28,6 +31,21 @@ export default function SchedulePage() {
 	       error,
 	       stats,
        } = useCalendarData(currentWeek);
+
+       // Fetch flag status on mount
+       useEffect(() => {
+	       const fetchFlag = async () => {
+		       try {
+			       const data = await getFlagStatus();
+			       console.log('Fetched flag data:', data);
+			       setFlagData(data);
+		       } catch (error) {
+			       console.error('Failed to fetch flag status', error);
+			       setFlagData(null);
+		       }
+	       };
+	       fetchFlag();
+       }, []);
 
        // Event handlers
        const handleEventClick = (event: CalendarEvent) => {
@@ -109,6 +127,12 @@ export default function SchedulePage() {
 				       onClose={handleCloseDrawer}
 			       />
 		       )}
+		       {/* Flag Status Banner */}
+		       <FlagStatusBanner
+			       statusText={flagData?.status_text}
+			       notices={flagData?.notices}
+			       setDate={flagData?.set_date}
+		       />
 	       </>
        );
 }
