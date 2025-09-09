@@ -1,16 +1,5 @@
 import React from 'react';
-
-// Fetch data from the API on each page load
-async function getFlagStatus() {
-  const res = await fetch('https://ourcs.co.uk/api/flags/status/isis/', {
-    // Next.js server components: fetch on server
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    throw new Error('Failed to fetch flag status');
-  }
-  return res.json();
-}
+import { getFlagStatus } from '../../lib/flagStatus';
 
 export default async function FlagStatusPage() {
   let data;
