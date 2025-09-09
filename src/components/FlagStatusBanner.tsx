@@ -9,15 +9,14 @@ interface FlagStatusBannerProps {
 export default function FlagStatusBanner({ statusText, notices, setDate }: FlagStatusBannerProps) {
   console.log('FlagStatusBanner called with:', { statusText, notices, setDate });
 
-  // Temporarily always show for debugging
-  // if (!statusText || statusText !== 'Grey Flag') {
-  //   console.log('Banner not shown: statusText is', statusText);
-  //   return null;
-  // }
+  // Only show banner for Red or Black (case insensitive)
+  const lowerStatus = statusText?.toLowerCase();
+  if (!statusText || (lowerStatus !== 'red' && lowerStatus !== 'red flag' && lowerStatus !== 'black' && lowerStatus !== 'black flag')) {
+    console.log('Banner not shown: statusText is', statusText);
+    return null;
+  }
 
-  console.log('Banner will be shown (debug mode)');
-
-  console.log('Rendering banner JSX');
+  console.log('Banner will be shown for Red or Black Flag');
 
   // Map status_text to image src
   const flagImageMap: Record<string, string> = {
@@ -32,42 +31,39 @@ export default function FlagStatusBanner({ statusText, notices, setDate }: FlagS
   // Fallback to grey if not found
   const flagImageSrc = flagImageMap[statusText?.replace(' Flag', '') || ''] || flagImageMap['Grey'];
 
-  // Determine background color based on status
-  const bgColor = 'bg-gray-600';
+  // Extract color for text (case insensitive)
+  const colorRaw = statusText?.replace(/ flag/i, '') || '';
+  const color = colorRaw.toUpperCase();
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 ${bgColor} text-white p-4 flex items-center justify-between z-50 border-2 border-red-500`}>
-      <div className="flex items-center gap-4">
-        <img
-          src={flagImageSrc}
-          alt={`${statusText} Flag`}
-          className="w-12 h-12 object-contain"
-        />
-        <div>
-          <div className="font-bold text-lg">{statusText}</div>
-          {Array.isArray(notices)
-            ? notices.map((notice, idx) => (
-                <div key={idx} className="text-sm">{notice}</div>
-              ))
-            : (
-                <div className="text-sm">{notices || ''}</div>
-              )}
-        </div>
-      </div>
-      <div className="text-sm">
-        {setDate
-          ? (() => {
-              const d = new Date(setDate);
-              if (isNaN(d.getTime())) return '';
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              const day = pad(d.getDate());
-              const month = pad(d.getMonth() + 1);
-              const year = d.getFullYear().toString().slice(-2);
-              const hours = pad(d.getHours());
-              const mins = pad(d.getMinutes());
-              return `Latest Update: ${day}/${month}/${year} ${hours}:${mins}`;
-            })()
-          : ''}
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        left: '240px',
+        right: 0,
+        display: 'flex',
+        padding: '5px 5px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '20px',
+        background: '#E1E8FF',
+        zIndex: 50,
+      }}
+    >
+      <img
+        src={flagImageSrc}
+        alt={`${statusText} Flag`}
+        style={{
+          width: '30px',
+          height: '30px',
+          flexShrink: 0,
+          aspectRatio: '1/1',
+          objectFit: 'contain',
+        }}
+      />
+      <div style={{ fontSize: '16px', color: '#101828' }}>
+        <strong>{color} FLAG</strong>. No crews are allowed out.
       </div>
     </div>
   );
