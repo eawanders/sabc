@@ -1,6 +1,6 @@
 // src/app/(app shell)/schedule/CalendarHeader.tsx
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { WeekRange } from '@/types/calendar';
 import { LeftArrow } from '@/components/icons/LeftArrow';
 import { RightArrow } from '@/components/icons/RightArrow';
@@ -53,10 +53,25 @@ export default function CalendarHeader({
   filterType,
   onFilterChange,
 }: CalendarHeaderProps) {
+  const [isHover, setIsHover] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function onPointerMove(e: PointerEvent) {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+      setIsHover(prev => (prev === inside ? prev : inside));
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    return () => window.removeEventListener('pointermove', onPointerMove);
+  }, []);
   return (
     <div
       className="flex flex-col items-start w-full"
-      style={{ gap: '16px' }}
+      style={{ gap: '20px' }}
     >
       {/* Title */}
       <h1 className="text-3xl font-bold">Outing Schedule</h1>
@@ -108,7 +123,7 @@ export default function CalendarHeader({
         </div>
 
         {/* Right: filter dropdown aligned with calendar */}
-        <div style={{ width: '200px' }}>
+  <div ref={wrapperRef} style={{ width: '200px' }}>
           <Select
             components={{ DropdownIndicator }}
             classNamePrefix="rs"
@@ -122,12 +137,13 @@ export default function CalendarHeader({
               control: (base) => ({
                 ...base,
                 display: 'flex',
-                padding: '5px 20px',
-                justifyContent: 'center',
+                flexDirection: 'row',
+                padding: '5px 0',
+                justifyContent: 'flex-start',
                 alignItems: 'center',
-                gap: '10px',
+                gap: 0,
                 alignSelf: 'stretch',
-                background: 'rgba(246,247,249,0.60)',
+                background: isHover ? 'rgba(125,141,166,0.20)' : 'rgba(246,247,249,0.60)',
                 borderRadius: '10px',
                 position: 'relative',
                 border: 'none',
@@ -135,12 +151,13 @@ export default function CalendarHeader({
                 minHeight: '36px',
                 fontSize: '14px',
                 fontFamily: 'Gilroy',
+                cursor: 'pointer',
               }),
               valueContainer: (base) => ({
                 ...base,
-                padding: 0,
+                padding: '0 20px',
                 display: 'flex',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
                 alignItems: 'center',
                 width: '100%'
               }),
@@ -157,15 +174,16 @@ export default function CalendarHeader({
               indicatorsContainer: (base) => ({
                 ...base,
                 padding: 0,
-                height: 'auto',
+                height: '100%',
                 minHeight: '0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                width: '44px'
               }),
               singleValue: (base) => ({
                 ...base,
-                color: '#0F172A',
+                color: '##425466',
                 fontSize: '14px',
                 lineHeight: '28px',
                 fontWeight: 300,
@@ -191,7 +209,7 @@ export default function CalendarHeader({
                 justifyContent: 'center',
                 color: '#7D8DA6',
                 boxSizing: 'border-box',
-                marginLeft: '10px'
+                marginLeft: 0,
               }),
               menu: (base) => ({
                 ...base,
