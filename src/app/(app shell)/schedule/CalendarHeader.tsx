@@ -15,7 +15,7 @@ const DropdownIndicator = (
   >
 ) => (
   <components.DropdownIndicator {...props}>
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg style={{ display: 'block' }} width="25" height="25" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M6 8L10 12L14 8" stroke="#7D8DA6" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   </components.DropdownIndicator>
@@ -49,89 +49,196 @@ export default function CalendarHeader({
       className="flex flex-col items-start w-full"
       style={{ gap: '16px' }}
     >
-      {/* Title and Filter Row */}
-      <div className="flex items-center justify-between w-full">
-        <h1 className="text-3xl font-bold">Outing Schedule</h1>
+      {/* Title */}
+      <h1 className="text-3xl font-bold">Outing Schedule</h1>
 
-        {/* Filter Dropdown */}
+      {/* Week Display and Filter Row */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          alignSelf: 'stretch',
+          width: '100%'
+        }}
+      >
+        {/* Left: navigation buttons first, then week label */}
+        <div
+          style={{
+            display: 'inline-flex',
+            justifyContent: 'flex-start',
+            alignItems: 'center',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'inline-flex', gap: '8px' }}>
+            <button
+              onClick={onPreviousWeek}
+              className="flex items-center justify-center bg-[rgba(246,247,249,0.60)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
+              style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px', cursor: 'pointer' }}
+              aria-label="Previous week"
+              data-calendar-arrow
+            >
+              <LeftArrow />
+            </button>
+
+            <button
+              onClick={onNextWeek}
+              className="flex items-center justify-center bg-[rgba(246,247,249,0.60)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
+              style={{ width: '36px', height: '36px', padding: 0, borderRadius: '10px', cursor: 'pointer' }}
+              aria-label="Next week"
+              data-calendar-arrow
+            >
+              <RightArrow />
+            </button>
+          </div>
+
+          <div className="text-muted-foreground" style={{ fontSize: '14px' }}>
+            {currentWeek.weekLabel}
+          </div>
+        </div>
+
+        {/* Right: filter dropdown aligned with calendar */}
         <div style={{ width: '200px' }}>
           <Select
             components={{ DropdownIndicator }}
-        /* Provide a deterministic instanceId so the server-rendered aria-live id
-          matches the client during hydration. This prevents the "react-hydration-error"
-          caused by react-select's internal incremental id generation. */
-        instanceId="calendar-filter"
+            classNamePrefix="rs"
+            instanceId="calendar-filter"
+            isSearchable={false}
+            isClearable={false}
             options={filterOptions}
             value={filterOptions.find(option => option.value === filterType)}
             onChange={(option) => option && onFilterChange(option.value as 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym')}
             styles={{
               control: (base) => ({
                 ...base,
-                backgroundColor: '#FFF',
-                border: '1px solid #E5E7EB',
-                borderRadius: '6px',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                minHeight: '40px',
+                display: 'flex',
+                padding: '5px 20px',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '10px',
+                alignSelf: 'stretch',
+                background: 'rgba(246,247,249,0.60)',
+                borderRadius: '10px',
+                position: 'relative',
+                border: 'none',
+                boxShadow: 'none',
+                minHeight: '36px',
                 fontSize: '14px',
                 fontFamily: 'Gilroy',
               }),
-              option: (base, state) => ({
+              valueContainer: (base) => ({
                 ...base,
-                backgroundColor: state.isSelected ? '#F3F4F6' : state.isFocused ? '#F9FAFB' : 'white',
-                color: '#374151',
+                padding: 0,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                width: '100%'
+              }),
+              input: (base) => ({
+                ...base,
+                margin: 0,
+                padding: 0,
+                height: '28px',
                 fontSize: '14px',
-                fontFamily: 'Gilroy',
-                cursor: 'pointer',
+                lineHeight: '28px',
+                boxShadow: 'none',
+                outline: 'none',
+              }),
+              indicatorsContainer: (base) => ({
+                ...base,
+                padding: 0,
+                height: 'auto',
+                minHeight: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }),
               singleValue: (base) => ({
                 ...base,
-                color: '#374151',
+                color: '#0F172A',
                 fontSize: '14px',
+                lineHeight: '28px',
+                fontWeight: 300,
                 fontFamily: 'Gilroy',
+                textAlign: 'center',
               }),
+              placeholder: (base) => ({
+                ...base,
+                color: '#7D8DA6',
+                fontWeight: 300,
+              }),
+              indicatorSeparator: (base) => ({
+                ...base,
+                display: 'none',
+              }),
+              dropdownIndicator: (base) => ({
+                ...base,
+                padding: 0,
+                width: 25,
+                height: 25,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#7D8DA6',
+                boxSizing: 'border-box',
+                marginLeft: '10px'
+              }),
+              menu: (base) => ({
+                ...base,
+                zIndex: 9999,
+                position: 'absolute',
+                border: 'none',
+                boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                left: 0,
+                right: 0,
+                width: '100%',
+                minWidth: '100%',
+                marginTop: '12px',
+              }),
+              menuList: (base) => ({
+                ...base,
+                border: 'none',
+                boxShadow: 'none',
+                borderRadius: '10px',
+                padding: 0,
+              }),
+              menuPortal: (base) => ({
+                ...base,
+                zIndex: 9999,
+              }),
+              option: (base, state) => {
+                const optionList = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
+                const index = optionList.findIndex((opt: any) => (opt && 'value' in opt) ? opt.value === (state.data as any).value : false);
+                const isFirst = index === 0;
+                const isLast = index === optionList.length - 1;
+                let borderRadius = '0px';
+                if ((state.isSelected || state.isFocused) && isFirst && isLast) {
+                  borderRadius = '10px';
+                } else if ((state.isSelected || state.isFocused) && isFirst) {
+                  borderRadius = '10px 10px 0 0';
+                } else if ((state.isSelected || state.isFocused) && isLast) {
+                  borderRadius = '0 0 10px 10px';
+                }
+                return {
+                  ...base,
+                  backgroundColor: state.isSelected ? '#238AFF' : state.isFocused ? '#E6F0FF' : 'transparent',
+                  color: state.isSelected ? '#fff' : '#4C5A6E',
+                  fontFamily: 'Gilroy',
+                  fontSize: '14px',
+                  fontWeight: 300,
+                  padding: '8px 10px',
+                  borderRadius,
+                  transition: 'background 0.2s',
+                };
+              },
             }}
-            placeholder="Filter by type"
+            menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
+            placeholder="All Sessions"
           />
         </div>
-      </div>
-
-
-      {/* Week Display and Navigation Controls */}
-      <div
-        className=""
-        style={{
-          display: 'inline-flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '12px'
-        }}
-      >
-        {/* Week Display */}
-        <div className="text-lg text-muted-foreground">
-          {currentWeek.weekLabel}
-        </div>
-
-        {/* Previous Week */}
-        <button
-          onClick={onPreviousWeek}
-          className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
-          style={{ padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
-          aria-label="Previous week"
-          data-calendar-arrow
-        >
-          <LeftArrow />
-        </button>
-
-        {/* Next Week */}
-        <button
-          onClick={onNextWeek}
-          className="flex items-center justify-center bg-[rgba(125,141,166,0.10)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
-          style={{ padding: '6px', borderRadius: '4px', cursor: 'pointer' }}
-          aria-label="Next week"
-          data-calendar-arrow
-        >
-          <RightArrow />
-        </button>
       </div>
     </div>
   );
