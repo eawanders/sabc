@@ -209,3 +209,16 @@ export function groupEventsByDate(events: CalendarEvent[]): Record<string, Calen
 export function sortEventsByTime(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 }
+
+/**
+ * Filters events by type
+ */
+export function filterEventsByType(
+  events: CalendarEvent[],
+  filterType: EventType | 'All'
+): CalendarEvent[] {
+  if (filterType === 'All') {
+    return events;
+  }
+  return events.filter(event => event.type === filterType);
+}

@@ -7,21 +7,19 @@ import { useCalendarData } from "../hooks/useCalendarData";
 import CalendarHeader from "./CalendarHeader";
 import CalendarWeek from "./CalendarWeek";
 import OutingDrawer from "./OutingDrawer";
-import Sheet from "@/components/ui/Sheet";
 import { getFlagStatus } from "../../../lib/flagStatus";
 import FlagStatusBanner from "../../../components/FlagStatusBanner";
 
 export default function SchedulePage() {
        const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
        const [flagData, setFlagData] = useState<{ status_text?: string; notices?: string | string[]; set_date?: string } | null>(null);
+       const [filterType, setFilterType] = useState<'All' | 'Erg' | 'Water' | 'Tank' | 'Gym'>('All');
 
        // Calendar state management
        const {
 	       currentWeek,
-	       isCurrentWeek,
 	       goToNextWeek,
 	       goToPreviousWeek,
-	       goToCurrentWeek,
        } = useCalendarRange();
 
        // Calendar data
@@ -30,7 +28,7 @@ export default function SchedulePage() {
 	       loading,
 	       error,
 	       stats,
-       } = useCalendarData(currentWeek);
+       } = useCalendarData(currentWeek, filterType);
 
        // Fetch flag status on mount
        useEffect(() => {
@@ -54,6 +52,10 @@ export default function SchedulePage() {
 
        const handleCloseDrawer = () => {
 	       setSelectedEvent(null);
+       };
+
+       const handleFilterChange = (type: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym') => {
+	       setFilterType(type);
        };
 
        if (error) {
@@ -95,6 +97,8 @@ export default function SchedulePage() {
 				       currentWeek={currentWeek}
 				       onPreviousWeek={goToPreviousWeek}
 				       onNextWeek={goToNextWeek}
+				       filterType={filterType}
+				       onFilterChange={handleFilterChange}
 			       />
 			       {/* Loading message - now below header */}
 			       {loading && (

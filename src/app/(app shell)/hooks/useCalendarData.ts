@@ -1,16 +1,16 @@
 // src/app/(app shell)/hooks/useCalendarData.ts
 
 import { useState, useEffect, useMemo } from 'react';
-import { CalendarEvent, WeekRange, CalendarDay } from '@/types/calendar';
+import { CalendarEvent, WeekRange, CalendarDay, EventType } from '@/types/calendar';
 import { Outing } from '@/types/outing';
-import { mapOutingsToEvents, filterEventsByDateRange, groupEventsByDate, sortEventsByTime } from '../mappers/mapOutingsToEvents';
+import { mapOutingsToEvents, filterEventsByDateRange, filterEventsByType, groupEventsByDate, sortEventsByTime } from '../mappers/mapOutingsToEvents';
 import { getWeekDays, getDayNameShort, isToday, isSameDay } from '@/lib/date';
 
 /**
  * Hook for fetching and managing calendar data
  * Provides events for the current week with loading and error states
  */
-export function useCalendarData(currentWeek: WeekRange) {
+export function useCalendarData(currentWeek: WeekRange, filterType: EventType | 'All' = 'All') {
   const [outings, setOutings] = useState<Outing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,8 +46,9 @@ export function useCalendarData(currentWeek: WeekRange) {
     if (!outings.length) return [];
 
     const allEvents = mapOutingsToEvents(outings);
-    return filterEventsByDateRange(allEvents, currentWeek.start, currentWeek.end);
-  }, [outings, currentWeek]);
+    const dateFilteredEvents = filterEventsByDateRange(allEvents, currentWeek.start, currentWeek.end);
+    return filterEventsByType(dateFilteredEvents, filterType);
+  }, [outings, currentWeek, filterType]);
 
   // Group events by date and create calendar days
   const calendarDays: CalendarDay[] = useMemo(() => {
