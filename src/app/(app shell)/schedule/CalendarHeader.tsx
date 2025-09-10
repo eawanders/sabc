@@ -4,7 +4,7 @@ import React from 'react';
 import { WeekRange } from '@/types/calendar';
 import { LeftArrow } from '@/components/icons/LeftArrow';
 import { RightArrow } from '@/components/icons/RightArrow';
-import Select, { components, DropdownIndicatorProps, GroupBase } from 'react-select';
+import Select, { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select';
 
 // Custom DropdownIndicator for react-select with thinner arrow
 const DropdownIndicator = (
@@ -28,6 +28,15 @@ const filterOptions = [
   { value: 'Erg', label: 'Erg Session' },
   { value: 'Gym', label: 'Gym Session' },
 ];
+
+// Narrow types to avoid `any` in style functions (prevents eslint no-explicit-any errors on Vercel)
+type OptionItem = { value: string; label: string };
+interface StyleOptionState {
+  isSelected?: boolean;
+  isFocused?: boolean;
+  selectProps?: { options?: readonly OptionItem[] };
+  data?: OptionItem;
+}
 
 interface CalendarHeaderProps {
   currentWeek: WeekRange;
@@ -209,9 +218,10 @@ export default function CalendarHeader({
                 ...base,
                 zIndex: 9999,
               }),
-              option: (base, state) => {
-                const optionList = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
-                const index = optionList.findIndex((opt: any) => (opt && 'value' in opt) ? opt.value === (state.data as any).value : false);
+              option: (base, state: OptionProps<OptionItem, false, GroupBase<OptionItem>>) => {
+                const optionListRaw = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
+                const optionList = (optionListRaw as readonly unknown[]).filter((opt): opt is OptionItem => typeof opt === 'object' && opt !== null && 'value' in opt) as readonly OptionItem[];
+                const index = optionList.findIndex((opt) => opt.value === state.data.value);
                 const isFirst = index === 0;
                 const isLast = index === optionList.length - 1;
                 let borderRadius = '0px';
