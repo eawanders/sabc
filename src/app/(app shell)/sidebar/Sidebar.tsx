@@ -134,7 +134,7 @@ export default function Sidebar() {
           <NavItem
             href="/feedback"
             label="Feedback"
-            icon={<SendIcon width={20} height={20} />}
+            icon={<SendIcon width={20} height={20} stroke={pathname?.startsWith("/feedback") ? "#fff" : "#425466"} />}
             active={pathname?.startsWith("/feedback")}
           />
         </div>
