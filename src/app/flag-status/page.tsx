@@ -25,19 +25,21 @@ export default async function FlagStatusPage() {
   const flagImageSrc = flagImageMap[status_text?.replace(' Flag', '') || ''] || flagImageMap['Grey'];
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        padding: '100px',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: '64px',
-      }}
-    >
-      <img
-        src={flagImageSrc}
-        alt={status_text ? `${status_text} Flag` : 'Flag'}
+    <>
+        <h1 className="font-bold" style={{ fontSize: '32px', marginTop: '5.5px' }}>Flag Status</h1>
+      <main
+        style={{
+          display: 'flex',
+          padding: '100px',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '64px',
+        }}
+      >
+        <img
+          src={flagImageSrc}
+          alt={status_text ? `${status_text} Flag` : 'Flag'}
         style={{
           width: 150,
           height: 150,
@@ -144,6 +146,7 @@ export default async function FlagStatusPage() {
             })()
           : ''}
       </div>
-    </main>
+      </main>
+    </>
   );
 }
