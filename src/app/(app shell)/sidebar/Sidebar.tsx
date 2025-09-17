@@ -4,6 +4,8 @@
 import NavItem from "./NavItem";
 import SwimIcon from "./SwimIcon";
 import PersonIcon from "./PersonIcon";
+import { MoreSquareIcon } from "./MoreSquareIcon";
+import { SendIcon } from "./SendIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
@@ -128,11 +130,14 @@ export default function Sidebar() {
             icon={<PersonIcon stroke="#425466" />}
             active={pathname?.startsWith("/membership")}
           />
+          <div style={{ width: '100%', height: '1px', background: '#DFE5F1', margin: '8px 0' }} />
+          <NavItem
+            href="/feedback"
+            label="Feedback"
+            icon={<SendIcon width={20} height={20} />}
+            active={pathname?.startsWith("/feedback")}
+          />
         </div>
-
-        <ActionButton onClick={() => router.push('/feedback')}>
-          Feedback
-        </ActionButton>
       </Box>
     </Box>
   );
