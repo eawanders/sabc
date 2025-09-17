@@ -71,10 +71,10 @@ export default function CalendarHeader({
   return (
     <div
       className="flex flex-col items-start w-full"
-      style={{ gap: '20px' }}
+      style={{ gap: '40px' }}
     >
-      {/* Title */}
-      <h1 className="text-3xl font-bold">Outing Schedule</h1>
+  {/* Title */}
+  <h1 className="font-bold" style={{ fontSize: '32px', marginTop: '5.5px' }}>Club Schedule</h1>
 
       {/* Week Display and Filter Row */}
       <div
@@ -138,7 +138,7 @@ export default function CalendarHeader({
                 ...base,
                 display: 'flex',
                 flexDirection: 'row',
-                padding: '5px 0',
+                padding: '4px 0',
                 justifyContent: 'flex-start',
                 alignItems: 'center',
                 gap: 0,

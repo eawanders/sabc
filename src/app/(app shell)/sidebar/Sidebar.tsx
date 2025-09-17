@@ -4,6 +4,8 @@
 import NavItem from "./NavItem";
 import SwimIcon from "./SwimIcon";
 import PersonIcon from "./PersonIcon";
+import { MoreSquareIcon } from "./MoreSquareIcon";
+import { SendIcon } from "./SendIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
@@ -11,9 +13,9 @@ import Image from "next/image";
 
 /** Clock icon for schedule navigation */
 function ClockIcon(props: React.SVGProps<SVGSVGElement> & { stroke?: string }) {
-  const strokeColor = props.stroke || "#0177FB";
+  const strokeColor = props.stroke || "#425466";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M22 12C22 17.52 17.52 22 12 22C6.48 22 2 17.52 2 12C2 6.48 6.48 2 12 2C17.52 2 22 6.48 22 12Z" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M15.71 15.18L12.61 13.33C12.07 13.01 11.63 12.24 11.63 11.61V7.51001" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
@@ -22,9 +24,9 @@ function ClockIcon(props: React.SVGProps<SVGSVGElement> & { stroke?: string }) {
 
 /** Flag icon for flag status navigation */
 function FlagIcon(props: React.SVGProps<SVGSVGElement> & { stroke?: string }) {
-  const strokeColor = props.stroke || "#0177FB";
+  const strokeColor = props.stroke || "#425466";
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path d="M8 21L8 16M8 16L17.7231 9.51793C18.0866 9.2756 18.0775 8.73848 17.7061 8.50854L8.91581 3.06693C8.5161 2.81949 8 3.10699 8 3.57709V16Z" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M8 11.0001L14.5 6.52393" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
@@ -48,8 +50,8 @@ export default function Sidebar() {
         bg-surface text-foreground
         shadow
       "
-      p={32}
-      style={{ gap: '16px', borderRight: '1px solid #DFE5F1' }}
+  p={32}
+  style={{ gap: 34.5, borderRight: '1px solid #DFE5F1', backgroundColor: '#ffffff' }}
     >
       {/* Brand */}
       <Box>
@@ -66,7 +68,7 @@ export default function Sidebar() {
             height={50}
           />
           <div style={{
-            color: '#000',
+            color: '#27272e',
             fontFamily: 'Gilroy',
             fontSize: '32px',
             fontStyle: 'normal',
@@ -78,62 +80,64 @@ export default function Sidebar() {
         </div>
       </Box>
 
-      {/* Divider */}
-      <div style={{
-        width: '100%',
-        height: '1px',
-        backgroundColor: '#DFE5F1'
-      }} />
 
       {/* Nav */}
       <Box
         as="nav"
         className="flex flex-col"
-        py={8}
         style={{
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
-          flex: '1 0 0'
+          flex: '1 0 0',
+          marginTop: 0,
+          paddingTop: 0
         }}
       >
-        <div style={{
-          display: 'flex',
-          width: '100%',
-          flexDirection: 'column',
-          alignItems: 'flex-start',
-          gap: '16px'
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            width: '100%',
+            alignItems: 'flex-start',
+            marginTop: 0,
+            paddingTop: 0
+          }}
+        >
           <NavItem
             href="/schedule"
             label="Schedule"
-            icon={<ClockIcon />}
+            icon={<ClockIcon stroke="#425466" />}
             active={!!isSchedule}
           />
           <NavItem
             href="/flag-status"
             label="Isis Flag"
-            icon={<FlagIcon />}
+            icon={<FlagIcon stroke="#425466" />}
             active={!!isFlagStatus}
           />
-            <NavItem
-              href="/swim-tests"
-              label="Swim Tests"
-              icon={<SwimIcon />}
-              active={pathname?.startsWith("/swim-tests")}
-            />
-              <NavItem
-                href="/membership"
-                  label="Members"
-                  icon={<PersonIcon />}
-                  active={pathname?.startsWith("/membership")}
-              />
+          <NavItem
+            href="/swim-tests"
+            label="Swim Tests"
+            icon={<SwimIcon stroke="#425466" />}
+            active={pathname?.startsWith("/swim-tests")}
+          />
+          <NavItem
+            href="/membership"
+            label="Members"
+            icon={<PersonIcon stroke="#425466" />}
+            active={pathname?.startsWith("/membership")}
+          />
+          <div style={{ width: '100%', height: '1px', background: '#DFE5F1', margin: '8px 0' }} />
+          <NavItem
+            href="/feedback"
+            label="Feedback"
+            icon={<SendIcon width={20} height={20} stroke={pathname?.startsWith("/feedback") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/feedback")}
+          />
         </div>
-
-        <ActionButton onClick={() => router.push('/feedback')}>
-          Feedback
-        </ActionButton>
       </Box>
     </Box>
   );

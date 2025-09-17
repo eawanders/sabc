@@ -1,8 +1,9 @@
 interface RightArrowProps {
   className?: string;
+  stroke?: string;
 }
 
-export function RightArrow({ className }: RightArrowProps) {
+export function RightArrow({ className, stroke = "#7D8DA6" }: RightArrowProps) {
   return (
     <svg
       width="10"
@@ -14,7 +15,7 @@ export function RightArrow({ className }: RightArrowProps) {
     >
       <path
         d="M1.66675 14.3334L7.50008 7.91671L1.66675 1.50004"
-        stroke="#7D8DA6"
+        stroke={stroke}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
