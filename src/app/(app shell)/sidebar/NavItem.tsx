@@ -19,26 +19,29 @@ export default function NavItem({
   className,
   ...spacingProps
 }: NavItemProps) {
-  const textColor = active ? 'var(--Blue, #0177FB)' : '#7D8DA6';
-  const iconColor = active ? '#0177FB' : '#7D8DA6';
+  const textColor = active ? '#fff' : '#425466';
+  const iconColor = active ? '#fff' : '#425466';
 
   return (
     <Link
       href={href}
       className={cn(
-        "group w-full min-w-0 text-sm transition-colors duration-fast ease-brand bg-white hover:bg-[#E1E8FF]",
+        "group w-full min-w-0 text-sm transition-colors duration-fast ease-brand",
+  !active && "hover:bg-[#E6F0FF]",
         className
       )}
       style={{
         display: 'flex',
-        padding: '8px 30px',
+        padding: '6px 20px',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: '10px',
+        gap: '20px',
         borderRadius: '10px',
-        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.15)',
+        boxShadow: 'none',
         textDecoration: 'none',
-        maxWidth: '100%'
+        maxWidth: '100%',
+        minHeight: '36px',
+        ...(active ? { background: '#0177FB' } : {}),
       }}
       aria-current={active ? "page" : undefined}
     >

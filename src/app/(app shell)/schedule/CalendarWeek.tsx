@@ -37,7 +37,8 @@ export default function CalendarWeek({ calendarDays, onEventClick, loading }: Ca
         alignItems: 'flex-start',
         gap: '24px',
         borderRadius: '10px',
-        background: 'rgba(246, 247, 249, 0.60)'
+        background: 'rgba(246, 247, 249, 0.60)',
+        minHeight: '273px'
       }}
     >
       {calendarDays.map((day) => (
