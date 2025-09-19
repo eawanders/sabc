@@ -9,7 +9,7 @@ export default function FeedbackPage() {
               <iframe
                   src="https://stantonysboatclub.notion.site/ebd/24e80040a8fa8035bec2c5387a981512"
                   width="100%"
-                  height="600"
+                  height="800px"
                   style={{ border: 0 }}
                   allow="fullscreen"
                   title="SABC Feedback Form"

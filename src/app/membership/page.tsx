@@ -7,7 +7,7 @@ export default function MembershipPage() {
       <iframe
         src="https://stantonysboatclub.notion.site/ebd/23d80040a8fa80b6a200eacaf389bedf"
         width="100%"
-        height="600"
+        height="800px"
         frameBorder="0"
         allowFullScreen
         title="Membership Form"
