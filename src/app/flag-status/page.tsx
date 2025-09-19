@@ -26,7 +26,7 @@ export default async function FlagStatusPage() {
 
   return (
     <>
-        <h1 className="font-bold" style={{ fontSize: '32px', marginTop: '5.5px' }}>Flag Status</h1>
+  <h1 className="font-bold" style={{ fontSize: '32px' }}>Flag Status</h1>
       <main
         style={{
           display: 'flex',
