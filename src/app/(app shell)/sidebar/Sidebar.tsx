@@ -6,6 +6,9 @@ import SwimIcon from "./SwimIcon";
 import PersonIcon from "./PersonIcon";
 import { MoreSquareIcon } from "./MoreSquareIcon";
 import { SendIcon } from "./SendIcon";
+import { HomeIcon } from "./HomeIcon";
+import { CoxingIcon } from "./CoxingIcon";
+import { EventsIcon } from "./EventsIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
@@ -51,7 +54,7 @@ export default function Sidebar() {
         shadow
       "
   p={32}
-  style={{ gap: 34.5, borderRight: '1px solid #DFE5F1', backgroundColor: '#ffffff' }}
+  style={{ gap: 40, borderRight: '1px solid #DFE5F1', backgroundColor: '#ffffff' }}
     >
       {/* Brand */}
       <Box>
@@ -64,8 +67,8 @@ export default function Sidebar() {
           <Image
             src="/sabc-logo.png"
             alt="SABC Logo"
-            width={50}
-            height={50}
+            width={40}
+            height={40}
           />
           <div style={{
             color: '#27272e',
@@ -107,30 +110,48 @@ export default function Sidebar() {
           }}
         >
           <NavItem
+            href="/home"
+            label="Home"
+            icon={<HomeIcon stroke={pathname?.startsWith("/home") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/home")}
+          />
+          <NavItem
             href="/schedule"
             label="Schedule"
             icon={<ClockIcon stroke="#425466" />}
             active={!!isSchedule}
           />
           <NavItem
+            href="/coxing"
+            label="Coxing"
+            icon={<CoxingIcon stroke={pathname?.startsWith("/coxing") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/coxing")}
+          />
+          <NavItem
             href="/flag-status"
-            label="Isis Flag"
+            label="Flag Status"
             icon={<FlagIcon stroke="#425466" />}
             active={!!isFlagStatus}
           />
           <NavItem
             href="/swim-tests"
-            label="Swim Tests"
+            label="OURC Tests"
             icon={<SwimIcon stroke="#425466" />}
             active={pathname?.startsWith("/swim-tests")}
           />
+          <NavItem
+            href="/events"
+            label="Events"
+            icon={<EventsIcon stroke={pathname?.startsWith("/events") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/events")}
+          />
+          <div style={{ width: '100%', height: '1px', background: '#DFE5F1', margin: '8px 0' }} />
           <NavItem
             href="/membership"
             label="Members"
             icon={<PersonIcon stroke="#425466" />}
             active={pathname?.startsWith("/membership")}
           />
-          <div style={{ width: '100%', height: '1px', background: '#DFE5F1', margin: '8px 0' }} />
           <NavItem
             href="/feedback"
             label="Feedback"
