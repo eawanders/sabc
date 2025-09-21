@@ -21,8 +21,8 @@ const TIME_SLOTS: { key: TimeSlotKey; label: string }[] = [
 
 export default function CoxingPage() {
   const { currentWeek, goToNextWeek, goToPreviousWeek } = useCalendarRange()
-  const { members, loading: membersLoading } = useMembers()
-  const { availability, loading: availabilityLoading, refetch } = useCoxingAvailability()
+  const { members } = useMembers()
+  const { availability, refetch } = useCoxingAvailability()
   const { updateAvailability, updating } = useUpdateCoxingAvailability()
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
@@ -51,7 +51,7 @@ export default function CoxingPage() {
     const isAvailable = dateAvail?.[timeSlot]?.includes(selectedMember.id) || false
     const action = isAvailable ? 'remove' : 'add'
 
-    const res = await updateAvailability({ memberId: selectedMember.id, date, timeSlot: timeSlot as any, action })
+  const res = await updateAvailability({ memberId: selectedMember.id, date, timeSlot, action })
     if (res?.success) refetch()
   }
 
