@@ -37,12 +37,20 @@ export async function GET(request: Request) {
     console.log(`🗄️ Using data source: ${process.env.NOTION_COXING_DB_ID}`)
 
     // Build filter for date range if provided
-    const filter: any = {}
+    let filter: {
+      property: string;
+      date: {
+        on_or_after: string;
+        on_or_before: string;
+      };
+    } | undefined = undefined
     if (startDate && endDate) {
-      filter.property = 'Date'
-      filter.date = {
-        on_or_after: startDate,
-        on_or_before: endDate,
+      filter = {
+        property: 'Date',
+        date: {
+          on_or_after: startDate,
+          on_or_before: endDate,
+        },
       }
     }
 
@@ -52,7 +60,7 @@ export async function GET(request: Request) {
       path: `data_sources/${process.env.NOTION_COXING_DB_ID}/query`,
       body: {
         page_size: 100,
-        ...(Object.keys(filter).length > 0 && { filter }),
+        ...(filter && { filter }),
       },
     }) as { results: unknown[] }
 
