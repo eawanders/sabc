@@ -13,16 +13,16 @@ import { getWeekDays } from '@/lib/date'
 type TimeSlotKey = 'earlyAM' | 'midAM' | 'midPM' | 'latePM'
 
 const TIME_SLOTS: { key: TimeSlotKey; label: string }[] = [
-  { key: 'earlyAM', label: 'Early AM' },
-  { key: 'midAM', label: 'Mid AM' },
-  { key: 'midPM', label: 'Early PM' },
-  { key: 'latePM', label: 'Late PM' },
+  { key: 'earlyAM', label: 'Before 8AM' },
+  { key: 'midAM', label: '8AM - 12PM' },
+  { key: 'midPM', label: '12PM - 5PM' },
+  { key: 'latePM', label: 'After 5PM' },
 ]
 
 export default function CoxingPage() {
   const { currentWeek, goToNextWeek, goToPreviousWeek } = useCalendarRange()
   const { members } = useMembers()
-  const { availability, refetch } = useCoxingAvailability()
+  const { availability, refetch, setAvailability } = useCoxingAvailability(currentWeek.start.toISOString().split('T')[0], currentWeek.end.toISOString().split('T')[0])
   const { updateAvailability, updating } = useUpdateCoxingAvailability()
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
@@ -47,12 +47,38 @@ export default function CoxingPage() {
 
   const handleToggle = async (date: string, timeSlot: TimeSlotKey) => {
     if (!selectedMember) return
+
+    // Optimistic update: update local state immediately
     const dateAvail = availabilityMap[date]
     const isAvailable = dateAvail?.[timeSlot]?.includes(selectedMember.id) || false
     const action = isAvailable ? 'remove' : 'add'
 
-  const res = await updateAvailability({ memberId: selectedMember.id, date, timeSlot, action })
-    if (res?.success) refetch()
+    // Create optimistic update
+    const optimisticAvailability = availability.map(item => {
+      if (item.date === date) {
+        const updatedSlot = action === 'add'
+          ? [...(item[timeSlot] || []), selectedMember.id]
+          : (item[timeSlot] || []).filter(id => id !== selectedMember.id)
+        return { ...item, [timeSlot]: updatedSlot }
+      }
+      return item
+    })
+
+    // Update local state optimistically
+    setAvailability(optimisticAvailability)
+
+    try {
+      const res = await updateAvailability({ memberId: selectedMember.id, date, timeSlot, action })
+      if (!res?.success) {
+        // Revert on failure
+        setAvailability(availability)
+        console.error('Failed to update availability')
+      }
+    } catch (error) {
+      // Revert on error
+      setAvailability(availability)
+      console.error('Error updating availability:', error)
+    }
   }
 
   return (
@@ -88,7 +114,7 @@ export default function CoxingPage() {
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '160px repeat(7, 110px)',
-                    gridTemplateRows: '48px repeat(4, 72px)',
+                    gridTemplateRows: '48px repeat(4, 48px)',
                     columnGap: '24px',
                     rowGap: '24px',
                     alignItems: 'center'
@@ -100,7 +126,7 @@ export default function CoxingPage() {
                   {/* Day headers (columns 2..8) */}
                   {weekDays.map((day, idx) => (
                     <div key={day} style={{ textAlign: 'center', gridColumn: `${idx + 2}`, gridRow: '1' }}>
-                      <div className="text-sm font-medium text-muted-foreground">
+                      <div className="text-sm font-medium text-muted-foreground" style={{ marginBottom: '12px' }}>
                         {new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}
                       </div>
                       <div className="text-lg font-semibold text-foreground">
@@ -172,6 +198,11 @@ export default function CoxingPage() {
         {!selectedMember && (
           <div className="text-center py-6" style={{ width: '100%', marginTop: '32px' }}>
             <p className="text-muted-foreground mb-2">No cox is selected. Select a cox to provide availability.</p>
+          </div>
+        )}
+        {updating && (
+          <div className="text-center py-6" style={{ width: '100%', marginTop: '16px' }}>
+            <p className="text-muted-foreground mb-2">Updating availability...</p>
           </div>
         )}
       </div>

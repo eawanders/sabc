@@ -9,9 +9,13 @@ const notion = new Client({
   notionVersion: '2025-09-03',
 })
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log('🔍 Fetching Coxing availability from Notion database...')
+
+    const { searchParams } = new URL(request.url)
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     // Validate environment variables
     if (!process.env.NOTION_TOKEN) {
@@ -32,12 +36,23 @@ export async function GET() {
 
     console.log(`🗄️ Using data source: ${process.env.NOTION_COXING_DB_ID}`)
 
-    // Query the data source directly (NOTION_COXING_DB_ID should be the data source ID)
+    // Build filter for date range if provided
+    const filter: any = {}
+    if (startDate && endDate) {
+      filter.property = 'Date'
+      filter.date = {
+        on_or_after: startDate,
+        on_or_before: endDate,
+      }
+    }
+
+    // Query the data source with optional filter
     const response = await notion.request({
       method: 'post',
       path: `data_sources/${process.env.NOTION_COXING_DB_ID}/query`,
       body: {
-        page_size: 100, // Increase page size for better performance
+        page_size: 100,
+        ...(Object.keys(filter).length > 0 && { filter }),
       },
     }) as { results: unknown[] }
 
