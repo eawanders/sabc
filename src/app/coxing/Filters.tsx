@@ -84,7 +84,7 @@ export default function Filters({ members, selectedMember, onChange }: FiltersPr
           }),
         }}
         menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
-        placeholder="Select member"
+        placeholder="Select cox"
       />
     </div>
   )
