@@ -1,3 +1,4 @@
+"use client";
 // src/app/(app shell)/schedule/CalendarHeader.tsx
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -44,6 +45,7 @@ interface CalendarHeaderProps {
   onNextWeek: () => void;
   filterType: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym';
   onFilterChange: (type: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym') => void;
+  showFilter?: boolean;
 }
 
 export default function CalendarHeader({
@@ -52,6 +54,7 @@ export default function CalendarHeader({
   onNextWeek,
   filterType,
   onFilterChange,
+  showFilter = true,
 }: CalendarHeaderProps) {
   const [isHover, setIsHover] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -122,151 +125,153 @@ export default function CalendarHeader({
           </div>
         </div>
 
-        {/* Right: filter dropdown aligned with calendar */}
-  <div ref={wrapperRef} style={{ width: '200px' }}>
-          <Select
-            components={{ DropdownIndicator }}
-            classNamePrefix="rs"
-            instanceId="calendar-filter"
-            isSearchable={false}
-            isClearable={false}
-            options={filterOptions}
-            value={filterOptions.find(option => option.value === filterType)}
-            onChange={(option) => option && onFilterChange(option.value as 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym')}
-            styles={{
-              control: (base) => ({
-                ...base,
-                display: 'flex',
-                flexDirection: 'row',
-                padding: '4px 0',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-                gap: 0,
-                alignSelf: 'stretch',
-                background: isHover ? 'rgba(125,141,166,0.20)' : 'rgba(246,247,249,0.60)',
-                borderRadius: '10px',
-                position: 'relative',
-                border: 'none',
-                boxShadow: 'none',
-                minHeight: '36px',
-                fontSize: '14px',
-                fontFamily: 'Gilroy',
-                cursor: 'pointer',
-              }),
-              valueContainer: (base) => ({
-                ...base,
-                padding: '0 20px',
-                display: 'flex',
-                justifyContent: 'flex-start',
-                alignItems: 'center',
-                width: '100%'
-              }),
-              input: (base) => ({
-                ...base,
-                margin: 0,
-                padding: 0,
-                height: '28px',
-                fontSize: '14px',
-                lineHeight: '28px',
-                boxShadow: 'none',
-                outline: 'none',
-              }),
-              indicatorsContainer: (base) => ({
-                ...base,
-                padding: 0,
-                height: '100%',
-                minHeight: '0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '44px'
-              }),
-              singleValue: (base) => ({
-                ...base,
-                color: '##425466',
-                fontSize: '14px',
-                lineHeight: '28px',
-                fontWeight: 300,
-                fontFamily: 'Gilroy',
-                textAlign: 'center',
-              }),
-              placeholder: (base) => ({
-                ...base,
-                color: '#7D8DA6',
-                fontWeight: 300,
-              }),
-              indicatorSeparator: (base) => ({
-                ...base,
-                display: 'none',
-              }),
-              dropdownIndicator: (base) => ({
-                ...base,
-                padding: 0,
-                width: 25,
-                height: 25,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#7D8DA6',
-                boxSizing: 'border-box',
-                marginLeft: 0,
-              }),
-              menu: (base) => ({
-                ...base,
-                zIndex: 9999,
-                position: 'absolute',
-                border: 'none',
-                boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                left: 0,
-                right: 0,
-                width: '100%',
-                minWidth: '100%',
-                marginTop: '12px',
-              }),
-              menuList: (base) => ({
-                ...base,
-                border: 'none',
-                boxShadow: 'none',
-                borderRadius: '10px',
-                padding: 0,
-              }),
-              menuPortal: (base) => ({
-                ...base,
-                zIndex: 9999,
-              }),
-              option: (base, state: OptionProps<OptionItem, false, GroupBase<OptionItem>>) => {
-                const optionListRaw = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
-                const optionList = (optionListRaw as readonly unknown[]).filter((opt): opt is OptionItem => typeof opt === 'object' && opt !== null && 'value' in opt) as readonly OptionItem[];
-                const index = optionList.findIndex((opt) => opt.value === state.data.value);
-                const isFirst = index === 0;
-                const isLast = index === optionList.length - 1;
-                let borderRadius = '0px';
-                if ((state.isSelected || state.isFocused) && isFirst && isLast) {
-                  borderRadius = '10px';
-                } else if ((state.isSelected || state.isFocused) && isFirst) {
-                  borderRadius = '10px 10px 0 0';
-                } else if ((state.isSelected || state.isFocused) && isLast) {
-                  borderRadius = '0 0 10px 10px';
-                }
-                return {
+        {/* Right: filter dropdown aligned with calendar (hidden when showFilter is false) */}
+        {showFilter && (
+          <div ref={wrapperRef} style={{ width: '200px' }}>
+            <Select
+              components={{ DropdownIndicator }}
+              classNamePrefix="rs"
+              instanceId="calendar-filter"
+              isSearchable={false}
+              isClearable={false}
+              options={filterOptions}
+              value={filterOptions.find(option => option.value === filterType)}
+              onChange={(option) => option && onFilterChange(option.value as 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym')}
+              styles={{
+                control: (base) => ({
                   ...base,
-                  backgroundColor: state.isSelected ? '#238AFF' : state.isFocused ? '#E6F0FF' : 'transparent',
-                  color: state.isSelected ? '#fff' : '#4C5A6E',
-                  fontFamily: 'Gilroy',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  padding: '4px 0',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  gap: 0,
+                  alignSelf: 'stretch',
+                  background: isHover ? 'rgba(125,141,166,0.20)' : 'rgba(246,247,249,0.60)',
+                  borderRadius: '10px',
+                  position: 'relative',
+                  border: 'none',
+                  boxShadow: 'none',
+                  minHeight: '36px',
                   fontSize: '14px',
+                  fontFamily: 'Gilroy',
+                  cursor: 'pointer',
+                }),
+                valueContainer: (base) => ({
+                  ...base,
+                  padding: '0 20px',
+                  display: 'flex',
+                  justifyContent: 'flex-start',
+                  alignItems: 'center',
+                  width: '100%'
+                }),
+                input: (base) => ({
+                  ...base,
+                  margin: 0,
+                  padding: 0,
+                  height: '28px',
+                  fontSize: '14px',
+                  lineHeight: '28px',
+                  boxShadow: 'none',
+                  outline: 'none',
+                }),
+                indicatorsContainer: (base) => ({
+                  ...base,
+                  padding: 0,
+                  height: '100%',
+                  minHeight: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '44px'
+                }),
+                singleValue: (base) => ({
+                  ...base,
+                  color: '##425466',
+                  fontSize: '14px',
+                  lineHeight: '28px',
                   fontWeight: 300,
-                  padding: '8px 10px',
-                  borderRadius,
-                  transition: 'background 0.2s',
-                };
-              },
-            }}
-            menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
-            placeholder="All Sessions"
-          />
-        </div>
+                  fontFamily: 'Gilroy',
+                  textAlign: 'center',
+                }),
+                placeholder: (base) => ({
+                  ...base,
+                  color: '#7D8DA6',
+                  fontWeight: 300,
+                }),
+                indicatorSeparator: (base) => ({
+                  ...base,
+                  display: 'none',
+                }),
+                dropdownIndicator: (base) => ({
+                  ...base,
+                  padding: 0,
+                  width: 25,
+                  height: 25,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#7D8DA6',
+                  boxSizing: 'border-box',
+                  marginLeft: 0,
+                }),
+                menu: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                  position: 'absolute',
+                  border: 'none',
+                  boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  left: 0,
+                  right: 0,
+                  width: '100%',
+                  minWidth: '100%',
+                  marginTop: '12px',
+                }),
+                menuList: (base) => ({
+                  ...base,
+                  border: 'none',
+                  boxShadow: 'none',
+                  borderRadius: '10px',
+                  padding: 0,
+                }),
+                menuPortal: (base) => ({
+                  ...base,
+                  zIndex: 9999,
+                }),
+                option: (base, state: OptionProps<OptionItem, false, GroupBase<OptionItem>>) => {
+                  const optionListRaw = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
+                  const optionList = (optionListRaw as readonly unknown[]).filter((opt): opt is OptionItem => typeof opt === 'object' && opt !== null && 'value' in opt) as readonly OptionItem[];
+                  const index = optionList.findIndex((opt) => opt.value === state.data.value);
+                  const isFirst = index === 0;
+                  const isLast = index === optionList.length - 1;
+                  let borderRadius = '0px';
+                  if ((state.isSelected || state.isFocused) && isFirst && isLast) {
+                    borderRadius = '10px';
+                  } else if ((state.isSelected || state.isFocused) && isFirst) {
+                    borderRadius = '10px 10px 0 0';
+                  } else if ((state.isSelected || state.isFocused) && isLast) {
+                    borderRadius = '0 0 10px 10px';
+                  }
+                  return {
+                    ...base,
+                    backgroundColor: state.isSelected ? '#238AFF' : state.isFocused ? '#E6F0FF' : 'transparent',
+                    color: state.isSelected ? '#fff' : '#4C5A6E',
+                    fontFamily: 'Gilroy',
+                    fontSize: '14px',
+                    fontWeight: 300,
+                    padding: '8px 10px',
+                    borderRadius,
+                    transition: 'background 0.2s',
+                  };
+                },
+              }}
+              menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
+              placeholder="All Sessions"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
