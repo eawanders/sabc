@@ -24,6 +24,7 @@ type NotionProperty = NotionTitle | NotionEmail | NotionSelect
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
+  notionVersion: '2025-09-03',
 })
 
 export async function GET() {
@@ -47,17 +48,41 @@ export async function GET() {
       )
     }
 
-    console.log(`🗄️ Querying database: ${process.env.NOTION_MEMBERS_DB_ID}`)
+    console.log(`🗄️ Retrieving database: ${process.env.NOTION_MEMBERS_DB_ID}`)
 
-    const response = await notion.databases.query({
-      database_id: process.env.NOTION_MEMBERS_DB_ID!,
-      page_size: 100, // Increase page size for better performance
-    })
+    // First get the database to find data sources
+    const databaseResponse = await notion.request({
+      method: 'get',
+      path: `databases/${process.env.NOTION_MEMBERS_DB_ID}`,
+    }) as { data_sources?: { id: string }[] }
+
+    if (!databaseResponse.data_sources || databaseResponse.data_sources.length === 0) {
+      console.error('❌ No data sources found for members database')
+      return NextResponse.json(
+        { error: 'No data sources found for members database' },
+        { status: 500 }
+      )
+    }
+
+    const dataSourceId = databaseResponse.data_sources[0].id
+    console.log(`📊 Using data source: ${dataSourceId}`)
+
+    // Query the data source
+    const response = await notion.request({
+      method: 'post',
+      path: `data_sources/${dataSourceId}/query`,
+      body: {
+        page_size: 100, // Increase page size for better performance
+      },
+    }) as { results: unknown[] }
 
     console.log(`📊 Raw response: Found ${response.results.length} total results`)
 
     const results = response.results.filter(
-      (r): r is PageObjectResponse => 'properties' in r
+      (r: unknown): r is PageObjectResponse => {
+        const obj = r as Record<string, unknown>
+        return 'properties' in obj
+      }
     )
 
     console.log(`📋 Filtered results: ${results.length} valid pages`)
@@ -73,7 +98,7 @@ export async function GET() {
       return typedProperty
     }
 
-    const members: Member[] = results.map((page) => {
+    const members: Member[] = results.map((page: PageObjectResponse) => {
       try {
         // Safely extract name with fallbacks
         let name = ''
@@ -115,7 +140,7 @@ export async function GET() {
           memberType: 'Unknown',
         }
       }
-    }).filter(member => member.name && member.name !== 'Unknown Member') // Filter out invalid members
+    }).filter((member: Member) => member.name && member.name !== 'Unknown Member') // Filter out invalid members
 
     console.log(`✅ Successfully processed ${members.length} members`)
 

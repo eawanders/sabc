@@ -2,7 +2,10 @@
 import { NextResponse } from 'next/server';
 import { Client } from '@notionhq/client';
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+  notionVersion: '2025-09-03'
+});
 const OUTINGS_DB_ID = process.env.NOTION_OUTINGS_DB_ID;
 const FLAG_STATUS_API = 'https://ourcs.co.uk/api/flags/status/isis/';
 
@@ -46,43 +49,61 @@ export async function POST(req: Request) {
   const newOutingStatus = flagToOutingStatus[flagStatus];
   console.log(`[LIVE MODE] Updating outings to status: ${newOutingStatus}`);
 
-  // 2. Query Notion for upcoming water outings
+  // 2. Get the database to find data sources
+  const databaseResponse = await notion.request({
+    method: 'get',
+    path: `databases/${OUTINGS_DB_ID}`,
+  }) as { data_sources?: { id: string }[] }
+
+  if (!databaseResponse.data_sources || databaseResponse.data_sources.length === 0) {
+    console.error('❌ No data sources found for outings database')
+    return NextResponse.json(
+      { error: 'No data sources found for outings database' },
+      { status: 500 }
+    )
+  }
+
+  const dataSourceId = databaseResponse.data_sources[0].id
+  console.log(`📊 Using data source: ${dataSourceId}`)
+
+  // Query the data source for upcoming water outings
   const now = new Date().toISOString();
-  const response = await notion.databases.query({
-    database_id: OUTINGS_DB_ID,
-    filter: {
-      and: [
-        {
-          property: 'Type',
-          select: { equals: 'Water Outing' },
-        },
-        {
-          property: 'Start Date/Time',
-          date: { after: now },
-        },
-      ],
+  const response = await notion.request({
+    method: 'post',
+    path: `data_sources/${dataSourceId}/query`,
+    body: {
+      filter: {
+        and: [
+          {
+            property: 'Type',
+            select: { equals: 'Water Outing' },
+          },
+          {
+            property: 'Start Date/Time',
+            date: { after: now },
+          },
+        ],
+      },
+      page_size: 100,
     },
-    page_size: 100,
-  });
+  }) as { results: { id: string }[] }
 
   // 3. Update status for each outing
   const updated: string[] = [];
   for (const page of response.results) {
-    if ('id' in page) {
-      try {
-        await notion.pages.update({
-          page_id: page.id,
-          properties: {
-            Status: {
-              status: { name: newOutingStatus },
-            },
+    try {
+      await notion.pages.update({
+        page_id: page.id,
+        properties: {
+          Status: {
+            status: { name: newOutingStatus },
           },
-        });
-        updated.push(page.id);
-        console.log(`[LIVE MODE] Updated outing: ${page.id}`);
-      } catch (err) {
-        console.error(`[LIVE MODE] Failed to update outing: ${page.id}`, err);
-      }
+        },
+      });
+      updated.push(page.id);
+      console.log(`[LIVE MODE] Updated outing: ${page.id}`);
+    } catch (err) {
+      console.error(`[LIVE MODE] Failed to update outing: ${page.id}`, err);
     }
   }
 
