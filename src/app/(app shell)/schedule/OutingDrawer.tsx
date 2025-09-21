@@ -22,6 +22,7 @@ import React, { useState, useEffect } from 'react';
 import { useOutingDetails } from '@/hooks/useOutingDetails';
 import { useMembers } from '@/hooks/useMembers';
 import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
 
@@ -108,6 +109,7 @@ interface RowerRowProps {
   onAvailabilityUpdate: (seat: string, status: string) => void;
   isLoadingStatus: boolean;
   outingType?: string;
+  refreshMembers: () => Promise<void>;
 }
 
 const RowerRow: React.FC<RowerRowProps> = ({
@@ -120,7 +122,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
   onAssignmentChange,
   onAvailabilityUpdate,
   isLoadingStatus,
-  outingType
+  outingType,
+  refreshMembers
 }) => {
   const isMemberSelected = Boolean(selectedMember);
 
@@ -184,7 +187,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
         }}>
           {/* Searchable member select using react-select */}
           <div style={{ flex: '1 0 0' }}>
-            <Select
+            <CreatableSelect
               components={{ DropdownIndicator }}
               classNamePrefix="rs"
               options={[{ value: '', label: 'Select Member', member: null },
@@ -217,9 +220,35 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   onAssignmentChange(seat, "");
                 }
               }}
+              onCreateOption={async (inputValue) => {
+                try {
+                  const response = await fetch('/api/add-member', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: inputValue }),
+                  });
+
+                  if (!response.ok) {
+                    throw new Error('Failed to create member');
+                  }
+
+                  const data = await response.json();
+                  await refreshMembers(); // Refresh the members list
+                  onAssignmentChange(seat, data.member.name); // Update assignments state
+                  // Return the new option for CreatableSelect
+                  return { value: data.member.id, label: data.member.name, member: data.member };
+                } catch (error) {
+                  console.error('Error creating member:', error);
+                  // Could show a toast notification here
+                  return null;
+                }
+              }}
               isDisabled={isSubmitting || membersLoading}
               isLoading={membersLoading}
               placeholder={membersLoading ? 'Loading members...' : 'Select member'}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}" as new rower`}
               styles={{
                 control: (base, state) => ({
                   ...base,
@@ -467,7 +496,7 @@ const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'she
 
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
-  const { members, loading: membersLoading } = useMembers();
+  const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -1184,6 +1213,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       onAvailabilityUpdate={handleAvailabilityUpdate}
                       isLoadingStatus={isLoadingStatus}
                       outingType={outing?.properties?.Type?.select?.name}
+                      refreshMembers={refreshMembers}
                     />
                   ))}
               </div>
@@ -1216,6 +1246,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     onAvailabilityUpdate={handleAvailabilityUpdate}
                     isLoadingStatus={isLoadingStatus}
                     outingType={outing?.properties?.Type?.select?.name}
+                    refreshMembers={refreshMembers}
                   />
                 ))}
               </div>

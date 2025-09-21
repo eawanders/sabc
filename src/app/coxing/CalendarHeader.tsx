@@ -7,6 +7,7 @@ import { Member } from '@/types/members';
 import { LeftArrow } from '@/components/icons/LeftArrow';
 import { RightArrow } from '@/components/icons/RightArrow';
 import Select, { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 
 // Custom DropdownIndicator for react-select with thinner arrow
 const DropdownIndicator = (
@@ -50,6 +51,7 @@ interface CalendarHeaderProps {
   members: Member[];
   selectedMember: Member | null;
   onMemberChange: (m: Member | null) => void;
+  refreshMembers: () => Promise<void>;
 }
 
 export default function CalendarHeader({
@@ -59,6 +61,7 @@ export default function CalendarHeader({
   members,
   selectedMember,
   onMemberChange,
+  refreshMembers,
 }: CalendarHeaderProps) {
   const [isHover, setIsHover] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -131,18 +134,44 @@ export default function CalendarHeader({
 
         {/* Right: member select aligned with calendar */}
         <div ref={wrapperRef} style={{ width: '260px' }}>
-            <Select<MemberOption, false, GroupBase<MemberOption>>
+            <CreatableSelect<MemberOption, false, GroupBase<MemberOption>>
             components={{ DropdownIndicator }}
             classNamePrefix="rs"
             instanceId="coxing-member-filter"
             isSearchable
             isClearable={false}
-            options={[ { value: '__none', label: 'Select member' }, ...members.map(m => ({ value: m.id, label: m.name, member: m })) ]}
-            value={selectedMember ? { value: selectedMember.id, label: selectedMember.name, member: selectedMember } : { value: '__none', label: 'Select member' }}
+            options={[ { value: '__none', label: 'Select cox' }, ...members.map(m => ({ value: m.id, label: m.name, member: m })) ]}
+            value={selectedMember ? { value: selectedMember.id, label: selectedMember.name, member: selectedMember } : { value: '__none', label: 'Select cox' }}
             onChange={(opt) => {
               if (!opt || opt.value === '__none') return onMemberChange(null)
               return onMemberChange(opt.member ?? null)
             }}
+            onCreateOption={async (inputValue) => {
+              try {
+                const response = await fetch('/api/add-member', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ name: inputValue }),
+                });
+
+                if (!response.ok) {
+                  throw new Error('Failed to create member');
+                }
+
+                const data = await response.json();
+                await refreshMembers(); // Refresh the members list
+                onMemberChange(data.member); // Update selected member state
+                // Return the new option for CreatableSelect to automatically select it
+                return { value: data.member.id, label: data.member.name, member: data.member };
+              } catch (error) {
+                console.error('Error creating member:', error);
+                // Could show a toast notification here
+                return null;
+              }
+            }}
+            formatCreateLabel={(inputValue) => `Add "${inputValue}" as new cox`}
             styles={{
               control: (base) => ({
                 ...base,
@@ -274,7 +303,7 @@ export default function CalendarHeader({
               },
             }}
             menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
-            placeholder="Select member"
+            placeholder="Select cox"
           />
         </div>
       </div>

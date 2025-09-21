@@ -20,7 +20,17 @@ interface NotionSelect {
   select: { name: string } | null
 }
 
-type NotionProperty = NotionTitle | NotionEmail | NotionSelect
+interface NotionMultiSelect {
+  type: 'multi_select'
+  multi_select: Array<{ name: string }>
+}
+
+interface NotionRichText {
+  type: 'rich_text'
+  rich_text: Array<{ plain_text: string }>
+}
+
+type NotionProperty = NotionTitle | NotionEmail | NotionSelect | NotionMultiSelect | NotionRichText
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -88,12 +98,12 @@ export async function GET() {
     console.log(`📋 Filtered results: ${results.length} valid pages`)
 
     // Helper function to safely extract property values
-    const getPropertyValue = (page: PageObjectResponse, propertyName: string, expectedType: string): NotionProperty | null => {
+    const getPropertyValue = (page: PageObjectResponse, propertyName: string, expectedType?: string): NotionProperty | null => {
       const property = page.properties[propertyName]
       if (!property || typeof property !== 'object') return null
 
       const typedProperty = property as NotionProperty
-      if (typedProperty.type !== expectedType) return null
+      if (expectedType && typedProperty.type !== expectedType) return null
 
       return typedProperty
     }
@@ -102,9 +112,13 @@ export async function GET() {
       try {
         // Safely extract name with fallbacks
         let name = ''
-        const nameProperty = getPropertyValue(page, 'Full Name', 'title')
-        if (nameProperty && nameProperty.type === 'title' && nameProperty.title && Array.isArray(nameProperty.title)) {
-          name = nameProperty.title.map((t: { plain_text: string }) => t.plain_text || '').join('').trim()
+        const nameProperty = getPropertyValue(page, 'Full Name')
+        if (nameProperty) {
+          if (nameProperty.type === 'title' && 'title' in nameProperty && nameProperty.title && Array.isArray(nameProperty.title)) {
+            name = nameProperty.title.map((t: { plain_text: string }) => t.plain_text || '').join('').trim()
+          } else if (nameProperty.type === 'rich_text' && 'rich_text' in nameProperty && nameProperty.rich_text && Array.isArray(nameProperty.rich_text)) {
+            name = nameProperty.rich_text.map((t: { plain_text: string }) => t.plain_text || '').join('').trim()
+          }
         }
 
         // Safely extract email with fallbacks
@@ -116,9 +130,14 @@ export async function GET() {
 
         // Safely extract member type with fallbacks
         let memberType = ''
-        const memberTypeProperty = getPropertyValue(page, 'Member Type', 'select')
-        if (memberTypeProperty && memberTypeProperty.type === 'select' && memberTypeProperty.select?.name) {
-          memberType = memberTypeProperty.select.name.trim()
+        const memberTypeProperty = getPropertyValue(page, 'Member Type')
+        if (memberTypeProperty) {
+          if (memberTypeProperty.type === 'select' && 'select' in memberTypeProperty && memberTypeProperty.select?.name) {
+            memberType = memberTypeProperty.select.name.trim()
+          } else if (memberTypeProperty.type === 'multi_select' && 'multi_select' in memberTypeProperty && memberTypeProperty.multi_select && Array.isArray(memberTypeProperty.multi_select)) {
+            // For multi_select, take the first value or join them
+            memberType = memberTypeProperty.multi_select.map(item => item.name).join(', ')
+          }
         }
 
         const member: Member = {

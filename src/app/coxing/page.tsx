@@ -21,7 +21,7 @@ const TIME_SLOTS: { key: TimeSlotKey; label: string }[] = [
 
 export default function CoxingPage() {
   const { currentWeek, goToNextWeek, goToPreviousWeek } = useCalendarRange()
-  const { members } = useMembers()
+  const { members, refresh: refreshMembers } = useMembers()
   const { availability, refetch, setAvailability } = useCoxingAvailability(currentWeek.start.toISOString().split('T')[0], currentWeek.end.toISOString().split('T')[0])
   const { updateAvailability, updating } = useUpdateCoxingAvailability()
 
@@ -91,6 +91,7 @@ export default function CoxingPage() {
           members={members}
           selectedMember={selectedMember}
           onMemberChange={setSelectedMember}
+          refreshMembers={refreshMembers}
         />
       </div>
 
