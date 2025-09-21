@@ -6,7 +6,7 @@ import { CoxingAvailability } from '@/types/coxing'
 /**
  * Hook for fetching and managing Coxing availability data
  */
-export function useCoxingAvailability() {
+export function useCoxingAvailability(startDate?: string, endDate?: string) {
   const [availability, setAvailability] = useState<CoxingAvailability[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +18,11 @@ export function useCoxingAvailability() {
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/get-coxing-availability')
+        const params = new URLSearchParams()
+        if (startDate) params.append('startDate', startDate)
+        if (endDate) params.append('endDate', endDate)
+
+        const response = await fetch(`/api/get-coxing-availability?${params.toString()}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -35,7 +39,7 @@ export function useCoxingAvailability() {
     }
 
     fetchAvailability()
-  }, [])
+  }, [startDate, endDate])
 
   const refetch = () => {
     async function fetchAvailability() {
@@ -43,7 +47,11 @@ export function useCoxingAvailability() {
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/get-coxing-availability')
+        const params = new URLSearchParams()
+        if (startDate) params.append('startDate', startDate)
+        if (endDate) params.append('endDate', endDate)
+
+        const response = await fetch(`/api/get-coxing-availability?${params.toString()}`)
         const data = await response.json()
 
         if (!response.ok) {
@@ -67,5 +75,6 @@ export function useCoxingAvailability() {
     loading,
     error,
     refetch,
+    setAvailability,
   }
 }

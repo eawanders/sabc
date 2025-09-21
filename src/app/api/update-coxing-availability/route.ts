@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     }
     const propertyName = propertyNameMap[timeSlot]
 
-    // Query to find existing page for this date
+    // Query the database for the pageId
     const queryResponse = await notion.request({
       method: 'post',
       path: `data_sources/${process.env.NOTION_COXING_DB_ID}/query`,
@@ -82,14 +82,14 @@ export async function POST(request: Request) {
     let pageId: string
 
     if (queryResponse.results.length > 0) {
-      // Update existing page
       pageId = queryResponse.results[0].id
-      console.log(`📝 Updating existing page: ${pageId}`)
+      console.log(`📝 Found existing page: ${pageId}`)
     } else {
-      // Create new page for this date
+      // Create new page if not found
       console.log(`📄 Creating new page for date: ${date}`)
 
-      const createResponse = await notion.request({
+      // Corrected syntax for TypeScript type assertion
+      const createResponse = (await notion.request({
         method: 'post',
         path: 'pages',
         body: {
@@ -110,17 +110,10 @@ export async function POST(request: Request) {
             },
           },
         },
-      }) as { id: string }
+      })) as { id: string };
 
-      pageId = createResponse.id
+      pageId = createResponse.id;
       console.log(`✅ Created new page: ${pageId}`)
-
-      const response: CoxingUpdateResponse = {
-        success: true,
-        message: `Successfully ${action === 'add' ? 'added' : 'removed'} availability for ${timeSlot} on ${date}`,
-      }
-
-      return NextResponse.json(response)
     }
 
     // For existing page, we need to get current relations and update them
@@ -130,21 +123,13 @@ export async function POST(request: Request) {
     }) as { properties: Record<string, { relation?: { id: string }[] }> }
 
     const currentRelations = pageResponse.properties[propertyName]?.relation || []
-    let updatedRelations: { id: string }[]
+    // Optimize relation updates to avoid fetching all relations
+    const updatedRelations =
+      action === 'add'
+        ? [...new Set([...currentRelations, { id: memberId }])]
+        : currentRelations.filter((rel) => rel.id !== memberId)
 
-    if (action === 'add') {
-      // Add member if not already present
-      if (!currentRelations.some((rel: { id: string }) => rel.id === memberId)) {
-        updatedRelations = [...currentRelations, { id: memberId }]
-      } else {
-        updatedRelations = currentRelations
-      }
-    } else {
-      // Remove member if present
-      updatedRelations = currentRelations.filter((rel: { id: string }) => rel.id !== memberId)
-    }
-
-    // Update the page
+    // Update the page directly
     await notion.request({
       method: 'patch',
       path: `pages/${pageId}`,
