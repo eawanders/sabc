@@ -66,6 +66,7 @@ const seatLabels = [
   "3 Seat",
   "2 Seat",
   "Bow",
+  "Coach/Bank Rider",
   "Sub1",
   "Sub2",
   "Sub3",
@@ -92,8 +93,10 @@ const getSeatDisplayName = (seat: string): string => {
       return 'Sub';
     case 'Bow':
       return 'B';
+    case 'Coach/Bank Rider':
+      return 'BR';
     default:
-      return seat; // Cox, Bow stay as-is
+      return seat; // Cox stays as-is
   }
 };
 
@@ -128,8 +131,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
   const isMemberSelected = Boolean(selectedMember);
 
   // Get the current outing type from window.__OUTING_TYPE (set in OutingDrawer render)
-  // Show seat number for subs always, and for rowers only when Water Outing
-  const showSeatNumber = seat.startsWith('Sub') || outingType === 'Water Outing';
+  // Show seat number for subs always, for Bank Rider always, and for rowers only when Water Outing
+  const showSeatNumber = seat.startsWith('Sub') || seat === 'Coach/Bank Rider' || outingType === 'Water Outing';
 
   return (
     <div style={{
@@ -518,7 +521,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Helper functions from the proven OutingCard pattern
   const getOutingProperty = React.useCallback((propertyName: string): unknown => {
-    return outing?.properties?.[propertyName as keyof typeof outing.properties];
+    // Map seat names to actual database property names
+    const seatToPropertyMapping: Record<string, string> = {
+      'Coach/Bank Rider': 'CoachBankRider'
+    };
+
+    const actualPropertyName = seatToPropertyMapping[propertyName] || propertyName;
+    return outing?.properties?.[actualPropertyName as keyof typeof outing.properties];
   }, [outing]);
 
   // Helper function to map seat names to status field names
@@ -533,6 +542,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '4 Seat': '4 SeatStatus',
       '3 Seat': '3 SeatStatus',
       '2 Seat': '2 SeatStatus',
+      'Coach/Bank Rider': 'BankRiderStatus',
       'Sub1': 'Sub1Status',
       'Sub2': 'Sub2Status',
       'Sub3': 'Sub3Status',
@@ -554,6 +564,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '4 SeatStatus': '4 Seat Status',
       '3 SeatStatus': '3 Seat Status',
       '2 SeatStatus': '2 Seat Status',
+      'BankRiderStatus': 'Bank Rider Status',
       'Sub1Status': 'Sub1Status',
       'Sub2Status': 'Sub2Status',
       'Sub3Status': 'Sub3Status',
@@ -1010,7 +1021,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
-      title={<span style={{fontSize: '2rem', fontWeight: 700, display: 'block', color: '#161736', fontFamily: 'Gilroy'}}>{(() => {
+      title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '##27272E', fontFamily: 'Gilroy'}}>{(() => {
         const type = outing?.properties?.Type?.select?.name || '';
         if (type === 'Water Outing') return 'Outing Details';
         if (type === 'Erg Session') return 'Erg Details';
@@ -1055,7 +1066,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   }}>
                     {/* 1. Div + Type (e.g., O1 Water Outing) */}
                     <h3 style={{
-                      color: '#161736',
+                      color: '##27272E',
                       fontFamily: 'Gilroy',
                       fontSize: '18px',
                       fontStyle: 'normal',
@@ -1102,26 +1113,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     })()}
                   </div>
 
-                  {/* 3. Bank Rider/Coach */}
-                  <div style={{
-                    color: '#425466',
-                    fontFamily: 'Gilroy',
-                    fontSize: '14px',
-                    fontStyle: 'normal',
-                    fontWeight: 500,
-                    lineHeight: 'normal'
-                  }}>
-                    <span style={{ fontWeight: 600 }}>{outing?.properties?.Type?.select?.name === 'Water Outing' ? 'Bank Rider' : 'Coach'}:</span> {(() => {
-                      const bankRiderRelation = (outing.properties.CoachBankRider as NotionRelation)?.relation;
-                      if (bankRiderRelation && bankRiderRelation.length > 0) {
-                        // For now, we'll show the relation ID since we need to match it with members
-                        // This would ideally be resolved to actual member names
-                        const member = members.find(m => m.id === bankRiderRelation[0].id);
-                        return member ? member.name : 'Loading...';
-                      }
-                      return 'None';
-                    })()}
-                  </div>
+
                 </div>
 
                 {/* Right side - Pills */}
@@ -1178,10 +1170,42 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             paddingTop: '16px'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Bank Rider Section - Above Attendees (only for Water Outing) */}
+            {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+              <>
+                <h4 style={{
+                  color: '#27272E',
+                  fontFamily: 'Gilroy',
+                  fontSize: '18px',
+                  fontStyle: 'normal',
+                  fontWeight: 800,
+                  lineHeight: 'normal',
+                  margin: '0 0 16px 0'
+                }}>Bank Rider</h4>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
+                  <RowerRow
+                    key="Coach/Bank Rider"
+                    seat="Coach/Bank Rider"
+                    selectedMember={assignments["Coach/Bank Rider"]}
+                    isSubmitting={submittingSeats.has("Coach/Bank Rider")}
+                    members={members}
+                    membersLoading={membersLoading}
+                    assignments={assignments}
+                    onAssignmentChange={handleAssignmentChange}
+                    onAvailabilityUpdate={handleAvailabilityUpdate}
+                    isLoadingStatus={isLoadingStatus}
+                    outingType={outing?.properties?.Type?.select?.name}
+                    refreshMembers={refreshMembers}
+                  />
+                </div>
+              </>
+            )}
+
             {/* Rowers Section */}
             {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
-              color: '#161736',
+              color: '##27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
@@ -1197,6 +1221,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {seatLabels
                   .filter(seat => !seat.startsWith('Sub'))
+                  .filter(seat => seat !== 'Coach/Bank Rider') // Exclude Bank Rider from main list
                   .filter(seat =>
                     outing?.properties?.Type?.select?.name === 'Water Outing' || seat !== 'Cox'
                   )
@@ -1221,7 +1246,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
             {/* Subs Section */}
             <h4 style={{
-              color: '#161736',
+              color: '##27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
