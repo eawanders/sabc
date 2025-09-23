@@ -1175,6 +1175,32 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     </div>
                   )}
 
+                  {/* 4. Requirements (for Water Outings only) */}
+                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                    <div style={{
+                      color: '#425466',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontStyle: 'normal',
+                      fontWeight: 500,
+                      lineHeight: 'normal'
+                    }}>
+                      <span style={{ fontWeight: 600 }}>Requirements:</span> {(() => {
+                        const flagColor = flagStatus?.status_text?.replace(' Flag', '') || '';
+                        const requirementsMap: Record<string, string> = {
+                          'Green': 'Novice coxes must have a bankrider.',
+                          'Light Blue': 'Only X-status and S-status coxes may go out. N-status coxes with more than one term\'s experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered >2 hours before outing.',
+                          'Dark Blue': 'No novice or unregistered coxes.',
+                          'Amber': 'S-status coxes may go out only with senior crews. All crews must be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277).',
+                          'Red': 'No crews are allowed out.',
+                          'Black': 'No crews are allowed out.',
+                          'Grey': 'Flag not currently being maintained.'
+                        };
+                        return requirementsMap[flagColor] || 'Requirements not available.';
+                      })()}
+                    </div>
+                  )}
+
 
                 </div>
 
