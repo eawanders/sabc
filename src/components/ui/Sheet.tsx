@@ -174,7 +174,7 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             padding: '32px',
             flexDirection: 'column',
             alignItems: 'stretch',
-            gap: '64px',
+            gap: '40px',
             flexGrow: 1,
             pointerEvents: 'auto',
           }}

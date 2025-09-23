@@ -131,8 +131,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
   const isMemberSelected = Boolean(selectedMember);
 
   // Get the current outing type from window.__OUTING_TYPE (set in OutingDrawer render)
-  // Show seat number for subs always, for Bank Rider always, and for rowers only when Water Outing
-  const showSeatNumber = seat.startsWith('Sub') || seat === 'Coach/Bank Rider' || outingType === 'Water Outing';
+  // Show seat number for Bank Rider always, and for all seats only when Water Outing
+  const showSeatNumber = seat === 'Coach/Bank Rider' || outingType === 'Water Outing';
 
   return (
     <div style={{
@@ -455,7 +455,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
 };
 
 // Helper function to get pill background color based on type and value
-const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
+const getPillStyle = (type: 'shell' | 'status' | 'flag', value: string | null) => {
   if (type === 'status') {
     switch (value) {
       case 'Confirmed':
@@ -468,12 +468,26 @@ const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
         return { background: '#6B7280' }; // Gray
     }
   }
+  if (type === 'flag') {
+    // Map flag colors to background colors
+    const flagColorMap: Record<string, string> = {
+      'Green': '#00C53E',
+      'Light Blue': '#3B82F6',
+      'Dark Blue': '#1E40AF',
+      'Amber': '#F59E0B',
+      'Red': '#EF4444',
+      'Black': '#000000',
+      'Grey': '#6B7280'
+    };
+    const colorKey = value?.replace(' Flag', '') || '';
+    return { background: flagColorMap[colorKey] || flagColorMap['Grey'] };
+  }
   // Shell pills use the primary blue color
   return { background: '#4C6FFF' }; // Primary blue
 };
 
 // Pill component
-const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'shell' | 'status'; value: string | null }) => (
+const Pill = ({ children, type, value, shouldStretch = false }: { children: React.ReactNode; type: 'shell' | 'status' | 'flag'; value: string | null; shouldStretch?: boolean }) => (
   <div style={{
     display: 'flex',
     padding: '4px 12px',
@@ -482,6 +496,7 @@ const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'she
     gap: '10px',
     alignSelf: 'stretch',
     borderRadius: '6px',
+    ...(shouldStretch && { flex: 1 }),
     ...getPillStyle(type, value)
   }}>
     <span style={{
@@ -509,6 +524,9 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
+
+  // Flag status state
+  const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
 
   useEffect(() => {
     if (!loading && outing) {
@@ -717,6 +735,27 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     setIsLoadingStatus(false);
     console.log(`✅ Assignments initialized for outing ${outing.id}:`, initialAssignments);
   }, [outing?.id, members.length, getOutingProperty]);
+
+  // Fetch flag status for water outings
+  useEffect(() => {
+    const fetchFlagStatus = async () => {
+      if (outing?.properties?.Type?.select?.name === 'Water Outing') {
+        try {
+          const response = await fetch('/api/flag-status');
+          if (response.ok) {
+            const data = await response.json();
+            setFlagStatus(data);
+          }
+        } catch (error) {
+          console.error('Error fetching flag status:', error);
+        }
+      }
+    };
+
+    if (outing) {
+      fetchFlagStatus();
+    }
+  }, [outing]);
 
   // Handle updates to outing data while preserving optimistic updates
   React.useEffect(() => {
@@ -1116,25 +1155,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
                 </div>
 
-                {/* Right side - Pills */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '8px'
-                }}>
-                  {/* 4. Shell - Pill Component (only for Water Outing) */}
-                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
-                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null}>
-                      {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
-                    </Pill>
-                  )}
-
-                  {/* 5. Outing Status - Pill Component */}
-                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null}>
-                    {(outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
-                  </Pill>
-                </div>
+                {/* Right side - Pills - MOVED ABOVE TITLE */}
+                {/* Pills are now positioned above the outing title */}
               </div>
             </div>
 
@@ -1152,6 +1174,40 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                 }}>{outing.sessionDetailsText}</p>
               </div>
             )}
+
+            {/* Status/Shell Pills - Beneath Notes */}
+            {(() => {
+              const hasShellPill = outing?.properties?.Type?.select?.name === 'Water Outing';
+              const hasFlagPill = hasShellPill && flagStatus?.status_text;
+              return (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: hasShellPill ? 'center' : 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  alignSelf: 'stretch'
+                }}>
+                  {/* Shell - Pill Component (only for Water Outing) */}
+                  {hasShellPill && (
+                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={true}>
+                      {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
+                    </Pill>
+                  )}
+
+                  {/* Flag Status - Pill Component (only for Water Outing) */}
+                  {hasFlagPill && (
+                    <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={true}>
+                      {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
+                    </Pill>
+                  )}
+
+                  {/* Outing Status - Pill Component */}
+                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
+                    {(outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
+                  </Pill>
+                </div>
+              );
+            })()}
             </div>
           </div>
 
