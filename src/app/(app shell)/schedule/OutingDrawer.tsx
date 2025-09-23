@@ -1084,7 +1084,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             top: 0,
             zIndex: 1,
             backgroundColor: '#FFFFF',
-            paddingBottom: '16px'
+            paddingBottom: '40px'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Outing Details Card */}
@@ -1152,6 +1152,29 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     })()}
                   </div>
 
+                  {/* 3. Notes (from SessionDetails property) */}
+                  {outing.properties.SessionDetails && (
+                    <div style={{
+                      color: '#425466',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontStyle: 'normal',
+                      fontWeight: 500,
+                      lineHeight: 'normal'
+                    }}>
+                      <span style={{ fontWeight: 600 }}>Notes:</span> {(() => {
+                        const details = outing.properties.SessionDetails;
+                        if (details && 'rich_text' in details && details.rich_text?.length > 0) {
+                          const firstText = details.rich_text[0];
+                          if (firstText && typeof firstText === 'object' && 'plain_text' in firstText) {
+                            return (firstText as { plain_text: string }).plain_text;
+                          }
+                        }
+                        return '';
+                      })()}
+                    </div>
+                  )}
+
 
                 </div>
 
@@ -1159,21 +1182,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                 {/* Pills are now positioned above the outing title */}
               </div>
             </div>
-
-            {/* 6. Session Details */}
-            {outing.sessionDetailsText && (
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <p style={{
-                  color: '#425466',
-                  fontFamily: 'Gilroy',
-                  fontSize: '14px',
-                  fontStyle: 'normal',
-                  fontWeight: 400,
-                  lineHeight: '1.4',
-                  margin: 0
-                }}>{outing.sessionDetailsText}</p>
-              </div>
-            )}
 
             {/* Status/Shell Pills - Beneath Notes */}
             {(() => {
@@ -1222,8 +1230,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           {/* 5. Crew Assignments Section - Scrollable */}
           <div style={{
             flex: 1,
-            overflowY: 'auto',
-            paddingTop: '16px'
+            overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Bank Rider Section - Above Attendees (only for Water Outing) */}
