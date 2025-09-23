@@ -25,6 +25,9 @@ import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
+import { getEligibleCoxes } from '@/utils/coxEligibility';
+import { CoxingAvailability } from '@/types/coxing';
+import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -113,6 +116,10 @@ interface RowerRowProps {
   isLoadingStatus: boolean;
   outingType?: string;
   refreshMembers: () => Promise<void>;
+  flagStatus?: string;
+  outingDate?: string;
+  outingTime?: string;
+  coxingAvailability?: CoxingAvailability[];
 }
 
 const RowerRow: React.FC<RowerRowProps> = ({
@@ -126,7 +133,11 @@ const RowerRow: React.FC<RowerRowProps> = ({
   onAvailabilityUpdate,
   isLoadingStatus,
   outingType,
-  refreshMembers
+  refreshMembers,
+  flagStatus,
+  outingDate,
+  outingTime,
+  coxingAvailability
 }) => {
   const isMemberSelected = Boolean(selectedMember);
 
@@ -193,27 +204,59 @@ const RowerRow: React.FC<RowerRowProps> = ({
             <CreatableSelect
               components={{ DropdownIndicator }}
               classNamePrefix="rs"
-              options={[{ value: '', label: 'Select Member', member: null },
-                ...members
-                  .filter((member) => {
-                    const assignedNames = Object.entries(assignments)
-                      .filter(([key]) => key !== seat)
-                      .map(([, name]) => name);
-                    return !assignedNames.includes(member.name) || member.name === selectedMember;
-                  })
-                  .map((member) => ({ value: member.id, label: member.name, member }))
-              ]}
+              options={(() => {
+                // Base options with "Select Member"
+                const baseOptions = [{ value: '', label: 'Select Member', member: null }];
+
+                // Filter members based on seat type and eligibility
+                let availableMembers = members;
+
+                if (seat === 'Cox' && flagStatus && outingDate && outingTime && coxingAvailability) {
+                  // For Cox seat, filter by eligibility and availability
+                  const flagStatusNormalized = flagStatus.toLowerCase().replace(' ', '-') as 'green' | 'light-blue' | 'dark-blue' | 'red' | 'grey' | 'black';
+                  availableMembers = getEligibleCoxes(
+                    members,
+                    flagStatusNormalized,
+                    outingDate,
+                    outingTime,
+                    coxingAvailability
+                  );
+                }
+
+                // Filter out already assigned members (except current selection)
+                const assignedNames = Object.entries(assignments)
+                  .filter(([key]) => key !== seat)
+                  .map(([, name]) => name);
+
+                const filteredMembers = availableMembers.filter((member) =>
+                  !assignedNames.includes(member.name) || member.name === selectedMember
+                );
+
+                const memberOptions = filteredMembers.map((member) => ({ value: member.id, label: member.name, member }));
+
+                // For Cox seat, if no eligible coxes are available, show a disabled option
+                if (seat === 'Cox' && memberOptions.length === 0) {
+                  return [
+                    ...baseOptions,
+                    { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true }
+                  ];
+                }
+
+                return [
+                  ...baseOptions,
+                  ...memberOptions
+                ];
+              })()}
               value={(() => {
                 if (!selectedMember) return { value: '', label: 'Select Member', member: null };
-                const filtered = members
-                  .filter((member) => {
-                    const assignedNames = Object.entries(assignments)
-                      .filter(([key]) => key !== seat)
-                      .map(([, name]) => name);
-                    return !assignedNames.includes(member.name) || member.name === selectedMember;
-                  })
-                  .map((member) => ({ value: member.id, label: member.name, member }));
-                return filtered.find(opt => opt.member.name === selectedMember) || { value: '', label: 'Select Member', member: null };
+
+                // First try to find the selected member in the full members list
+                const selectedMemberObj = members.find(m => m.name === selectedMember);
+                if (selectedMemberObj) {
+                  return { value: selectedMemberObj.id, label: selectedMemberObj.name, member: selectedMemberObj };
+                }
+
+                return { value: '', label: 'Select Member', member: null };
               })()}
               onChange={(option) => {
                 // Fix: Handle MultiValue type from react-select
@@ -351,13 +394,19 @@ const RowerRow: React.FC<RowerRowProps> = ({
                         : isFocused
                           ? '#E6F0FF'
                           : 'transparent',
-                      color: isSelected ? '#fff' : '#4C5A6E',
+                      color: isSelected
+                        ? '#fff'
+                        : (data as { isDisabled?: boolean })?.isDisabled
+                          ? '#9CA3AF'
+                          : '#4C5A6E',
                       fontFamily: 'Gilroy',
                       fontSize: '13px',
                       fontWeight: 300,
                       padding: '8px 10px',
                       borderRadius,
                       transition: 'background 0.2s',
+                      cursor: (data as { isDisabled?: boolean })?.isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: (data as { isDisabled?: boolean })?.isDisabled ? 0.6 : 1,
                     };
                   },
               }}
@@ -515,6 +564,7 @@ const Pill = ({ children, type, value, shouldStretch = false }: { children: Reac
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
+  const { availability: coxingAvailability, loading: coxingLoading } = useCoxingAvailability();
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -527,6 +577,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Flag status state
   const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
+
+  // Extract outing date and time for cox eligibility
+  const outingDate = React.useMemo(() => {
+    if (!outing?.properties?.StartDateTime) return undefined;
+    const startDateObj = outing.properties.StartDateTime as NotionDate;
+    return startDateObj?.date?.start ? new Date(startDateObj.date.start).toISOString().split('T')[0] : undefined;
+  }, [outing]);
+
+  const outingTime = React.useMemo(() => {
+    if (!outing?.properties?.StartDateTime) return undefined;
+    const startDateObj = outing.properties.StartDateTime as NotionDate;
+    return startDateObj?.date?.start || undefined;
+  }, [outing]);
 
   useEffect(() => {
     if (!loading && outing) {
@@ -1286,6 +1349,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     isLoadingStatus={isLoadingStatus}
                     outingType={outing?.properties?.Type?.select?.name}
                     refreshMembers={refreshMembers}
+                    flagStatus={flagStatus?.status_text}
+                    outingDate={outingDate}
+                    outingTime={outingTime}
+                    coxingAvailability={coxingAvailability}
                   />
                 </div>
               </>
@@ -1328,6 +1395,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       isLoadingStatus={isLoadingStatus}
                       outingType={outing?.properties?.Type?.select?.name}
                       refreshMembers={refreshMembers}
+                      flagStatus={flagStatus?.status_text}
+                      outingDate={outingDate}
+                      outingTime={outingTime}
+                      coxingAvailability={coxingAvailability}
                     />
                   ))}
               </div>
@@ -1361,6 +1432,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     isLoadingStatus={isLoadingStatus}
                     outingType={outing?.properties?.Type?.select?.name}
                     refreshMembers={refreshMembers}
+                    flagStatus={flagStatus?.status_text}
+                    outingDate={outingDate}
+                    outingTime={outingTime}
+                    coxingAvailability={coxingAvailability}
                   />
                 ))}
               </div>
