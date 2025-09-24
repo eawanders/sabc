@@ -84,7 +84,9 @@ export async function POST(req: Request) {
       'Sub1Status': 'Sub 1 Status',
       'Sub2Status': 'Sub 2 Status',
       'Sub3Status': 'Sub 3 Status',
-      'Sub4Status': 'Sub 4 Status'
+      'Sub4Status': 'Sub 4 Status',
+  // frontend uses the key 'OutingStatus' but the Notion property is named 'Status'
+  'OutingStatus': 'Status'
     };
 
     // Try to normalize the status field name (remove spaces if present)
@@ -180,7 +182,11 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      if (error.message.includes('property does not exist')) {
+      if (
+        error.message.includes('property does not exist') ||
+        error.message.includes('is not a property that exists') ||
+        error.message.includes('not a property')
+      ) {
         return new Response(
           JSON.stringify({
             error: 'Invalid availability property',

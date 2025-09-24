@@ -20,15 +20,47 @@ export function useOutingState(outingId: string) {
     const cached = loadCachedState(outingId);
     if (cached) {
       setAssignments(cached.assignments);
-      console.log(`🔄 Loaded cached state for outing ${outingId}:`, cached.assignments);
     }
     setIsInitialized(true);
+    // Listen for cross-window storage events and custom events to keep multiple instances in sync
+    function onStorage(e: StorageEvent) {
+      if (e.key !== CACHE_KEY) return;
+      const newCached = loadCachedState(outingId);
+      if (newCached) setAssignments(newCached.assignments);
+    }
+
+    function onCustom(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.outingId === outingId) {
+        setAssignments(detail.assignments);
+      }
+    }
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('outing-state-updated', onCustom as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('outing-state-updated', onCustom as EventListener);
+    };
   }, [outingId]);
 
-  // Save state to cache when it changes
-  const updateAssignments = useCallback((newAssignments: Record<string, string>) => {
-    setAssignments(newAssignments);
-    saveCachedState(outingId, newAssignments);
+  // Save state to cache when it changes. Accept either a plain object or an updater function
+  // so callers can use the functional form (prev => ({ ...prev, foo: 'bar' })).
+  const updateAssignments = useCallback((newAssignmentsOrUpdater: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => {
+    setAssignments(prev => {
+      const resolved = typeof newAssignmentsOrUpdater === 'function'
+        ? (newAssignmentsOrUpdater as (prev: Record<string, string>) => Record<string, string>)(prev)
+        : newAssignmentsOrUpdater;
+      // Persist the resolved assignments
+      try {
+        console.debug('[useOutingState] saving cached state for', outingId, resolved);
+        saveCachedState(outingId, resolved);
+      } catch (err) {
+        console.error('❌ Error saving cached state:', err);
+      }
+      return resolved;
+    });
   }, [outingId]);
 
   return {
@@ -72,6 +104,13 @@ function saveCachedState(outingId: string, assignments: Record<string, string>) 
     };
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    // Log and dispatch a custom event so other hook instances in the same window can react immediately
+    console.debug('[useOutingState] saveCachedState: wrote cache and dispatching outing-state-updated for', outingId);
+    try {
+      window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId, assignments } }));
+    } catch (err) {
+      console.error('[useOutingState] dispatch failed for', outingId, err);
+    }
   } catch (error) {
     console.error('❌ Error saving cached state:', error);
   }

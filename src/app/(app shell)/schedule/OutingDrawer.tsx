@@ -668,6 +668,63 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     return null;
   };
 
+  // Helper function to check if outing should be auto-confirmed
+  const shouldAutoConfirmOuting = React.useCallback((
+    currentAssignments: Record<string, string>,
+    outingType: string,
+    flagStatus: string | null,
+    coxExperience: string | undefined
+  ): boolean => {
+    // Only apply to Water Outings
+    if (outingType !== 'Water Outing') {
+      return false;
+    }
+
+    // Define the 8 main rowing seats (excluding subs and bank rider)
+    const mainSeats = [
+      'Cox', 'Stroke', '7 Seat', '6 Seat', '5 Seat',
+      '4 Seat', '3 Seat', '2 Seat', 'Bow'
+    ];
+
+    // Check if all 8 main seats + cox have members assigned and are "Available"
+    for (const seat of mainSeats) {
+      if (!currentAssignments[seat] || currentAssignments[`${seat}_status`] !== 'Available') {
+        return false;
+      }
+    }
+
+    // Check if bank rider is required based on conditions
+    let bankRiderRequired = false;
+
+    if (flagStatus) {
+      const normalizedFlag = flagStatus.toLowerCase().replace(' ', '-');
+
+      // Green flag AND Cox is Novice or Novice (less than 1 term)
+      if (normalizedFlag === 'green' &&
+          (coxExperience === 'Novice' || coxExperience === 'Novice (less than 1 term)')) {
+        bankRiderRequired = true;
+      }
+      // Light blue flag AND Cox is Novice
+      else if (normalizedFlag === 'light-blue' && coxExperience === 'Novice') {
+        bankRiderRequired = true;
+      }
+      // Amber flag
+      else if (normalizedFlag === 'amber') {
+        bankRiderRequired = true;
+      }
+    }
+
+    // If bank rider is required, check if they are assigned and available
+    if (bankRiderRequired) {
+      if (!currentAssignments['Coach/Bank Rider'] ||
+          currentAssignments['Coach/Bank Rider_status'] !== 'Available') {
+        return false;
+      }
+    }
+
+    return true;
+  }, []);
+
   // Helper function to format title as "Div Type" (e.g. "O1 Water Outing")
   const getOutingTitle = (): string => {
     // Construct from Div and Type properties (like event item headers)
@@ -1086,6 +1143,107 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       const responseData = await res.json();
       console.log(`✅ ${statusField} updated to ${status}`, responseData);
 
+      // Check outing status changes after availability update
+      const updatedAssignments = {
+        ...assignments,
+        [`${seat}_status`]: status,
+      };
+
+      // Get cox experience for bank rider requirement check
+      const coxMember = members.find(m => m.name === updatedAssignments['Cox']);
+      const coxExperience = coxMember?.coxExperience;
+
+      const shouldConfirm = shouldAutoConfirmOuting(
+        updatedAssignments,
+        outing?.properties?.Type?.select?.name || '',
+        flagStatus?.status_text || null,
+        coxExperience
+      );
+
+      // Handle auto-confirmation when all requirements are met
+      if (status === 'Available' && shouldConfirm) {
+        console.log('🎯 All required participants are available - auto-confirming outing');
+
+        try {
+          const payload = {
+            outingId: outing.id,
+            // Notion property for outing-level status is called 'Status'
+            statusField: 'Status',
+            status: 'Confirmed',
+          };
+
+          console.log('🔁 Auto-confirm request payload:', payload);
+
+          const confirmRes = await fetch("/api/update-availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          // Read response text for richer debugging information when not OK
+          const respText = await confirmRes.text();
+
+          if (confirmRes.ok) {
+            console.log('✅ Outing automatically confirmed', { status: confirmRes.status, body: respText });
+            // Update local state immediately for instant UI feedback
+            console.debug('[OutingDrawer] setting OutingStatus local to Confirmed for', outing.id);
+            const updatedForConfirm = { ...assignments, OutingStatus: 'Confirmed' };
+            setAssignments(updatedForConfirm);
+            try {
+              window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForConfirm } }));
+            } catch (err) {
+              console.error('[OutingDrawer] failed to dispatch outing-state-updated (Confirmed):', err);
+            }
+          } else {
+            console.error('❌ Failed to auto-confirm outing', { status: confirmRes.status, body: respText });
+            // Throw so the outer catch logs full error
+            throw new Error(`Auto-confirm failed: ${confirmRes.status} - ${respText}`);
+          }
+        } catch (confirmErr) {
+          console.error('❌ Error auto-confirming outing:', confirmErr);
+        }
+      }
+      // Handle de-confirmation when requirements are no longer met
+      else if (status !== 'Available' && !shouldConfirm) {
+        // Check if outing was previously confirmed and should now be provisional
+        const currentOutingStatus = outing?.properties?.OutingStatus?.status?.name;
+        if (currentOutingStatus === 'Confirmed') {
+          console.log('⚠️ Requirements no longer met - changing status back to Provisional');
+
+          try {
+            const deconfirmRes = await fetch("/api/update-availability", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                outingId: outing.id,
+                // Use the Notion property name directly
+                statusField: 'Status',
+                status: 'Provisional',
+              }),
+            });
+
+            const deconfirmText = await deconfirmRes.text();
+            if (deconfirmRes.ok) {
+              console.log('✅ Outing status changed back to Provisional', { status: deconfirmRes.status, body: deconfirmText });
+              // Update local state immediately for instant UI feedback
+              console.debug('[OutingDrawer] setting OutingStatus local to Provisional for', outing.id);
+              const updatedForProvisional = { ...assignments, OutingStatus: 'Provisional' };
+              setAssignments(updatedForProvisional);
+              try {
+                window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForProvisional } }));
+              } catch (err) {
+                console.error('[OutingDrawer] failed to dispatch outing-state-updated (Provisional):', err);
+              }
+            } else {
+              console.error('❌ Failed to de-confirm outing', { status: deconfirmRes.status, body: deconfirmText });
+              throw new Error(`De-confirm failed: ${deconfirmRes.status} - ${deconfirmText}`);
+            }
+          } catch (deconfirmErr) {
+            console.error('❌ Error de-confirming outing:', deconfirmErr);
+          }
+        }
+      }
+
       // Notify parent of state change to refresh data
       if (refresh) {
         refresh();
@@ -1299,8 +1457,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   )}
 
                   {/* Outing Status - Pill Component */}
-                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
-                    {(outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
+                  <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
+                    {assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
                   </Pill>
                 </div>
               );
