@@ -140,11 +140,21 @@ export async function GET() {
           }
         }
 
+        // Safely extract cox experience
+        let coxExperience = ''
+        const coxExperienceProperty = getPropertyValue(page, 'Cox Experience')
+        if (coxExperienceProperty) {
+          if (coxExperienceProperty.type === 'select' && 'select' in coxExperienceProperty && coxExperienceProperty.select?.name) {
+            coxExperience = coxExperienceProperty.select.name.trim()
+          }
+        }
+
         const member: Member = {
           id: page.id,
           name,
           email,
           memberType,
+          coxExperience: coxExperience || undefined,
         }
 
         console.log(`👤 Processed member: ${member.name} (${member.memberType})`)

@@ -25,6 +25,9 @@ import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
+import { getEligibleCoxes } from '@/utils/coxEligibility';
+import { CoxingAvailability } from '@/types/coxing';
+import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -66,6 +69,7 @@ const seatLabels = [
   "3 Seat",
   "2 Seat",
   "Bow",
+  "Coach/Bank Rider",
   "Sub1",
   "Sub2",
   "Sub3",
@@ -92,8 +96,10 @@ const getSeatDisplayName = (seat: string): string => {
       return 'Sub';
     case 'Bow':
       return 'B';
+    case 'Coach/Bank Rider':
+      return 'BR';
     default:
-      return seat; // Cox, Bow stay as-is
+      return seat; // Cox stays as-is
   }
 };
 
@@ -110,6 +116,10 @@ interface RowerRowProps {
   isLoadingStatus: boolean;
   outingType?: string;
   refreshMembers: () => Promise<void>;
+  flagStatus?: string;
+  outingDate?: string;
+  outingTime?: string;
+  coxingAvailability?: CoxingAvailability[];
 }
 
 const RowerRow: React.FC<RowerRowProps> = ({
@@ -123,13 +133,17 @@ const RowerRow: React.FC<RowerRowProps> = ({
   onAvailabilityUpdate,
   isLoadingStatus,
   outingType,
-  refreshMembers
+  refreshMembers,
+  flagStatus,
+  outingDate,
+  outingTime,
+  coxingAvailability
 }) => {
   const isMemberSelected = Boolean(selectedMember);
 
   // Get the current outing type from window.__OUTING_TYPE (set in OutingDrawer render)
-  // Show seat number for subs always, and for rowers only when Water Outing
-  const showSeatNumber = seat.startsWith('Sub') || outingType === 'Water Outing';
+  // Show seat number for Bank Rider always, and for all seats only when Water Outing
+  const showSeatNumber = seat === 'Coach/Bank Rider' || outingType === 'Water Outing';
 
   return (
     <div style={{
@@ -190,27 +204,59 @@ const RowerRow: React.FC<RowerRowProps> = ({
             <CreatableSelect
               components={{ DropdownIndicator }}
               classNamePrefix="rs"
-              options={[{ value: '', label: 'Select Member', member: null },
-                ...members
-                  .filter((member) => {
-                    const assignedNames = Object.entries(assignments)
-                      .filter(([key]) => key !== seat)
-                      .map(([, name]) => name);
-                    return !assignedNames.includes(member.name) || member.name === selectedMember;
-                  })
-                  .map((member) => ({ value: member.id, label: member.name, member }))
-              ]}
+              options={(() => {
+                // Base options with "Select Member"
+                const baseOptions = [{ value: '', label: 'Select Member', member: null }];
+
+                // Filter members based on seat type and eligibility
+                let availableMembers = members;
+
+                if (seat === 'Cox' && flagStatus && outingDate && outingTime && coxingAvailability) {
+                  // For Cox seat, filter by eligibility and availability
+                  const flagStatusNormalized = flagStatus.toLowerCase().replace(' ', '-') as 'green' | 'light-blue' | 'dark-blue' | 'red' | 'grey' | 'black';
+                  availableMembers = getEligibleCoxes(
+                    members,
+                    flagStatusNormalized,
+                    outingDate,
+                    outingTime,
+                    coxingAvailability
+                  );
+                }
+
+                // Filter out already assigned members (except current selection)
+                const assignedNames = Object.entries(assignments)
+                  .filter(([key]) => key !== seat)
+                  .map(([, name]) => name);
+
+                const filteredMembers = availableMembers.filter((member) =>
+                  !assignedNames.includes(member.name) || member.name === selectedMember
+                );
+
+                const memberOptions = filteredMembers.map((member) => ({ value: member.id, label: member.name, member }));
+
+                // For Cox seat, if no eligible coxes are available, show a disabled option
+                if (seat === 'Cox' && memberOptions.length === 0) {
+                  return [
+                    ...baseOptions,
+                    { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true }
+                  ];
+                }
+
+                return [
+                  ...baseOptions,
+                  ...memberOptions
+                ];
+              })()}
               value={(() => {
                 if (!selectedMember) return { value: '', label: 'Select Member', member: null };
-                const filtered = members
-                  .filter((member) => {
-                    const assignedNames = Object.entries(assignments)
-                      .filter(([key]) => key !== seat)
-                      .map(([, name]) => name);
-                    return !assignedNames.includes(member.name) || member.name === selectedMember;
-                  })
-                  .map((member) => ({ value: member.id, label: member.name, member }));
-                return filtered.find(opt => opt.member.name === selectedMember) || { value: '', label: 'Select Member', member: null };
+
+                // First try to find the selected member in the full members list
+                const selectedMemberObj = members.find(m => m.name === selectedMember);
+                if (selectedMemberObj) {
+                  return { value: selectedMemberObj.id, label: selectedMemberObj.name, member: selectedMemberObj };
+                }
+
+                return { value: '', label: 'Select Member', member: null };
               })()}
               onChange={(option) => {
                 // Fix: Handle MultiValue type from react-select
@@ -348,13 +394,19 @@ const RowerRow: React.FC<RowerRowProps> = ({
                         : isFocused
                           ? '#E6F0FF'
                           : 'transparent',
-                      color: isSelected ? '#fff' : '#4C5A6E',
+                      color: isSelected
+                        ? '#fff'
+                        : (data as { isDisabled?: boolean })?.isDisabled
+                          ? '#9CA3AF'
+                          : '#4C5A6E',
                       fontFamily: 'Gilroy',
                       fontSize: '13px',
                       fontWeight: 300,
                       padding: '8px 10px',
                       borderRadius,
                       transition: 'background 0.2s',
+                      cursor: (data as { isDisabled?: boolean })?.isDisabled ? 'not-allowed' : 'pointer',
+                      opacity: (data as { isDisabled?: boolean })?.isDisabled ? 0.6 : 1,
                     };
                   },
               }}
@@ -452,7 +504,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
 };
 
 // Helper function to get pill background color based on type and value
-const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
+const getPillStyle = (type: 'shell' | 'status' | 'flag', value: string | null) => {
   if (type === 'status') {
     switch (value) {
       case 'Confirmed':
@@ -465,12 +517,26 @@ const getPillStyle = (type: 'shell' | 'status', value: string | null) => {
         return { background: '#6B7280' }; // Gray
     }
   }
+  if (type === 'flag') {
+    // Map flag colors to background colors
+    const flagColorMap: Record<string, string> = {
+      'Green': '#00C53E',
+      'Light Blue': '#3B82F6',
+      'Dark Blue': '#1E40AF',
+      'Amber': '#F59E0B',
+      'Red': '#EF4444',
+      'Black': '#000000',
+      'Grey': '#6B7280'
+    };
+    const colorKey = value?.replace(' Flag', '') || '';
+    return { background: flagColorMap[colorKey] || flagColorMap['Grey'] };
+  }
   // Shell pills use the primary blue color
   return { background: '#4C6FFF' }; // Primary blue
 };
 
 // Pill component
-const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'shell' | 'status'; value: string | null }) => (
+const Pill = ({ children, type, value, shouldStretch = false }: { children: React.ReactNode; type: 'shell' | 'status' | 'flag'; value: string | null; shouldStretch?: boolean }) => (
   <div style={{
     display: 'flex',
     padding: '4px 12px',
@@ -479,6 +545,7 @@ const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'she
     gap: '10px',
     alignSelf: 'stretch',
     borderRadius: '6px',
+    ...(shouldStretch && { flex: 1 }),
     ...getPillStyle(type, value)
   }}>
     <span style={{
@@ -497,6 +564,7 @@ const Pill = ({ children, type, value }: { children: React.ReactNode; type: 'she
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
+  const { availability: coxingAvailability, loading: coxingLoading } = useCoxingAvailability();
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -506,6 +574,22 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
+
+  // Flag status state
+  const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
+
+  // Extract outing date and time for cox eligibility
+  const outingDate = React.useMemo(() => {
+    if (!outing?.properties?.StartDateTime) return undefined;
+    const startDateObj = outing.properties.StartDateTime as NotionDate;
+    return startDateObj?.date?.start ? new Date(startDateObj.date.start).toISOString().split('T')[0] : undefined;
+  }, [outing]);
+
+  const outingTime = React.useMemo(() => {
+    if (!outing?.properties?.StartDateTime) return undefined;
+    const startDateObj = outing.properties.StartDateTime as NotionDate;
+    return startDateObj?.date?.start || undefined;
+  }, [outing]);
 
   useEffect(() => {
     if (!loading && outing) {
@@ -518,7 +602,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Helper functions from the proven OutingCard pattern
   const getOutingProperty = React.useCallback((propertyName: string): unknown => {
-    return outing?.properties?.[propertyName as keyof typeof outing.properties];
+    // Map seat names to actual database property names
+    const seatToPropertyMapping: Record<string, string> = {
+      'Coach/Bank Rider': 'CoachBankRider'
+    };
+
+    const actualPropertyName = seatToPropertyMapping[propertyName] || propertyName;
+    return outing?.properties?.[actualPropertyName as keyof typeof outing.properties];
   }, [outing]);
 
   // Helper function to map seat names to status field names
@@ -533,6 +623,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '4 Seat': '4 SeatStatus',
       '3 Seat': '3 SeatStatus',
       '2 Seat': '2 SeatStatus',
+      'Coach/Bank Rider': 'BankRiderStatus',
       'Sub1': 'Sub1Status',
       'Sub2': 'Sub2Status',
       'Sub3': 'Sub3Status',
@@ -554,6 +645,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '4 SeatStatus': '4 Seat Status',
       '3 SeatStatus': '3 Seat Status',
       '2 SeatStatus': '2 Seat Status',
+      'BankRiderStatus': 'Bank Rider Status',
       'Sub1Status': 'Sub1Status',
       'Sub2Status': 'Sub2Status',
       'Sub3Status': 'Sub3Status',
@@ -706,6 +798,27 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     setIsLoadingStatus(false);
     console.log(`✅ Assignments initialized for outing ${outing.id}:`, initialAssignments);
   }, [outing?.id, members.length, getOutingProperty]);
+
+  // Fetch flag status for water outings
+  useEffect(() => {
+    const fetchFlagStatus = async () => {
+      if (outing?.properties?.Type?.select?.name === 'Water Outing') {
+        try {
+          const response = await fetch('/api/flag-status');
+          if (response.ok) {
+            const data = await response.json();
+            setFlagStatus(data);
+          }
+        } catch (error) {
+          console.error('Error fetching flag status:', error);
+        }
+      }
+    };
+
+    if (outing) {
+      fetchFlagStatus();
+    }
+  }, [outing]);
 
   // Handle updates to outing data while preserving optimistic updates
   React.useEffect(() => {
@@ -1010,7 +1123,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     <Sheet
       isOpen={isOpen}
       onClose={onClose}
-      title={<span style={{fontSize: '2rem', fontWeight: 700, display: 'block', color: '#161736', fontFamily: 'Gilroy'}}>{(() => {
+      title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '##27272E', fontFamily: 'Gilroy'}}>{(() => {
         const type = outing?.properties?.Type?.select?.name || '';
         if (type === 'Water Outing') return 'Outing Details';
         if (type === 'Erg Session') return 'Erg Details';
@@ -1034,7 +1147,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             top: 0,
             zIndex: 1,
             backgroundColor: '#FFFFF',
-            paddingBottom: '16px'
+            paddingBottom: '40px'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Outing Details Card */}
@@ -1055,7 +1168,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   }}>
                     {/* 1. Div + Type (e.g., O1 Water Outing) */}
                     <h3 style={{
-                      color: '#161736',
+                      color: '##27272E',
                       fontFamily: 'Gilroy',
                       fontSize: '18px',
                       fontStyle: 'normal',
@@ -1102,64 +1215,96 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     })()}
                   </div>
 
-                  {/* 3. Bank Rider/Coach */}
-                  <div style={{
-                    color: '#425466',
-                    fontFamily: 'Gilroy',
-                    fontSize: '14px',
-                    fontStyle: 'normal',
-                    fontWeight: 500,
-                    lineHeight: 'normal'
-                  }}>
-                    <span style={{ fontWeight: 600 }}>{outing?.properties?.Type?.select?.name === 'Water Outing' ? 'Bank Rider' : 'Coach'}:</span> {(() => {
-                      const bankRiderRelation = (outing.properties.CoachBankRider as NotionRelation)?.relation;
-                      if (bankRiderRelation && bankRiderRelation.length > 0) {
-                        // For now, we'll show the relation ID since we need to match it with members
-                        // This would ideally be resolved to actual member names
-                        const member = members.find(m => m.id === bankRiderRelation[0].id);
-                        return member ? member.name : 'Loading...';
-                      }
-                      return 'None';
-                    })()}
-                  </div>
+                  {/* 3. Notes (from SessionDetails property) */}
+                  {outing.properties.SessionDetails && (
+                    <div style={{
+                      color: '#425466',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontStyle: 'normal',
+                      fontWeight: 500,
+                      lineHeight: 'normal'
+                    }}>
+                      <span style={{ fontWeight: 600 }}>Notes:</span> {(() => {
+                        const details = outing.properties.SessionDetails;
+                        if (details && 'rich_text' in details && details.rich_text?.length > 0) {
+                          const firstText = details.rich_text[0];
+                          if (firstText && typeof firstText === 'object' && 'plain_text' in firstText) {
+                            return (firstText as { plain_text: string }).plain_text;
+                          }
+                        }
+                        return '';
+                      })()}
+                    </div>
+                  )}
+
+                  {/* 4. Requirements (for Water Outings only) */}
+                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                    <div style={{
+                      color: '#425466',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontStyle: 'normal',
+                      fontWeight: 500,
+                      lineHeight: 'normal'
+                    }}>
+                      <span style={{ fontWeight: 600 }}>Requirements:</span> {(() => {
+                        const flagColor = flagStatus?.status_text?.replace(' Flag', '') || '';
+                        const requirementsMap: Record<string, string> = {
+                          'Green': 'Novice coxes must have a bankrider.',
+                          'Light Blue': 'Only X-status and S-status coxes may go out. N-status coxes with more than one term\'s experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered >2 hours before outing.',
+                          'Dark Blue': 'No novice or unregistered coxes.',
+                          'Amber': 'S-status coxes may go out only with senior crews. All crews must be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277).',
+                          'Red': 'No crews are allowed out.',
+                          'Black': 'No crews are allowed out.',
+                          'Grey': 'Flag not currently being maintained.'
+                        };
+                        return requirementsMap[flagColor] || 'Requirements not available.';
+                      })()}
+                    </div>
+                  )}
+
+
                 </div>
 
-                {/* Right side - Pills */}
+                {/* Right side - Pills - MOVED ABOVE TITLE */}
+                {/* Pills are now positioned above the outing title */}
+              </div>
+            </div>
+
+            {/* Status/Shell Pills - Beneath Notes */}
+            {(() => {
+              const hasShellPill = outing?.properties?.Type?.select?.name === 'Water Outing';
+              const hasFlagPill = hasShellPill && flagStatus?.status_text;
+              return (
                 <div style={{
                   display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '8px'
+                  justifyContent: hasShellPill ? 'center' : 'flex-start',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  alignSelf: 'stretch'
                 }}>
-                  {/* 4. Shell - Pill Component (only for Water Outing) */}
-                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
-                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null}>
+                  {/* Shell - Pill Component (only for Water Outing) */}
+                  {hasShellPill && (
+                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={true}>
                       {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
                     </Pill>
                   )}
 
-                  {/* 5. Outing Status - Pill Component */}
-                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null}>
+                  {/* Flag Status - Pill Component (only for Water Outing) */}
+                  {hasFlagPill && (
+                    <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={true}>
+                      {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
+                    </Pill>
+                  )}
+
+                  {/* Outing Status - Pill Component */}
+                  <Pill type="status" value={(outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
                     {(outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
                   </Pill>
                 </div>
-              </div>
-            </div>
-
-            {/* 6. Session Details */}
-            {outing.sessionDetailsText && (
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <p style={{
-                  color: '#425466',
-                  fontFamily: 'Gilroy',
-                  fontSize: '14px',
-                  fontStyle: 'normal',
-                  fontWeight: 400,
-                  lineHeight: '1.4',
-                  margin: 0
-                }}>{outing.sessionDetailsText}</p>
-              </div>
-            )}
+              );
+            })()}
             </div>
           </div>
 
@@ -1174,14 +1319,49 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           {/* 5. Crew Assignments Section - Scrollable */}
           <div style={{
             flex: 1,
-            overflowY: 'auto',
-            paddingTop: '16px'
+            overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Bank Rider Section - Above Attendees (only for Water Outing) */}
+            {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+              <>
+                <h4 style={{
+                  color: '#27272E',
+                  fontFamily: 'Gilroy',
+                  fontSize: '18px',
+                  fontStyle: 'normal',
+                  fontWeight: 800,
+                  lineHeight: 'normal',
+                  margin: '0 0 16px 0'
+                }}>Bank Rider</h4>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
+                  <RowerRow
+                    key="Coach/Bank Rider"
+                    seat="Coach/Bank Rider"
+                    selectedMember={assignments["Coach/Bank Rider"]}
+                    isSubmitting={submittingSeats.has("Coach/Bank Rider")}
+                    members={members}
+                    membersLoading={membersLoading}
+                    assignments={assignments}
+                    onAssignmentChange={handleAssignmentChange}
+                    onAvailabilityUpdate={handleAvailabilityUpdate}
+                    isLoadingStatus={isLoadingStatus}
+                    outingType={outing?.properties?.Type?.select?.name}
+                    refreshMembers={refreshMembers}
+                    flagStatus={flagStatus?.status_text}
+                    outingDate={outingDate}
+                    outingTime={outingTime}
+                    coxingAvailability={coxingAvailability}
+                  />
+                </div>
+              </>
+            )}
+
             {/* Rowers Section */}
             {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
-              color: '#161736',
+              color: '##27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
@@ -1197,6 +1377,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {seatLabels
                   .filter(seat => !seat.startsWith('Sub'))
+                  .filter(seat => seat !== 'Coach/Bank Rider') // Exclude Bank Rider from main list
                   .filter(seat =>
                     outing?.properties?.Type?.select?.name === 'Water Outing' || seat !== 'Cox'
                   )
@@ -1214,6 +1395,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       isLoadingStatus={isLoadingStatus}
                       outingType={outing?.properties?.Type?.select?.name}
                       refreshMembers={refreshMembers}
+                      flagStatus={flagStatus?.status_text}
+                      outingDate={outingDate}
+                      outingTime={outingTime}
+                      coxingAvailability={coxingAvailability}
                     />
                   ))}
               </div>
@@ -1221,7 +1406,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
             {/* Subs Section */}
             <h4 style={{
-              color: '#161736',
+              color: '##27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
@@ -1247,6 +1432,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     isLoadingStatus={isLoadingStatus}
                     outingType={outing?.properties?.Type?.select?.name}
                     refreshMembers={refreshMembers}
+                    flagStatus={flagStatus?.status_text}
+                    outingDate={outingDate}
+                    outingTime={outingTime}
+                    coxingAvailability={coxingAvailability}
                   />
                 ))}
               </div>

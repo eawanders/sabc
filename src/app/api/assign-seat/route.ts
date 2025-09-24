@@ -71,8 +71,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Map seat names to actual database field names
+    const seatToFieldMapping: Record<string, string> = {
+      'Coach/Bank Rider': 'Coach/Bank Rider' // This maps to the actual Notion property name
+    }
+
+    const actualSeatField = seatToFieldMapping[seat] || seat;
+
     const updatePayload = {
-      [seat]: {
+      [actualSeatField]: {
         relation: memberId ? [{ id: memberId }] : [],
       }
     }

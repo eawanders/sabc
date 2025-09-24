@@ -169,12 +169,12 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             boxShadow: '-16px 0 34px 0 rgba(176, 179, 189, 0.10)',
             // Custom flexbox layout as requested
             display: 'flex',
-            width: '370px',
-            height: '900px',
+            width: '420px',
+            height: '100vh',
             padding: '32px',
             flexDirection: 'column',
             alignItems: 'stretch',
-            gap: '64px',
+            gap: '40px',
             flexGrow: 1,
             pointerEvents: 'auto',
           }}

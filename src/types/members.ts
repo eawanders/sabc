@@ -22,4 +22,5 @@ export interface Member {
   name: string;
   email: string;
   memberType: string;
+  coxExperience?: string; // "Novice", "Novice (less than 1 term)", "Experienced", "Senior"
 }
