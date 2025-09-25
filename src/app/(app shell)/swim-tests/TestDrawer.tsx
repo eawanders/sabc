@@ -752,22 +752,14 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
         weekday: 'long'
       }).format(date);
 
-      // Format start time in 24-hour format
-      const startTime = new Intl.DateTimeFormat('en-GB', {
-        hour: '2-digit',
+      // Format start time in 12-hour format (e.g., 9:00 AM)
+      const startTime = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: false
+        hour12: true
       }).format(date);
 
-      // Assume 2-hour duration for tests (can be made configurable later)
-      const endDate = new Date(date.getTime() + 2 * 60 * 60 * 1000);
-      const endTime = new Intl.DateTimeFormat('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).format(endDate);
-
-      return `${dayOfWeek} ${startTime}-${endTime}`;
+      return `${dayOfWeek} ${startTime}`;
     } catch (error) {
       console.error('Error formatting day and time:', error, 'dateStr:', dateStr);
       return 'Date error';
@@ -838,7 +830,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
               fontWeight: 400,
               lineHeight: 'normal'
             }}>
-              <span style={{ fontWeight: 600 }}>Notes:</span> Sign up below to this {currentTest.type ? currentTest.type.toLowerCase() : 'test'}.
+              <span style={{ fontWeight: 600 }}>Notes:</span> Add your name to an available slot. Mark the outcome of your test with the action buttons beside your name. If you do not provide an outcome, we will assume you did not attend.
             </span>
           </div>
         </div>
@@ -864,14 +856,11 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
               }}>
                 Attendees
               </h3>
-            </div>          {/* Scrollable container for test rows */}
+            </div>          {/* Container for test rows */}
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
-            maxHeight: '400px',
-            overflowY: 'auto',
-            paddingRight: '4px' // Space for scrollbar
+            gap: '12px'
           }}>
             {slotLabels.map((slot, index) => (
               <TestRow
@@ -891,20 +880,321 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
             ))}
           </div>
 
-          {/* Instructions for test outcomes */}
+          {/* Information Section */}
           <div style={{
-            marginTop: '16px'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            marginTop: '24px'
           }}>
-            <p style={{
-              color: '#4C5A6E',
+            <h3 style={{
+              color: '#27272E',
               fontFamily: 'Gilroy',
-              fontSize: '14px',
-              fontWeight: 400,
-              lineHeight: '1.4',
+              fontSize: '18px',
+              fontWeight: 600,
+              lineHeight: 'normal',
               margin: 0
             }}>
-              Mark the outcome of your test with the action buttons beside your name. If you do not provide an outcome, we will assume you did not attend.
-            </p>
+              Information
+            </h3>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}>
+              {currentTest.type === 'Capsize Drill' ? (
+                <>
+                  {/* Where to go - Capsize Drill */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      Where to go
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying "Capsize Drills", and someone there will be signing people in.
+                    </p>
+                  </div>
+
+                  {/* When to arrive - Capsize Drill */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      When to arrive
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      Please arrive promptly at your booked time slot.
+                    </p>
+                  </div>
+
+                  {/* Test Details - Capsize Drill */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      Test Details
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0'
+                    }}>
+                      The test tests your ability to safely capsize and then get your boat the correct way up and back to shore.
+                    </p>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      You will receive an email once you have confirmed your availability. OURC will send you a full breakdown of the test with a link to a short online test which you must take and pass beforehand.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Where to go */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      Where to go
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying "Swim Tests", and someone there will be signing people in.
+                    </p>
+                  </div>
+
+                  {/* When to arrive */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      When to arrive
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      Please arrive promptly at your booked time slot.
+                    </p>
+                  </div>
+
+                  {/* What to wear */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      What to wear
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0'
+                    }}>
+                      You must take the swim test in clothes or sports kit:
+                    </p>
+                    <ul style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0',
+                      paddingLeft: '20px'
+                    }}>
+                      <li>A T-shirt or equivalent (no sleeveless tops).</li>
+                      <li>Shorts or lycra-style leggings (not baggy).</li>
+                    </ul>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      Goggles are allowed. Swim caps that you wouldn't normally wear while rowing are not permitted.
+                    </p>
+                  </div>
+
+                  {/* What to bring */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      What to bring
+                    </h4>
+                    <ul style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0,
+                      paddingLeft: '20px'
+                    }}>
+                      <li>A towel.</li>
+                      <li>A change of clothes for after the test.</li>
+                      <li>A bag for wet clothes.</li>
+                      <li>Your Bod Card (or another form of ID if you don't have one).</li>
+                    </ul>
+                  </div>
+
+                  {/* What to do when you arrive */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      What to do when you arrive
+                    </h4>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0'
+                    }}>
+                      Before the test, you must sign in at the OURCs desk. An OURCs member (with a laptop) will record your name, college and Bod Card number.
+                    </p>
+                    <ul style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0',
+                      paddingLeft: '20px'
+                    }}>
+                      <li>This is not done at the Sports Centre reception or by swim instructors.</li>
+                      <li>Look for the "Swim Tests" sign on the table.</li>
+                    </ul>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: '0 0 8px 0'
+                    }}>
+                      If you don't sign in, your swim test will not be recorded.
+                    </p>
+                    <p style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0
+                    }}>
+                      After signing in, you will be shown a pre-test video before heading to the pool changing rooms to get changed and take the test.
+                    </p>
+                  </div>
+
+                  {/* What the swim test involves */}
+                  <div>
+                    <h4 style={{
+                      color: '#27272E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal',
+                      margin: '0 0 8px 0'
+                    }}>
+                      What the swim test involves
+                    </h4>
+                    <ul style={{
+                      color: '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: '1.4',
+                      margin: 0,
+                      paddingLeft: '20px'
+                    }}>
+                      <li>50m swimming (last 5m underwater).</li>
+                      <li>2 minutes of treading water.</li>
+                    </ul>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
