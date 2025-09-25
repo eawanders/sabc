@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare the properties update payload
     // Notion text properties use rich_text format
-    const updatePayload: Record<string, any> = {};
+    const updatePayload: Record<string, { rich_text: { type: 'text'; text: { content: string } }[] }> = {};
 
     if (outingSummary !== undefined) {
       updatePayload['Outing Summary'] = {

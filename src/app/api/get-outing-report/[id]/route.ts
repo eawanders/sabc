@@ -1,7 +1,28 @@
 // src/app/api/get-outing-report/[id]/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { Client } from '@notionhq/client';
+
+// Type definitions for Notion API responses
+interface NotionRichTextItem {
+  type: string;
+  plain_text: string;
+  [key: string]: unknown;
+}
+
+interface NotionRichTextProperty {
+  rich_text: NotionRichTextItem[];
+  [key: string]: unknown;
+}
+
+interface NotionPageProperties {
+  [key: string]: NotionRichTextProperty | unknown;
+}
+
+interface NotionPageResponse {
+  properties: NotionPageProperties;
+  [key: string]: unknown;
+}
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -58,14 +79,20 @@ export async function GET(
       );
     }
 
-    const page = response as any;
+    const page = response as NotionPageResponse;
 
     // Helper function to extract rich text content
-    const extractRichText = (property: any): string => {
-      if (!property || !property.rich_text || !Array.isArray(property.rich_text)) {
+    const extractRichText = (property: unknown): string => {
+      if (!property || typeof property !== 'object' || property === null) {
         return '';
       }
-      return property.rich_text.map((text: any) => text.plain_text || '').join('');
+
+      const richTextProp = property as NotionRichTextProperty;
+      if (!richTextProp.rich_text || !Array.isArray(richTextProp.rich_text)) {
+        return '';
+      }
+
+      return richTextProp.rich_text.map((text: NotionRichTextItem) => text.plain_text || '').join('');
     };
 
     // Extract the report fields
