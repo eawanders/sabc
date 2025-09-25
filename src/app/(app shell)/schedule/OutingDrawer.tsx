@@ -1286,7 +1286,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     <React.Fragment>
     <Sheet
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isReportDrawerOpen ? () => {} : onClose} // Disable closing when report drawer is open
       title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '##27272E', fontFamily: 'Gilroy'}}>{(() => {
         const type = outing?.properties?.Type?.select?.name || '';
         if (type === 'Water Outing') return 'Outing Details';

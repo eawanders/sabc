@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('📥 Received outing report submission:', body);
 
-    const { outingId, outingSummary, boatFeel, outingSuccesses, nextFocus } = body;
+    const { outingId, outingSummary, boatFeel, outingSuccesses, nextFocus, coachFeedback } = body;
 
     // Validate required fields
     if (!outingId) {
@@ -94,6 +94,19 @@ export async function POST(req: NextRequest) {
             type: 'text',
             text: {
               content: String(nextFocus || '')
+            }
+          }
+        ]
+      };
+    }
+
+    if (coachFeedback !== undefined) {
+      updatePayload['Coach Feedback'] = {
+        rich_text: [
+          {
+            type: 'text',
+            text: {
+              content: String(coachFeedback || '')
             }
           }
         ]
