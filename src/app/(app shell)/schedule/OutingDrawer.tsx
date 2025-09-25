@@ -28,6 +28,8 @@ import Sheet from '@/components/ui/Sheet';
 import { getEligibleCoxes } from '@/utils/coxEligibility';
 import { CoxingAvailability } from '@/types/coxing';
 import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
+import ReportDrawer from './ReportDrawer';
+import ActionButton from '@/components/ui/ActionButton';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -574,6 +576,9 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
+
+  // Report drawer state
+  const [isReportDrawerOpen, setIsReportDrawerOpen] = useState(false);
 
   // Flag status state
   const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
@@ -1278,9 +1283,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   }, [loading, outing]);
 
   return (
+    <React.Fragment>
     <Sheet
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isReportDrawerOpen ? () => {} : onClose} // Disable closing when report drawer is open
       title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '##27272E', fontFamily: 'Gilroy'}}>{(() => {
         const type = outing?.properties?.Type?.select?.name || '';
         if (type === 'Water Outing') return 'Outing Details';
@@ -1600,8 +1606,41 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
             </div>
           </div>
+
+          {/* Submit Outing Report Button - Fixed below scrollable content */}
+          <div style={{ marginTop: '40px' }}>
+            <ActionButton
+              onClick={() => setIsReportDrawerOpen(true)}
+              className="w-full"
+              style={{
+                display: 'flex',
+                padding: '12px 8px',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px',
+                alignSelf: 'stretch',
+                borderRadius: '6px',
+                background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                color: 'var(--Theme-Primary-Default, #4C6FFF)',
+                fontWeight: 600
+              }}
+            >
+              Outing Report
+            </ActionButton>
+          </div>
         </div>
       )}
     </Sheet>
+
+    {/* Report Drawer - Overlaid on top */}
+    {outing && (
+      <ReportDrawer
+        outingId={outing.id}
+        isOpen={isReportDrawerOpen}
+        onClose={() => setIsReportDrawerOpen(false)}
+        onReturnToOuting={() => setIsReportDrawerOpen(false)}
+      />
+    )}
+    </React.Fragment>
   );
 }
