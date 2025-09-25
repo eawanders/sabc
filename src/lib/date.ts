@@ -99,3 +99,10 @@ export function isSameDay(date1: Date, date2: Date): boolean {
 export function getCurrentWeekStart(): Date {
   return getWeekStart(new Date());
 }
+
+/**
+ * Parse ISO date string to Date object
+ */
+export function parseISO(dateString: string): Date {
+  return new Date(dateString);
+}

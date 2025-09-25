@@ -134,10 +134,10 @@ export default function Sidebar() {
             active={!!isFlagStatus}
           />
           <NavItem
-            href="/swim-tests"
+            href="/tests"
             label="OURC Tests"
             icon={<SwimIcon stroke="#425466" />}
-            active={pathname?.startsWith("/swim-tests")}
+            active={pathname?.startsWith("/tests")}
           />
           <NavItem
             href="/events"
