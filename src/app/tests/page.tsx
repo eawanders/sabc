@@ -6,6 +6,7 @@ import { CalendarEvent } from "@/types/calendar";
 import { useCalendarRange } from "@/app/(app shell)/hooks/useCalendarRange";
 import TestCalendarHeader from "./TestCalendarHeader";
 import CalendarWeek from "@/app/(app shell)/schedule/CalendarWeek";
+import TestDrawer from "@/app/(app shell)/swim-tests/TestDrawer";
 import { mapTestsToEvents, filterTestEventsByType, filterTestEventsByDateRange, groupTestEventsByDate } from "@/lib/testMappers";
 import { getWeekDays, getDayNameShort, isToday } from "@/lib/date";
 
@@ -20,6 +21,10 @@ export default function TestsPage() {
   const [loading, setLoading] = useState(true);
   const [tests, setTests] = useState([]);
   const [filterType, setFilterType] = useState<TestFilterType>('All');
+
+  // Drawer state
+  const [selectedTest, setSelectedTest] = useState<any>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Calendar state management
   const {
@@ -116,8 +121,30 @@ export default function TestsPage() {
 
   // Event handlers
   const handleEventClick = (event: CalendarEvent) => {
-    console.log('Test clicked:', event);
-    // TODO: Open test drawer when ready
+    console.log('=== Test Event Clicked ===');
+    console.log('Full event object:', event);
+    console.log('event.originalOuting:', event.originalOuting);
+    console.log('event.title:', event.title);
+    console.log('event.type:', event.type);
+
+    // Find the original test data
+    if (event.originalOuting) {
+      console.log('=== Setting Selected Test ===');
+      console.log('originalOuting data:', event.originalOuting);
+      console.log('originalOuting type:', typeof event.originalOuting);
+      if (typeof event.originalOuting === 'object') {
+        console.log('originalOuting.type:', (event.originalOuting as any).type);
+      }
+      setSelectedTest(event.originalOuting);
+      setIsDrawerOpen(true);
+    } else {
+      console.warn('No originalOuting found in event');
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedTest(null);
   };
 
   const handleFilterChange = (type: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym') => {
@@ -197,6 +224,15 @@ export default function TestsPage() {
           </div>
         )}
       </div>
+
+      {/* Test Drawer */}
+      {selectedTest && (
+        <TestDrawer
+          test={selectedTest}
+          isOpen={isDrawerOpen}
+          onClose={handleCloseDrawer}
+        />
+      )}
     </main>
   );
 }

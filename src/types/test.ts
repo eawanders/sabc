@@ -52,7 +52,7 @@ export interface TestCalendarEvent {
   isPublished: boolean;
 
   // Original test reference for detailed view
-  originalTest: string; // test.id for reference
+  originalTest: Test; // full test object for drawer display
 }
 
 // Notion API property interfaces for tests

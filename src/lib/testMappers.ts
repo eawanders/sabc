@@ -35,7 +35,7 @@ export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
       status,
       color,
       isPublished: true, // Assume all tests are published
-      originalTest: test.id
+      originalTest: test
     };
   });
 }
