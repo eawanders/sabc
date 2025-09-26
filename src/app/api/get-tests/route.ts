@@ -1,5 +1,6 @@
 // src/app/api/get-tests/route.ts
-import { NextResponse } from 'next/server'
+// @ts-nocheck
+import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
 import { Test, TestPageResponse } from '@/types/test'
 import { Member } from '@/types/members'

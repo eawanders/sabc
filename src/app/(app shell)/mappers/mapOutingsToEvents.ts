@@ -42,7 +42,7 @@ function mapOutingToEvent(outing: Outing): CalendarEvent | null {
     // Extract event properties
     const type = extractEventType(outing);
     const division = extractDivision(outing);
-    const title = extractTitle(outing, type, division);
+    const title = extractTitle(outing, type);
     const status = extractStatus(outing);
     const outingId = extractOutingId(outing);
 
@@ -104,7 +104,7 @@ function extractDivision(outing: Outing): string {
 /**
  * Generates a display title for the event
  */
-function extractTitle(outing: Outing, type: EventType, division: string): string {
+function extractTitle(outing: Outing, type: EventType): string {
   const outingId = extractOutingId(outing);
   const shell = outing.properties.Shell?.select?.name;
 

@@ -23,7 +23,7 @@ export default function TestsPage() {
   const [filterType, setFilterType] = useState<TestFilterType>('All');
 
   // Drawer state
-  const [selectedTest, setSelectedTest] = useState<any>(null);
+  const [selectedTest, setSelectedTest] = useState<{id: string; title: string; [key: string]: unknown} | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Calendar state management
@@ -56,31 +56,40 @@ export default function TestsPage() {
 
       const dayEvents = eventsByDate[dateKey] || [];
 
-        // Convert TestCalendarEvent to CalendarEvent for compatibility
-      const compatibleEvents = dayEvents.map(event => ({
-        ...event,
-        type: event.type === 'Swim Test' ? 'Water' as const :
-              event.type === 'Capsize Drill' ? 'Tank' as const : 'Other' as const,
-        division: '',
-        shell: undefined,
-        status: 'Outing Confirmed' as const,
-        sessionDetails: undefined,
-        outingId: 0,
-        originalOuting: event.originalTest,
-        // Add test-specific properties to identify this as a test event
-        isTestEvent: true,
-        originalTestType: event.type, // Preserve original test type
-        availableSlots: event.availableSlots, // Preserve available slots count
-        bookedSlots: (event as any).bookedSlots ?? 0, // pass through booked slots for fullness detection
-        testStatus: (event as any).status ?? 'Available',
-      } as CalendarEvent & { isTestEvent: boolean; originalTestType: string; availableSlots: number }));
+      // Convert TestCalendarEvent to CalendarEvent for compatibility
+      const compatibleEvents = dayEvents.map((event: unknown) => {
+        const testEvent = event as TestCalendarEvent & {bookedSlots?: number; testStatus?: string};
+        return ({
+          ...testEvent,
+          type: testEvent.type === 'Swim Test' ? 'Water' as const :
+                testEvent.type === 'Capsize Drill' ? 'Tank' as const : 'Other' as const,
+          division: '',
+          shell: undefined,
+          status: 'Outing Confirmed' as const,
+          sessionDetails: undefined,
+          outingId: 0,
+          originalOuting: testEvent.originalTest,
+          // Add test-specific properties to identify this as a test event
+          isTestEvent: true,
+          originalTestType: testEvent.type, // Preserve original test type
+          availableSlots: testEvent.availableSlots, // Preserve available slots count
+          bookedSlots: testEvent.bookedSlots ?? 0, // pass through booked slots for fullness detection
+          testStatus: testEvent.testStatus ?? 'Available',
+        } as unknown) as CalendarEvent & { isTestEvent: boolean; originalTestType: string; availableSlots: number };
+      });
 
       // Client-side debug: log the mapped calendar events for this day
       try {
         if (typeof window !== 'undefined') {
-          console.debug('[TestsPage] mapped calendar events for', dateKey, compatibleEvents.map(e => ({ id: e.id, bookedSlots: (e as any).bookedSlots, availableSlots: (e as any).availableSlots, testStatus: (e as any).testStatus, originalTestId: (e as any).originalOuting?.id || (e as any).originalTest?.id })) );
+          console.debug('[TestsPage] mapped calendar events for', dateKey, compatibleEvents.map(e => ({
+            id: e.id,
+            bookedSlots: (e as CalendarEvent & {bookedSlots?: number}).bookedSlots,
+            availableSlots: (e as CalendarEvent & {availableSlots?: number}).availableSlots,
+            testStatus: (e as CalendarEvent & {testStatus?: string}).testStatus,
+            originalTestId: (e.originalOuting as {id?: string})?.id || (e as CalendarEvent & {originalTest?: {id?: string}}).originalTest?.id
+          })) );
         }
-      } catch (e) {
+      } catch {
         // swallow
       }
 
@@ -146,7 +155,7 @@ export default function TestsPage() {
       if (typeof event.originalOuting === 'object') {
         console.log('originalOuting.type:', (event.originalOuting as any).type);
       }
-      setSelectedTest(event.originalOuting);
+      setSelectedTest(event.originalOuting as any);
       setIsDrawerOpen(true);
     } else {
       console.warn('No originalOuting found in event');
@@ -239,7 +248,7 @@ export default function TestsPage() {
       {/* Test Drawer */}
       {selectedTest && (
         <TestDrawer
-          test={selectedTest}
+          test={selectedTest as any}
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
         />

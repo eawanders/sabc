@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useMembers } from '@/hooks/useMembers';
-import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { Member } from '@/types/members';
-import { Test, TestOutcome } from '@/types/test';
+import { Test } from '@/types/test';
 import Sheet from '@/components/ui/Sheet';
 import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
 
@@ -190,7 +189,7 @@ const TestRow: React.FC<TestRowProps> = ({
               isDisabled={isSubmitting || membersLoading}
               isLoading={membersLoading}
               placeholder={membersLoading ? 'Loading members...' : 'Select member'}
-              formatCreateLabel={(inputValue) => `Add "${inputValue}" as new member`}
+              formatCreateLabel={(inputValue) => `Add &quot;${inputValue}&quot; as new member`}
               styles={{
                 control: (base, state) => ({
                   ...base,
@@ -479,7 +478,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
       return currentTest.date.start;
     }
     // Fallback for different data structures
-    const testAny = currentTest as any;
+    const testAny = currentTest as Test & { startTime?: string | Date };
     if (testAny.startTime) {
       return typeof testAny.startTime === 'string' ? testAny.startTime : testAny.startTime.toISOString();
     }
@@ -930,7 +929,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       lineHeight: '1.4',
                       margin: 0
                     }}>
-                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying "Capsize Drills", and someone there will be signing people in.
+                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying &quot;Capsize Drills&quot;, and someone there will be signing people in.
                     </p>
                   </div>
 
@@ -1014,7 +1013,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       lineHeight: '1.4',
                       margin: 0
                     }}>
-                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying "Swim Tests", and someone there will be signing people in.
+                      Swim tests take place at the Rosenblatt Pool in the Iffley Road Sports Centre. Inside the lobby, look for the OURCs desk (not the main reception desk). There will be a sign on the desk saying &quot;Swim Tests&quot;, and someone there will be signing people in.
                     </p>
                   </div>
 
@@ -1084,7 +1083,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       lineHeight: '1.4',
                       margin: 0
                     }}>
-                      Goggles are allowed. Swim caps that you wouldn't normally wear while rowing are not permitted.
+                      Goggles are allowed. Swim caps that you wouldn&apos;t normally wear while rowing are not permitted.
                     </p>
                   </div>
 
@@ -1112,7 +1111,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       <li>A towel.</li>
                       <li>A change of clothes for after the test.</li>
                       <li>A bag for wet clothes.</li>
-                      <li>Your Bod Card (or another form of ID if you don't have one).</li>
+                      <li>Your Bod Card (or another form of ID if you don&apos;t have one).</li>
                     </ul>
                   </div>
 
@@ -1148,7 +1147,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       paddingLeft: '20px'
                     }}>
                       <li>This is not done at the Sports Centre reception or by swim instructors.</li>
-                      <li>Look for the "Swim Tests" sign on the table.</li>
+                      <li>Look for the &quot;Swim Tests&quot; sign on the table.</li>
                     </ul>
                     <p style={{
                       color: '#4C5A6E',
@@ -1158,7 +1157,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                       lineHeight: '1.4',
                       margin: '0 0 8px 0'
                     }}>
-                      If you don't sign in, your swim test will not be recorded.
+                      If you don&apos;t sign in, your swim test will not be recorded.
                     </p>
                     <p style={{
                       color: '#4C5A6E',

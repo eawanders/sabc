@@ -16,13 +16,51 @@ interface EventChipProps {
 
 export default function EventChip({ event, onClick }: EventChipProps) {
   // Check if this is a test event
-  const isTestEvent = (event as any).isTestEvent === true;
-  const originalTestType = (event as any).originalTestType;
-  const availableSlots = (event as any).availableSlots;
+  const isTestEvent = (event as CalendarEvent & {isTestEvent?: boolean}).isTestEvent === true;
+  const originalTestType = (event as CalendarEvent & {originalTestType?: string}).originalTestType;
+  const availableSlots = (event as CalendarEvent & {availableSlots?: number}).availableSlots;
 
   // Prefer local outing state (assignments) if available so UI reflects immediate changes
   // Skip outing state for test events as they use different data structure
   const { assignments } = useOutingState(!isTestEvent ? (event.originalOuting || '') : '');
+
+  // Local state mirrors the effectiveStatus so we re-render reliably when assignments change.
+  const [localStatus, setLocalStatus] = useState<string | undefined>(undefined);
+
+  // Normalize status function for outing events (defined at component level)
+  const normalizeStatus = (s: unknown): string | undefined => {
+    if (s === undefined || s === null) return undefined;
+    const raw = String(s).trim();
+    const lower = raw.toLowerCase();
+    if (lower.includes('confirm')) return 'Confirmed';
+    if (lower.includes('cancel')) return 'Cancelled';
+    if (lower.includes('provis') || lower === 'provisional') return 'Provisional';
+    // fallback: if the input already equals one of canonical values
+    if (['confirmed', 'provisional', 'cancelled', 'canceled'].includes(lower)) {
+      return lower === 'canceled' ? 'Cancelled' : raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+    }
+    return undefined;
+  };
+
+  const localOutingStatus = normalizeStatus(assignments?.OutingStatus);
+  const propStatus = normalizeStatus(event.status);
+  const effectiveStatus = localStatus ?? localOutingStatus ?? propStatus;
+
+  // All hooks must be at top level - apply to all events but only affect non-test events
+  useEffect(() => {
+    // When assignments.OutingStatus changes, update localStatus so the chip re-renders
+    if (!isTestEvent) {
+      setLocalStatus(localOutingStatus ?? undefined);
+    }
+  }, [isTestEvent, localOutingStatus]);
+
+  useEffect(() => {
+    // keep localStatus in sync; useful for re-rendering when assignments update
+    if (!isTestEvent) {
+      // Only process for non-test events
+    }
+  }, [isTestEvent, effectiveStatus, localOutingStatus, propStatus, assignments?.OutingStatus, event.originalOuting]);
+
   // Diagnostic log: show what outing id we are subscribing to and current assignments
   // (these will appear in the browser console when the component mounts/updates).
   // Keeps minimal info to avoid leaking sensitive data in server logs.
@@ -33,8 +71,7 @@ export default function EventChip({ event, onClick }: EventChipProps) {
   useEffect(() => {
     // assignments change triggers re-render via localStatus effect
   }, [assignments, event.originalOuting]);
-  // Local state mirrors the effectiveStatus so we re-render reliably when assignments change.
-  const [localStatus, setLocalStatus] = useState<string | undefined>(undefined);
+
   // Button style and text based on outing status (or test event)
   let buttonBg = undefined;
   let buttonText = 'Sign up';
@@ -43,22 +80,22 @@ export default function EventChip({ event, onClick }: EventChipProps) {
   // For test events, always use "Sign Up" text and don't use outing status logic
   if (isTestEvent) {
     // Determine fullness: prefer explicit event fields, otherwise infer from originalTest
-    const ev: any = event as any;
+    const ev = event as CalendarEvent & {bookedSlots?: number; availableSlots?: number; testStatus?: string; originalTest?: {id: string; availableSlots?: number; [key: string]: unknown}};
     const bookedSlots = typeof ev.bookedSlots === 'number' ? ev.bookedSlots : undefined;
     const avail = typeof availableSlots === 'number' ? availableSlots : (typeof ev.availableSlots === 'number' ? ev.availableSlots : 0);
-    const eventStatus = ev.testStatus ?? ev.status;
+    const eventStatus = ev.testStatus ?? (ev as {status?: string}).status;
 
     // Fallback: count filled slots from originalTest if bookedSlots is not provided
     const countFromOriginalTest = () => {
-      const t = ev.originalTest as any;
+      const t = ev.originalTest;
       if (!t) return 0;
       let count = 0;
       for (let i = 1; i <= (t.availableSlots || avail || 6); i++) {
-        const slotArr = t[`slot${i}`] || t[`Slot ${i}`] || t[`Slot${i}`];
+        const slotArr = (t as Record<string, unknown>)[`slot${i}`] || (t as Record<string, unknown>)[`Slot ${i}`] || (t as Record<string, unknown>)[`Slot${i}`];
         if (Array.isArray(slotArr) && slotArr.length > 0) count += slotArr.length;
 
         // Outcome-based fallback
-        const outcome = t[`slot${i}Outcome`] || t[`Slot ${i} Outcome`] || t[`Slot${i}Outcome`];
+        const outcome = (t as Record<string, unknown>)[`slot${i}Outcome`] || (t as Record<string, unknown>)[`Slot ${i} Outcome`] || (t as Record<string, unknown>)[`Slot${i}Outcome`];
         if (!Array.isArray(slotArr) && outcome && typeof outcome === 'string') {
           const s = outcome.toLowerCase();
           if (['test booked', 'passed', 'failed', 'rescheduled'].some(x => s.includes(x))) count++;
@@ -73,14 +110,14 @@ export default function EventChip({ event, onClick }: EventChipProps) {
     if (typeof window !== 'undefined') {
       try {
         console.debug('[EventChip] event props', {
-          id: ev.id || ev.eventId || (ev.originalTest && ev.originalTest.id),
+          id: ev.id || (ev as {eventId?: string}).eventId || (ev.originalTest && ev.originalTest.id),
           bookedSlots: ev.bookedSlots,
           availableSlots: avail,
           effectiveBooked,
           testStatus: eventStatus,
           originalTestSummary: ev.originalTest ? { id: ev.originalTest.id, availableSlots: ev.originalTest.availableSlots } : undefined,
         });
-      } catch (e) {
+      } catch {
         // swallow
       }
     }
@@ -97,35 +134,6 @@ export default function EventChip({ event, onClick }: EventChipProps) {
     // Status styling for tests handled above
   } else {
     // Original outing logic
-    // Determine effective status: prefer local OutingStatus when present.
-    // Normalize to the canonical values used across the app: 'Confirmed', 'Provisional', 'Cancelled'.
-    const normalizeStatus = (s: unknown): string | undefined => {
-      if (s === undefined || s === null) return undefined;
-      const raw = String(s).trim();
-      const lower = raw.toLowerCase();
-      if (lower.includes('confirm')) return 'Confirmed';
-      if (lower.includes('cancel')) return 'Cancelled';
-      if (lower.includes('provis') || lower === 'provisional') return 'Provisional';
-      // fallback: if the input already equals one of canonical values
-      if (['confirmed', 'provisional', 'cancelled', 'canceled'].includes(lower)) {
-        return lower === 'canceled' ? 'Cancelled' : raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-      }
-      return undefined;
-    };
-
-    const localOutingStatus = normalizeStatus(assignments?.OutingStatus);
-    const propStatus = normalizeStatus(event.status);
-    const effectiveStatus = localStatus ?? localOutingStatus ?? propStatus;
-
-    useEffect(() => {
-      // When assignments.OutingStatus changes, update localStatus so the chip re-renders
-      setLocalStatus(localOutingStatus ?? undefined);
-    }, [localOutingStatus]);
-
-    useEffect(() => {
-      // keep localStatus in sync; useful for re-rendering when assignments update
-    }, [effectiveStatus, localOutingStatus, propStatus, assignments?.OutingStatus, event.originalOuting]);
-
     if (effectiveStatus === 'Confirmed') {
       buttonBg = '#00C53E';
       buttonText = 'Confirmed';
@@ -164,7 +172,7 @@ export default function EventChip({ event, onClick }: EventChipProps) {
   }
 
   // Determine text color
-  let textColor = isErgType || isSwimTest ? '#FFFFFF' : undefined;
+  const textColor = isErgType || isSwimTest ? '#FFFFFF' : undefined;
 
   // Determine event title
   let eventTitle = '';
