@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
     const { testId, slotNumber, outcome } = await request.json()
 
     // Validate required fields
-    if (!testId || !slotNumber || !outcome) {
+    if (!testId || !slotNumber) {
       return NextResponse.json(
-        { error: 'Missing required fields: testId, slotNumber, outcome', success: false },
+        { error: 'Missing required fields: testId, slotNumber', success: false },
         { status: 400 }
       )
     }
@@ -27,8 +27,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // If outcome is falsy, treat as 'No Show' (cleared)
     const validOutcomes: TestOutcome[] = ['No Show', 'Test Booked', 'Failed', 'Passed']
-    if (!validOutcomes.includes(outcome)) {
+    const finalOutcome = outcome || 'No Show'
+    if (!validOutcomes.includes(finalOutcome as TestOutcome)) {
       return NextResponse.json(
         { error: `Invalid outcome. Must be one of: ${validOutcomes.join(', ')}`, success: false },
         { status: 400 }
@@ -37,12 +39,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Updating test ${testId}, slot ${slotNumber} outcome to: ${outcome}`)
 
-    // Update the test outcome
+    // Update the test outcome (set to finalOutcome)
     await notion.pages.update({
       page_id: testId,
       properties: {
         [`Slot ${slotNumber} Outcome`]: {
-          status: { name: outcome }
+          status: { name: finalOutcome }
         }
       }
     })

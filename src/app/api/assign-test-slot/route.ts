@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     const { testId, slotNumber, memberId } = await request.json()
 
     // Validate required fields
-    if (!testId || !slotNumber || !memberId) {
+    if (!testId || !slotNumber) {
       return NextResponse.json(
-        { error: 'Missing required fields: testId, slotNumber, memberId', success: false },
+        { error: 'Missing required fields: testId, slotNumber', success: false },
         { status: 400 }
       )
     }
@@ -38,45 +38,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current slot assignments
-    const properties = (testPage as any).properties
-    const currentSlotProperty = properties[`Slot ${slotNumber}`]
-    const currentAssignments = currentSlotProperty?.relation || []
 
-    // Check if member is already assigned to this slot
-    const isAlreadyAssigned = currentAssignments.some((rel: any) => rel.id === memberId)
+    // Build the update payload: overwrite the relation for the slot.
+    // If memberId is falsy (null/empty), we will clear the relation (unassign).
+    const updateData: any = { properties: {} }
 
-    if (isAlreadyAssigned) {
-      return NextResponse.json(
-        { error: 'Member is already assigned to this slot', success: false },
-        { status: 400 }
-      )
+    if (memberId) {
+      updateData.properties[`Slot ${slotNumber}`] = { relation: [{ id: memberId }] }
+    } else {
+      // Clear the relation
+      updateData.properties[`Slot ${slotNumber}`] = { relation: [] }
     }
 
-    // Add the new member to the slot
-    const updatedAssignments = [...currentAssignments, { id: memberId }]
+    try {
+      console.log('[assign-test-slot] update payload', JSON.stringify(updateData));
+    } catch (e) {
+      // swallow
+    }
 
-    // Update the test page with new assignment
-    const updateData: any = {
-      properties: {
-        [`Slot ${slotNumber}`]: {
-          relation: updatedAssignments
-        }
+    // If memberId is provided, set the Slot Outcome to 'Test Booked' unless it's already a passed/failed value.
+    // If clearing the member (memberId falsy), set outcome to 'No Show' to indicate unassigned/cleared.
+    const currentOutcome = (testPage as any).properties?.[`Slot ${slotNumber} Outcome`]
+    const currentOutcomeName = currentOutcome?.status?.name
+
+    if (memberId) {
+      const skipSet = currentOutcomeName && ['Passed', 'Failed', 'Test Booked'].includes(currentOutcomeName)
+      if (!skipSet) {
+        updateData.properties[`Slot ${slotNumber} Outcome`] = { status: { name: 'Test Booked' } }
       }
+    } else {
+      // Clearing member - set to 'No Show' to make intent explicit
+      updateData.properties[`Slot ${slotNumber} Outcome`] = { status: { name: 'No Show' } }
     }
 
-    // Also set the outcome to "Test Booked" if not already set
-    const currentOutcome = properties[`Slot ${slotNumber} Outcome`]
-    if (!currentOutcome?.status?.name || currentOutcome.status.name === 'No Show') {
-      updateData.properties[`Slot ${slotNumber} Outcome`] = {
-        status: { name: 'Test Booked' }
-      }
-    }
+    await notion.pages.update({ page_id: testId, ...updateData })
 
-    await notion.pages.update({
-      page_id: testId,
-      ...updateData
-    })
+    // Fetch the page again to log resulting properties
+    try {
+      const updatedPage = await notion.pages.retrieve({ page_id: testId }) as any;
+      console.log('[assign-test-slot] updated page properties:', {
+        id: testId,
+        slotRelation: updatedPage.properties[`Slot ${slotNumber}`],
+        slotOutcome: updatedPage.properties[`Slot ${slotNumber} Outcome`]
+      });
+    } catch (e) {
+      console.warn('[assign-test-slot] warning: failed to retrieve updated page after update', e);
+    }
 
     console.log(`✅ Successfully assigned member to test slot`)
 

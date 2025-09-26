@@ -56,7 +56,7 @@ export default function TestsPage() {
 
       const dayEvents = eventsByDate[dateKey] || [];
 
-      // Convert TestCalendarEvent to CalendarEvent for compatibility
+        // Convert TestCalendarEvent to CalendarEvent for compatibility
       const compatibleEvents = dayEvents.map(event => ({
         ...event,
         type: event.type === 'Swim Test' ? 'Water' as const :
@@ -71,7 +71,18 @@ export default function TestsPage() {
         isTestEvent: true,
         originalTestType: event.type, // Preserve original test type
         availableSlots: event.availableSlots, // Preserve available slots count
+        bookedSlots: (event as any).bookedSlots ?? 0, // pass through booked slots for fullness detection
+        testStatus: (event as any).status ?? 'Available',
       } as CalendarEvent & { isTestEvent: boolean; originalTestType: string; availableSlots: number }));
+
+      // Client-side debug: log the mapped calendar events for this day
+      try {
+        if (typeof window !== 'undefined') {
+          console.debug('[TestsPage] mapped calendar events for', dateKey, compatibleEvents.map(e => ({ id: e.id, bookedSlots: (e as any).bookedSlots, availableSlots: (e as any).availableSlots, testStatus: (e as any).testStatus, originalTestId: (e as any).originalOuting?.id || (e as any).originalTest?.id })) );
+        }
+      } catch (e) {
+        // swallow
+      }
 
       return {
         date,

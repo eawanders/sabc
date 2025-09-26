@@ -527,81 +527,88 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
   }, [currentTest, isOpen]);
 
   const handleAssignmentChange = async (slot: string, memberName: string) => {
+    // Optimistic update: prepare previous state for potential rollback
+    const previousAssignments = { ...assignments };
+
     // Update local state immediately for better UX
     setAssignments(prev => ({
       ...prev,
       [slot]: memberName,
       // Also update the outcome to "Test Booked" when assigning a member
-      [`${slot}_outcome`]: memberName ? 'Test Booked' : ''
+      [`${slot}_outcome`]: memberName ? 'Test Booked' : 'No Show'
     }));
 
-    // If memberName is empty, we're removing the assignment
+    // Extract slot number from slot string (e.g., "Slot 1" -> 1)
+    const slotNumber = parseInt(slot.replace('Slot ', ''));
+
+    // If memberName is empty, call API to clear the slot (unassign)
     if (!memberName) {
-      // TODO: Implement unassign API call if needed
+      try {
+        const response = await fetch('/api/assign-test-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ testId: currentTest.id, slotNumber, memberId: null }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to clear assignment');
+        }
+
+        // Also explicitly set the outcome to 'No Show' to reflect clearing.
+        await fetch('/api/update-test-outcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'No Show' }),
+        }).catch((e) => console.warn('Failed to update outcome on clear:', e));
+
+        // Refresh test data to ensure canonical state
+        await refreshTestData();
+      } catch (error) {
+        console.error('Error clearing assignment:', error);
+        setAssignments(previousAssignments);
+        alert(error instanceof Error ? error.message : 'Failed to clear assignment');
+      }
+
       return;
     }
 
+    // Otherwise assign/change member
     try {
       // Find the member object to get the ID
       const member = members.find(m => m.name === memberName);
       if (!member) {
-        console.error(`Member not found: ${memberName}`);
-        alert(`Member not found: ${memberName}`);
-        return;
+        throw new Error(`Member not found: ${memberName}`);
       }
 
-      // Extract slot number from slot string (e.g., "Slot 1" -> 1)
-      const slotNumber = parseInt(slot.replace('Slot ', ''));
-
-      // Call the API to assign the member to the test slot
       const response = await fetch('/api/assign-test-slot', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          testId: currentTest.id,
-          slotNumber,
-          memberId: member.id,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: currentTest.id, slotNumber, memberId: member.id }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`API Error assigning member:`, errorData);
-        throw new Error(errorData.error || 'Failed to assign member to test slot');
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to assign member to test slot');
       }
 
-      // After successful member assignment, also set the outcome to "Test Booked"
-      const outcomeResponse = await fetch('/api/update-test-outcome', {
+      // After successful member assignment, attempt to set the outcome to "Test Booked" (best-effort)
+      const outcomeRes = await fetch('/api/update-test-outcome', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          testId: currentTest.id,
-          slotNumber,
-          outcome: 'Test Booked',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'Test Booked' }),
       });
 
-      if (!outcomeResponse.ok) {
-        const outcomeError = await outcomeResponse.json();
-        console.error(`API Error setting outcome:`, outcomeError);
-        // Don't throw error here as the member assignment was successful
-        console.warn('Member assigned successfully but failed to set outcome to "Test Booked"');
+      if (!outcomeRes.ok) {
+        console.warn('Member assigned but failed to set outcome to Test Booked');
       }
 
+      // Refresh test data to ensure canonical state
+      await refreshTestData();
     } catch (error) {
       console.error('Error assigning member to test slot:', error);
-
-      // Revert the local state on error
-      setAssignments(prev => ({
-        ...prev,
-        [slot]: '',  // Clear the assignment on error
-        [`${slot}_outcome`]: ''  // Clear the outcome on error
-      }));
-
+      // Revert on error
+      setAssignments(previousAssignments);
       alert(error instanceof Error ? error.message : 'Failed to assign member to test slot');
     }
   };
@@ -668,37 +675,35 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
       for (let i = 1; i <= test.availableSlots; i++) {
         const slotKey = `Slot ${i}`;
         const memberName = assignments[slotKey];
+        // Use overwrite semantics: if memberName is falsy, clear the slot. Otherwise assign by member ID.
+        const member = memberName ? memberLookup.get(memberName) : null;
 
-        if (memberName) {
-          const member = memberLookup.get(memberName);
-          if (!member) {
-            console.warn(`Member not found: ${memberName}`);
-            continue;
-          }
+        const body = {
+          testId: test.id,
+          slotNumber: i,
+          memberId: member ? member.id : null,
+        };
 
-          // Call assign-test-slot API
+        try {
           const response = await fetch('/api/assign-test-slot', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              testId: test.id,
-              slotNumber: i,
-              memberId: member.id,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            console.error(`Failed to assign slot ${i}:`, errorData);
-            // Continue with other slots even if one fails
+            const err = await response.json().catch(() => ({}));
+            console.error(`Failed to assign/clear slot ${i}:`, err);
           }
+        } catch (err) {
+          console.error(`Network error assigning/clearing slot ${i}:`, err);
         }
       }
 
       console.log('✅ All assignments saved successfully');
-      onClose(); // Close drawer after successful save
+      // Refresh the canonical test state and close the drawer
+      await refreshTestData();
+      onClose();
 
     } catch (error) {
       console.error('Error saving test assignments:', error);

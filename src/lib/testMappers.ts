@@ -21,6 +21,20 @@ export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
       status = 'Full';
     }
 
+    // Detailed debug logging for mapping (server-side)
+    try {
+      console.log('[mapTestsToEvents] mapping test', {
+        testId: test.id,
+        title: test.title,
+        type: test.type,
+        availableSlots: test.availableSlots,
+        bookedSlots,
+        computedStatus: status
+      });
+    } catch (e) {
+      // swallow logging errors
+    }
+
     // Set color based on test type and status
     const color = getTestEventColor(test.type, status);
 
@@ -103,13 +117,61 @@ export function sortTestEventsByTime(events: TestCalendarEvent[]): TestCalendarE
 function countBookedSlots(test: Test): number {
   let count = 0;
 
-  // Count members in each slot
+  // Debug: log the actual slot structure
+  try {
+    console.log('[countBookedSlots] debugging test slots', {
+      testId: test.id,
+      slot1: test.slot1,
+      slot1Type: typeof test.slot1,
+      slot1Length: test.slot1?.length,
+      slot2: test.slot2,
+      slot2Type: typeof test.slot2,
+      slot2Length: test.slot2?.length,
+      slot3: test.slot3,
+      slot4: test.slot4,
+      slot5: test.slot5,
+      slot6: test.slot6,
+      availableSlots: test.availableSlots,
+      outcomes: {
+        slot1: test.slot1Outcome,
+        slot2: test.slot2Outcome,
+        slot3: test.slot3Outcome,
+        slot4: test.slot4Outcome,
+        slot5: test.slot5Outcome,
+        slot6: test.slot6Outcome,
+      }
+    });
+  } catch (e) {
+    // swallow logging errors
+  }
+
+  // Count members in each slot (member relation arrays)
   if (test.slot1?.length) count += test.slot1.length;
   if (test.slot2?.length) count += test.slot2.length;
   if (test.slot3?.length) count += test.slot3.length;
   if (test.slot4?.length) count += test.slot4.length;
   if (test.slot5?.length) count += test.slot5.length;
   if (test.slot6?.length) count += test.slot6.length;
+
+  // Fallback: if no members found in relations, count by outcomes
+  // This handles cases where slots have outcomes but member relations are missing/empty
+  if (count === 0) {
+    console.log('[countBookedSlots] fallback to outcome-based counting');
+    const filledOutcomes = ['Test Booked', 'Passed', 'Failed', 'Rescheduled'];
+    
+    if (test.slot1Outcome && filledOutcomes.includes(test.slot1Outcome)) count++;
+    if (test.slot2Outcome && filledOutcomes.includes(test.slot2Outcome)) count++;
+    if (test.slot3Outcome && filledOutcomes.includes(test.slot3Outcome)) count++;
+    if (test.slot4Outcome && filledOutcomes.includes(test.slot4Outcome)) count++;
+    if (test.slot5Outcome && filledOutcomes.includes(test.slot5Outcome)) count++;
+    if (test.slot6Outcome && filledOutcomes.includes(test.slot6Outcome)) count++;
+  }
+
+  try {
+    console.log('[countBookedSlots] final count', { testId: test.id, count, availableSlots: test.availableSlots });
+  } catch (e) {
+    // swallow
+  }
 
   return Math.min(count, test.availableSlots); // Don't exceed available slots
 }

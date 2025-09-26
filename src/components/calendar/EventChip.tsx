@@ -42,8 +42,59 @@ export default function EventChip({ event, onClick }: EventChipProps) {
 
   // For test events, always use "Sign Up" text and don't use outing status logic
   if (isTestEvent) {
-    buttonText = 'Sign Up';
-    // Status styling for tests would be handled by the event status if needed
+    // Determine fullness: prefer explicit event fields, otherwise infer from originalTest
+    const ev: any = event as any;
+    const bookedSlots = typeof ev.bookedSlots === 'number' ? ev.bookedSlots : undefined;
+    const avail = typeof availableSlots === 'number' ? availableSlots : (typeof ev.availableSlots === 'number' ? ev.availableSlots : 0);
+    const eventStatus = ev.testStatus ?? ev.status;
+
+    // Fallback: count filled slots from originalTest if bookedSlots is not provided
+    const countFromOriginalTest = () => {
+      const t = ev.originalTest as any;
+      if (!t) return 0;
+      let count = 0;
+      for (let i = 1; i <= (t.availableSlots || avail || 6); i++) {
+        const slotArr = t[`slot${i}`] || t[`Slot ${i}`] || t[`Slot${i}`];
+        if (Array.isArray(slotArr) && slotArr.length > 0) count += slotArr.length;
+
+        // Outcome-based fallback
+        const outcome = t[`slot${i}Outcome`] || t[`Slot ${i} Outcome`] || t[`Slot${i}Outcome`];
+        if (!Array.isArray(slotArr) && outcome && typeof outcome === 'string') {
+          const s = outcome.toLowerCase();
+          if (['test booked', 'passed', 'failed', 'rescheduled'].some(x => s.includes(x))) count++;
+        }
+      }
+      return Math.min(count, avail || 0);
+    };
+
+    const effectiveBooked = typeof bookedSlots === 'number' ? bookedSlots : countFromOriginalTest();
+
+    // Debug: always log key event props in the browser console so we can trace runtime values
+    if (typeof window !== 'undefined') {
+      try {
+        console.debug('[EventChip] event props', {
+          id: ev.id || ev.eventId || (ev.originalTest && ev.originalTest.id),
+          bookedSlots: ev.bookedSlots,
+          availableSlots: avail,
+          effectiveBooked,
+          testStatus: eventStatus,
+          originalTestSummary: ev.originalTest ? { id: ev.originalTest.id, availableSlots: ev.originalTest.availableSlots } : undefined,
+        });
+      } catch (e) {
+        // swallow
+      }
+    }
+
+    const isFull = (avail > 0 && effectiveBooked >= avail) || String(eventStatus || '').toLowerCase() === 'full';
+
+    if (isFull) {
+      buttonBg = '#00C53E';
+      buttonText = 'Full';
+      buttonTextColor = '#FFFFFF';
+    } else {
+      buttonText = 'Sign Up';
+    }
+    // Status styling for tests handled above
   } else {
     // Original outing logic
     // Determine effective status: prefer local OutingStatus when present.

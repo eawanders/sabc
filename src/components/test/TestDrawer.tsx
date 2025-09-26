@@ -48,7 +48,7 @@ export default function TestDrawer({ testId, isOpen, onClose }: TestDrawerProps)
   const { test, loading, error, refetch } = useTestDetails(testId);
   const { members } = useMembers();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localSelections, setLocalSelections] = useState<{ [key: string]: string }>({});
+  const [localSelections, setLocalSelections] = useState<{ [key: string]: string | null }>({});
 
   // Reset local selections when test changes
   useEffect(() => {
@@ -57,41 +57,31 @@ export default function TestDrawer({ testId, isOpen, onClose }: TestDrawerProps)
 
   // Handle slot assignment
   const handleSlotChange = async (slotNumber: number, memberId: string | null) => {
-    if (!test || !memberId) return;
+    if (!test) return;
 
     try {
       setIsSubmitting(true);
 
       const response = await fetch('/api/assign-test-slot', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          testId: test.id,
-          slotNumber,
-          memberId,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: test.id, slotNumber, memberId }),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to assign slot');
+        throw new Error(result.error || 'Failed to assign/clear slot');
       }
 
-      // Update local state
-      setLocalSelections(prev => ({
-        ...prev,
-        [`slot${slotNumber}`]: memberId
-      }));
+      // Update local state cache
+      setLocalSelections(prev => ({ ...prev, [`slot${slotNumber}`]: memberId }));
 
-      // Refetch test data to get updated state
+      // Refetch test data to get canonical state
       refetch();
-
     } catch (error) {
-      console.error('Error assigning slot:', error);
-      alert(error instanceof Error ? error.message : 'Failed to assign slot');
+      console.error('Error assigning/clearing slot:', error);
+      alert(error instanceof Error ? error.message : 'Failed to assign/clear slot');
     } finally {
       setIsSubmitting(false);
     }

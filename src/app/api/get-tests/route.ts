@@ -70,6 +70,26 @@ export async function GET() {
       try {
         const testData = await processTestPage(page)
         if (testData) {
+          // Log the processed test shape for debugging
+          try {
+            console.log('[get-tests] processed test', {
+              id: testData.id,
+              title: testData.title,
+              type: testData.type,
+              availableSlots: testData.availableSlots,
+              slotCounts: [testData.slot1?.length || 0, testData.slot2?.length || 0, testData.slot3?.length || 0, testData.slot4?.length || 0, testData.slot5?.length || 0, testData.slot6?.length || 0],
+              outcomes: {
+                slot1: testData.slot1Outcome,
+                slot2: testData.slot2Outcome,
+                slot3: testData.slot3Outcome,
+                slot4: testData.slot4Outcome,
+                slot5: testData.slot5Outcome,
+                slot6: testData.slot6Outcome,
+              }
+            })
+          } catch (e) {
+            // swallow
+          }
           tests.push(testData)
         }
       } catch (error) {
