@@ -150,3 +150,7 @@ export default async function FlagStatusPage() {
     </>
   );
 }
+
+export const metadata = {
+  title: 'Flag Status',
+};

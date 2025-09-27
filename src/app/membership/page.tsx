@@ -15,3 +15,7 @@ export default function MembershipPage() {
     </div>
   );
 }
+
+export const metadata = {
+  title: 'Membership',
+};

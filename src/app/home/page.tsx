@@ -1,5 +1,9 @@
 import React from 'react';
 
+export const metadata = {
+  title: 'Home',
+};
+
 export default function HomePage() {
   return (
    <div className="container mx-auto p-2">
