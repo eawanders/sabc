@@ -20,7 +20,11 @@ export default function EventsPage() {
   React.useEffect(() => {
     if (!containerRef.current) return
 
-    const getCards = () => Array.from(containerRef.current!.querySelectorAll<HTMLElement>('.event-card'))
+    const getCards = () => {
+      const root = containerRef.current
+      if (!root) return [] as HTMLElement[]
+      return Array.from(root.querySelectorAll<HTMLElement>('.event-card'))
+    }
 
     const resize = () => {
       const cards = getCards()
@@ -39,24 +43,28 @@ export default function EventsPage() {
     if (typeof window !== 'undefined' && (window as any).ResizeObserver) {
       ro = new (window as any).ResizeObserver(resize)
       const cards = getCards()
-      cards.forEach((n) => ro!.observe(n))
-      // also observe images inside cards (they may load later)
-      cards.forEach((n) => {
-        Array.from(n.querySelectorAll('img')).forEach((img) => ro!.observe(img))
-      })
+      if (cards.length > 0) {
+        cards.forEach((n) => ro!.observe(n))
+        // also observe images inside cards (they may load later)
+        cards.forEach((n) => {
+          Array.from(n.querySelectorAll('img')).forEach((img) => ro!.observe(img))
+        })
+      }
     } else {
       if (typeof window !== 'undefined') {
         (window as any).addEventListener('resize', resize)
       }
       // fallback: listen for image load
-      const imgs = containerRef.current.querySelectorAll('img')
+      const imgs = containerRef.current?.querySelectorAll('img') || []
       imgs.forEach((img) => (img as HTMLImageElement).addEventListener('load', resize))
     }
 
     return () => {
       if (ro) {
         const cards = getCards()
-        cards.forEach((n) => ro!.unobserve(n))
+        if (cards.length > 0) {
+          cards.forEach((n) => ro!.unobserve(n))
+        }
       } else {
         if (typeof window !== 'undefined') {
           (window as any).removeEventListener('resize', resize)
