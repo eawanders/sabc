@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: 'SABC',
     template: 'SABC - %s',
   },
-  description: "Sign up and confirm availability for water outings, erg, gym, and tank sessions.",
+  description: "The home of St Antony's College, Oxford's Boat Club!",
 };
 
 export const viewport: Viewport = {
