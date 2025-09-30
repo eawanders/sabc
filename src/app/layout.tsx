@@ -31,10 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* SVG (modern browsers) */}
         <link rel="icon" type="image/svg+xml" href="/sabc-logo.svg" />
       </head>
-      <body className="min-h-screen bg-bg text-foreground antialiased">
+      <body className="min-h-screen bg-bg text-foreground antialiased overflow-x-hidden">
         <div className="flex min-h-screen">
           <Sidebar />
-          <Box as="main" className="flex-1 min-h-screen max-h-screen overflow-y-auto bg-surface" p={32}>
+          <Box as="main" className="flex-1 min-h-screen max-h-screen overflow-hidden bg-surface" p={32}>
             {children}
           </Box>
         </div>
