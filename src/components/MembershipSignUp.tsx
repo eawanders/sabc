@@ -36,7 +36,7 @@ export default function MembershipSignUp() {
         gap: '12px'
       }}>
         <p className="text-muted-foreground text-center">
-          Don't see your name in the list of available members?
+          Don&apos;t see your name in the list of available members?
         </p>
         <p className="text-muted-foreground text-center">
           Sign up for SABC membership and your name will appear.
