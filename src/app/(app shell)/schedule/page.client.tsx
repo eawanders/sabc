@@ -9,6 +9,7 @@ import CalendarWeek from "./CalendarWeek";
 import OutingDrawer from "./OutingDrawer";
 import { getFlagStatus } from "../../../lib/flagStatus";
 import FlagStatusBanner from "../../../components/FlagStatusBanner";
+import MembershipSignUp from "../../../components/MembershipSignUp";
 
 export default function SchedulePageClient() {
        const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -119,6 +120,13 @@ export default function SchedulePageClient() {
                                                        <p className="text-sm text-muted-foreground">
                                                                Check back later or navigate to a different week.
                                                        </p>
+                                               </div>
+                                       )}
+
+                                       {/* Membership Sign Up - show when there are events */}
+                                       {!loading && stats.hasEvents && (
+                                               <div style={{ width: '100%', paddingTop: '32px' }}>
+                                                       <MembershipSignUp />
                                                </div>
                                        )}
                                </div>

@@ -9,6 +9,7 @@ import CalendarWeek from "@/app/(app shell)/schedule/CalendarWeek";
 import TestDrawer from "@/app/(app shell)/swim-tests/TestDrawer";
 import { mapTestsToEvents, filterTestEventsByType, filterTestEventsByDateRange, groupTestEventsByDate } from "@/lib/testMappers";
 import { getWeekDays, getDayNameShort, isToday } from "@/lib/date";
+import MembershipSignUp from "@/components/MembershipSignUp";
 
 const testFilterOptions = [
   { value: 'All', label: 'All Tests' },
@@ -241,6 +242,13 @@ export default function TestsPageClient() {
             <p className="text-sm text-muted-foreground">
               Check back later or navigate to a different week.
             </p>
+          </div>
+        )}
+
+        {/* Membership Sign Up - show when there are events */}
+        {!loading && stats.hasEvents && (
+          <div style={{ width: '100%', paddingTop: '32px' }}>
+            <MembershipSignUp />
           </div>
         )}
       </div>
