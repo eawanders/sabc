@@ -9,6 +9,7 @@ import { useUpdateCoxingAvailability } from '../(app shell)/hooks/useUpdateCoxin
 import { Member } from '@/types/members'
 import { CoxingAvailability } from '@/types/coxing'
 import { getWeekDays } from '@/lib/date'
+import MembershipSignUp from '@/components/MembershipSignUp'
 
 type TimeSlotKey = 'earlyAM' | 'midAM' | 'midPM' | 'latePM'
 
@@ -114,7 +115,7 @@ export default function CoxingPageClient() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '160px repeat(7, 110px)',
+                    gridTemplateColumns: 'auto repeat(7, 110px)',
                     gridTemplateRows: '48px repeat(4, 48px)',
                     columnGap: '24px',
                     rowGap: '24px',
@@ -199,6 +200,13 @@ export default function CoxingPageClient() {
         {!selectedMember && (
           <div className="text-center py-6" style={{ width: '100%', marginTop: '32px' }}>
             <p className="text-muted-foreground mb-2">No cox is selected. Select a cox to provide availability.</p>
+          </div>
+        )}
+
+        {/* Membership Sign Up - show when no member is selected */}
+        {!selectedMember && (
+          <div style={{ width: '100%', marginTop: '32px' }}>
+            <MembershipSignUp />
           </div>
         )}
         {updating && (
