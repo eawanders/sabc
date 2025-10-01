@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import CalendarHeader from './CalendarHeader'
 import { useMembers } from '@/hooks/useMembers'
-import { useCalendarRange } from '../(app shell)/hooks/useCalendarRange'
 import { useCoxingAvailability } from '../(app shell)/hooks/useCoxingAvailability'
 import { useUpdateCoxingAvailability } from '../(app shell)/hooks/useUpdateCoxingAvailability'
+import { useCoxingUrlState } from '@/hooks/useUrlState'
 import { Member } from '@/types/members'
 import { CoxingAvailability } from '@/types/coxing'
-import { getWeekDays } from '@/lib/date'
+import { WeekRange } from '@/types/calendar'
+import { getWeekDays, getWeekStart, getWeekEnd, formatWeekRange } from '@/lib/date'
 import MembershipSignUp from '@/components/MembershipSignUp'
 
 type TimeSlotKey = 'earlyAM' | 'midAM' | 'midPM' | 'latePM'
@@ -21,24 +23,77 @@ const TIME_SLOTS: { key: TimeSlotKey; label: string }[] = [
 ]
 
 export default function CoxingPageClient() {
-  const { currentWeek, goToNextWeek, goToPreviousWeek } = useCalendarRange()
+  const router = useRouter()
+  const pathname = usePathname()
+  const { urlState, setDate, setMember } = useCoxingUrlState()
   const { members, refresh: refreshMembers } = useMembers()
-  const { availability, refetch, setAvailability } = useCoxingAvailability(currentWeek.start.toISOString().split('T')[0], currentWeek.end.toISOString().split('T')[0])
-  const { updateAvailability, updating } = useUpdateCoxingAvailability()
+  const currentWeek = useMemo<WeekRange>(() => {
+    const weekStart = getWeekStart(urlState.date)
+    const weekEnd = getWeekEnd(urlState.date)
 
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+    return {
+      start: weekStart,
+      end: weekEnd,
+      weekLabel: formatWeekRange(weekStart, weekEnd),
+      year: weekEnd.getFullYear(),
+      weekNumber: getWeekNumber(weekStart),
+    }
+  }, [urlState.date])
 
-  // Format date as local YYYY-MM-DD to avoid timezone shifts from toISOString()
-  const formatLocalDate = (d: Date) => {
+  const formatLocalDate = useCallback((d: Date) => {
     const y = d.getFullYear()
     const m = String(d.getMonth() + 1).padStart(2, '0')
     const day = String(d.getDate()).padStart(2, '0')
     return `${y}-${m}-${day}`
-  }
+  }, [])
+
+  const weekStartStr = useMemo(() => formatLocalDate(currentWeek.start), [currentWeek, formatLocalDate])
+  const weekEndStr = useMemo(() => formatLocalDate(currentWeek.end), [currentWeek, formatLocalDate])
+
+  const { availability, setAvailability } = useCoxingAvailability(weekStartStr, weekEndStr)
+  const { updateAvailability, updating } = useUpdateCoxingAvailability()
+
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+
+  useEffect(() => {
+    if (pathname === '/coxing') {
+      router.replace('/coxing/current')
+    }
+  }, [pathname, router])
+
+  useEffect(() => {
+    if (!urlState.memberId) {
+      setSelectedMember(null)
+      return
+    }
+    const member = members.find(m => m.id === urlState.memberId)
+    if (member) {
+      setSelectedMember(member)
+    } else {
+      setSelectedMember(null)
+    }
+  }, [urlState.memberId, members])
+
+  const goToNextWeek = useCallback(() => {
+    const currentWeekStart = getWeekStart(urlState.date)
+    const nextWeek = new Date(currentWeekStart.getTime() + (7 * 24 * 60 * 60 * 1000))
+    setDate(nextWeek)
+  }, [urlState.date, setDate])
+
+  const goToPreviousWeek = useCallback(() => {
+    const currentWeekStart = getWeekStart(urlState.date)
+    const prevWeek = new Date(currentWeekStart.getTime() - (7 * 24 * 60 * 60 * 1000))
+    setDate(prevWeek)
+  }, [urlState.date, setDate])
+
+  const handleMemberChange = useCallback((member: Member | null) => {
+    setSelectedMember(member)
+    setMember(member?.id)
+  }, [setMember])
 
   const weekDays = useMemo(() => {
     return getWeekDays(currentWeek.start).map(d => formatLocalDate(d))
-  }, [currentWeek])
+  }, [currentWeek, formatLocalDate])
 
   const availabilityMap = useMemo(() => {
     const map: Record<string, CoxingAvailability> = {}
@@ -91,7 +146,7 @@ export default function CoxingPageClient() {
           onNextWeek={goToNextWeek}
           members={members}
           selectedMember={selectedMember}
-          onMemberChange={setSelectedMember}
+          onMemberChange={handleMemberChange}
           refreshMembers={refreshMembers}
         />
       </div>
@@ -217,4 +272,12 @@ export default function CoxingPageClient() {
       </div>
     </div>
   )
+}
+
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
 }

@@ -30,6 +30,7 @@ import { CoxingAvailability } from '@/types/coxing';
 import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
+import { useScheduleUrlState } from '@/hooks/useUrlState';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -564,6 +565,7 @@ const Pill = ({ children, type, value, shouldStretch = false }: { children: Reac
 );
 
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
+  const { urlState, openReportDrawer, closeDrawer, openSessionDrawer } = useScheduleUrlState();
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
   const { availability: coxingAvailability, loading: coxingLoading } = useCoxingAvailability();
@@ -577,8 +579,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const submittingSeats = new Set<string>(); // Not actively used for submitting state
   const [pendingOptimisticUpdates, setPendingOptimisticUpdates] = useState<Set<string>>(new Set());
 
-  // Report drawer state
-  const [isReportDrawerOpen, setIsReportDrawerOpen] = useState(false);
+  // Report drawer state is now controlled by the URL
+  const isReportDrawerOpen = urlState.drawer?.type === 'report' && urlState.drawer?.id === outingId;
 
   // Flag status state
   const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
@@ -1610,7 +1612,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           {/* Submit Outing Report Button - Fixed below scrollable content */}
           <div style={{ marginTop: '40px' }}>
             <ActionButton
-              onClick={() => setIsReportDrawerOpen(true)}
+              onClick={() => openReportDrawer(outingId)}
               className="w-full"
               style={{
                 display: 'flex',
@@ -1628,6 +1630,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               Outing Report
             </ActionButton>
           </div>
+
+          {/* Report Drawer is now managed outside the Sheet component */}
         </div>
       )}
     </Sheet>
@@ -1635,10 +1639,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     {/* Report Drawer - Overlaid on top */}
     {outing && (
       <ReportDrawer
-        outingId={outing.id}
+        outingId={outingId}
         isOpen={isReportDrawerOpen}
-        onClose={() => setIsReportDrawerOpen(false)}
-        onReturnToOuting={() => setIsReportDrawerOpen(false)}
+        onClose={closeDrawer}
+        onReturnToOuting={() => openSessionDrawer(outingId)}
       />
     )}
     </React.Fragment>

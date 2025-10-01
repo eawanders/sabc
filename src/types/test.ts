@@ -118,5 +118,5 @@ export interface TestPageResponse {
   };
 }
 
-// Test filter type for UI
-export type TestFilterType = 'All' | 'Swim test' | 'Capsize Drill';
+// Test filter type for UI (aligned with actual test type casing)
+export type TestFilterType = 'All' | 'Swim Test' | 'Capsize Drill';
