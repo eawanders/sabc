@@ -11,9 +11,9 @@ import Select, { components, DropdownIndicatorProps, GroupBase, OptionProps } fr
 // Custom DropdownIndicator for react-select with thinner arrow
 const DropdownIndicator = (
   props: DropdownIndicatorProps<
-    { value: string; label: string },
+    OptionItem,
     false,
-    GroupBase<{ value: string; label: string }>
+    GroupBase<OptionItem>
   >
 ) => (
   <components.DropdownIndicator {...props}>
@@ -23,19 +23,13 @@ const DropdownIndicator = (
   </components.DropdownIndicator>
 );
 
-// Narrow types to avoid `any` in style functions (prevents eslint no-explicit-any errors on Vercel)
-type OptionItem = { value: string; label: string };
-interface StyleOptionState {
-  isSelected?: boolean;
-  isFocused?: boolean;
-  selectProps?: { options?: readonly OptionItem[] };
-  data?: OptionItem;
-}
-
 interface FilterOption {
-  value: string;
+  value: TestFilterType;
   label: string;
 }
+
+// Narrow types to avoid `any` in style functions (prevents eslint no-explicit-any errors on Vercel)
+type OptionItem = FilterOption;
 
 interface TestCalendarHeaderProps {
   currentWeek: WeekRange;
@@ -74,7 +68,7 @@ export default function TestCalendarHeader({
 
   const handleFilterChange = (selectedOption: FilterOption | null) => {
     if (selectedOption) {
-      onFilterChange(selectedOption.value as TestFilterType);
+      onFilterChange(selectedOption.value);
     }
   };
 
@@ -135,7 +129,7 @@ export default function TestCalendarHeader({
         {/* Right: filter dropdown aligned with calendar (hidden when showFilter is false) */}
         {showFilter && (
           <div ref={wrapperRef} style={{ width: '200px' }}>
-            <Select
+            <Select<OptionItem, false>
               components={{ DropdownIndicator }}
               classNamePrefix="rs"
               instanceId="test-calendar-filter"
