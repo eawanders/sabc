@@ -1,5 +1,6 @@
 import React from 'react';
 import CoxingOverviewCard from '@/components/CoxingOverviewCard';
+import FlagStatusCard from '@/components/FlagStatusCard';
 
 export const metadata = {
   title: 'Home',
@@ -29,6 +30,7 @@ export default function HomePage() {
         }}
       >
         <CoxingOverviewCard />
+        <FlagStatusCard />
       </div>
     </div>
   );
