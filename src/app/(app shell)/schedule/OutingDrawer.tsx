@@ -297,7 +297,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
               isDisabled={isSubmitting || membersLoading}
               isLoading={membersLoading}
               placeholder={membersLoading ? 'Loading members...' : 'Select member'}
-              formatCreateLabel={(inputValue) => `Add "${inputValue}" as guest rower`}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}" as a guest attendee.`}
               styles={{
                 control: (base, state) => ({
                   ...base,

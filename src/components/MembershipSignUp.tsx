@@ -41,6 +41,9 @@ export default function MembershipSignUp() {
         <p className="text-muted-foreground text-center">
           Sign up for SABC membership and your name will appear.
         </p>
+        <p className="text-muted-foreground text-center">
+          New rowers who want to trial or be a guest can add themselves by typing their name into the &apos;Select Member&apos; input box on a session.
+        </p>
       </div>
       <button
         onClick={handleClick}
