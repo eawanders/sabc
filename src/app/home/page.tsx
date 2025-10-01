@@ -6,9 +6,29 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-   <div className="container mx-auto p-2">
-  <h1 className="font-bold" style={{ fontSize: '32px' }}>Home</h1>
-      <div className="w-full"></div>
+    <div className="container mx-auto p-2 flex flex-col h-full">
+      <h1 className="font-bold" style={{ fontSize: '32px' }}>Home</h1>
+
+      {/* Welcome text */}
+      <p className="font-light" style={{ fontSize: '14px', marginTop: '8px', marginBottom: '20px' }}>
+        Welcome to the Home of St Antony&apos;s College, Oxford&apos;s Boat Club.
+        <br /><br />
+        Use this app to sign up for club outings, coxing, and OURC tests. See outing reports, events, and more!
+      </p>
+
+      {/* Container for interactive components */}
+      <div
+        className="flex flex-1 self-stretch"
+        style={{
+          padding: '20px',
+          alignItems: 'flex-start',
+          gap: '20px',
+          borderRadius: '20px',
+          background: '#FAFAFB',
+        }}
+      >
+        {/* Interactive components will go here */}
+      </div>
     </div>
   );
 }
