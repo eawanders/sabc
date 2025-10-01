@@ -1,43 +1,42 @@
 // src/app/api/add-member/route.ts
-import { NextResponse } from 'next/server'
-import { Client } from '@notionhq/client'
+import { NextRequest, NextResponse } from 'next/server';
+import { Client } from '@notionhq/client';
+import { checkRateLimit } from '../_utils/rate-limit';
+import { addMemberSchema } from '../_utils/schemas';
+import { handleApiError, getClientIp, createSuccessResponse } from '../_utils/response';
+import logger from '../_utils/logger';
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
-})
+});
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const route = '/api/add-member';
+  const ip = getClientIp(req);
+
   try {
-    const body = await req.json()
-    const { name } = body
+    // 1. Rate limit - prevent abuse
+    await checkRateLimit(ip);
 
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-      return NextResponse.json(
-        { error: 'Member name is required and must be a non-empty string' },
-        { status: 400 }
-      )
-    }
+    // 2. Validate input with Zod schema
+    const body = await req.json();
+    const input = addMemberSchema.parse(body);
 
-    console.log(`👤 Creating new member: ${name.trim()}`)
+    logger.info(
+      { route, memberName: input.name },
+      'Creating new member'
+    );
 
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set')
-      return NextResponse.json(
-        { error: 'Missing Notion token configuration' },
-        { status: 500 }
-      )
-    }
-
+    // 3. Validate environment
     if (!process.env.NOTION_MEMBERS_DB_ID) {
-      console.error('❌ NOTION_MEMBERS_DB_ID is not set')
+      logger.error({ route }, 'Missing NOTION_MEMBERS_DB_ID');
       return NextResponse.json(
-        { error: 'Missing Notion members database ID configuration' },
+        { error: 'Server configuration error' },
         { status: 500 }
-      )
+      );
     }
 
-    // Create the new member page in Notion
+    // 4. Create member in Notion
     const response = await notion.pages.create({
       parent: {
         database_id: process.env.NOTION_MEMBERS_DB_ID,
@@ -47,47 +46,54 @@ export async function POST(req: Request) {
           title: [
             {
               text: {
-                content: name.trim(),
+                content: input.name.trim(),
               },
             },
           ],
         },
-        'Member Type': {
-          multi_select: [
-            {
-              name: 'Non-Member',
-            },
-          ],
-        },
         'Email Address': {
-          email: null,
+          email: input.email || null,
         },
+        'Role': {
+          select: {
+            name: input.role.charAt(0).toUpperCase() + input.role.slice(1),
+          },
+        },
+        ...(input.college && {
+          'College': {
+            rich_text: [
+              {
+                text: {
+                  content: input.college,
+                },
+              },
+            ],
+          },
+        }),
       },
-    })
+    });
 
-    console.log(`✅ Successfully created member: ${name.trim()} with ID: ${response.id}`)
+    logger.info(
+      { route, memberId: response.id },
+      'Member created successfully'
+    );
 
-    return NextResponse.json({
+    // 5. Return success response with security headers (no-store cache)
+    return createSuccessResponse({
       success: true,
       member: {
         id: response.id,
-        name: name.trim(),
-        email: '',
-        memberType: 'Non-Member',
+        name: input.name.trim(),
+        email: input.email,
+        role: input.role,
       },
-    })
+    });
   } catch (error) {
-    console.error('❌ Error creating member:', error)
-
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-
-    return NextResponse.json(
-      {
-        error: 'Failed to create member',
-        details: errorMessage,
-        success: false,
-      },
-      { status: 500 }
-    )
+    // Handle all errors consistently with PII redaction
+    return handleApiError(error, {
+      route,
+      method: 'POST',
+      ip,
+    });
   }
 }

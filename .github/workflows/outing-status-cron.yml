@@ -6,6 +6,10 @@ on:
   # Allow manual runs from the Actions UI for testing
   workflow_dispatch: {}
 
+# Set default permissions to minimum (read-only)
+permissions:
+  contents: read
+
 jobs:
   update-status:
     # Prevent overlapping runs and limit concurrency
@@ -13,39 +17,65 @@ jobs:
       group: update-outing-status
       cancel-in-progress: true
     runs-on: ubuntu-latest
-    # Grant the workflow the least privilege: it doesn't need to read repository contents
-    permissions: {}
-    # Use a protected GitHub Environment to host the secret and apply deployment protections.
-    # Create an environment named `outing-update` in the repository settings and add
-    # the secret `UPDATE_OUTING_STATUS_SECRET` there. The job will require environment
-    # approval/policies if configured.
+
+    # No additional permissions needed for this job
+    permissions:
+      contents: read
+
+    # Use a protected GitHub Environment to host secrets and apply deployment protections
+    # The CRON_HMAC_KEY secret should be set in the environment (not repository secrets)
     environment:
       name: outing-update
-    env:
-      TOKEN: ${{ secrets.UPDATE_OUTING_STATUS_SECRET }}
+
     steps:
+      - name: Generate HMAC signature
+        id: sign
+        env:
+          CRON_HMAC_KEY: ${{ secrets.CRON_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+
+          # Generate timestamp (milliseconds since epoch)
+          TIMESTAMP=$(date +%s%3N)
+
+          # Create payload with nonce from GitHub run ID
+          PAYLOAD="{\"nonce\":\"${{ github.run_id }}\",\"workflow\":\"${{ github.workflow }}\"}"
+
+          # Compute HMAC signature
+          MESSAGE="${TIMESTAMP}.${PAYLOAD}"
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "$CRON_HMAC_KEY" | cut -d' ' -f2)
+
+          # Output for next step (masked from logs)
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "payload=$PAYLOAD" >> $GITHUB_OUTPUT
+          echo "::add-mask::$SIGNATURE"
+          echo "signature=$SIGNATURE" >> $GITHUB_OUTPUT
+
       - name: Trigger Outing Status Update
+        env:
+          TIMESTAMP: ${{ steps.sign.outputs.timestamp }}
+          SIGNATURE: ${{ steps.sign.outputs.signature }}
+          PAYLOAD: ${{ steps.sign.outputs.payload }}
         run: |
           set -euo pipefail
           URL="https://sabc-woad.vercel.app/api/update-outing-status"
 
-          # Send request and capture status and a short response body (first 8KB)
+          # Send HMAC-signed request
           RESPONSE_FILE=$(mktemp)
-          # Follow redirects (-L) and allow sending the same Authorization header
-          # on redirects (--location-trusted). Add a connect timeout and retries
-          # to be more resilient to transient network errors.
           HTTP_STATUS=$(curl -sS -w "%{http_code}" -o "$RESPONSE_FILE" \
             -X POST \
-            -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
+            -H "x-cron-timestamp: $TIMESTAMP" \
+            -H "x-cron-signature: $SIGNATURE" \
             -L --location-trusted \
             --connect-timeout 10 \
             --max-time 30 \
             --retry 3 --retry-delay 5 \
+            --data "$PAYLOAD" \
             "$URL") || true
 
-          # Read a short snippet of the response for logs (avoid huge bodies)
-          RESPONSE_SNIPPET=$(head -c 8192 "$RESPONSE_FILE" | tr -d '\r' || true)
+          # Read response snippet (truncated for security)
+          RESPONSE_SNIPPET=$(head -c 1024 "$RESPONSE_FILE" | tr -d '\r' || true)
           rm -f "$RESPONSE_FILE"
 
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
