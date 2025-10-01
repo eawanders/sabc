@@ -1422,7 +1422,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                           'Green': 'Novice coxes must have a bankrider.',
                           'Light Blue': (
                             <>
-                              Only Experienced and Senior coxes may go out. Novice coxes with more than one term's experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered {'>'}2 hours before outing.{' '}
+                              Only Experienced and Senior coxes may go out. Novice coxes with more than one term&apos;s experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered {'>'}2 hours before outing.{' '}
                               <a href={formUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB', textDecoration: 'underline' }}>
                                 Register here
                               </a>
