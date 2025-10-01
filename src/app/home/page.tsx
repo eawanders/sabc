@@ -1,4 +1,5 @@
 import React from 'react';
+import CoxingOverviewCard from '@/components/CoxingOverviewCard';
 
 export const metadata = {
   title: 'Home',
@@ -27,7 +28,7 @@ export default function HomePage() {
           background: '#FAFAFB',
         }}
       >
-        {/* Interactive components will go here */}
+        <CoxingOverviewCard />
       </div>
     </div>
   );
