@@ -36,10 +36,7 @@ export default function MembershipSignUp() {
         gap: '12px'
       }}>
         <p className="text-muted-foreground text-center">
-          Don&apos;t see your name in the list of available members?
-        </p>
-        <p className="text-muted-foreground text-center">
-          Sign up for SABC membership and your name will appear.
+          Don&apos;t see your name in the list of available members? Sign up for SABC membership and your name will appear.
         </p>
         <p className="text-muted-foreground text-center">
           New rowers who want to trial or be a guest can add themselves by typing their name into the &apos;Select Member&apos; input box on a session.

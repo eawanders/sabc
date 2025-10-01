@@ -1416,16 +1416,27 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     }}>
                       <span style={{ fontWeight: 600 }}>Requirements:</span> {(() => {
                         const flagColor = flagStatus?.status_text?.replace(' Flag', '') || '';
-                        const requirementsMap: Record<string, string> = {
+                        const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSe6Lkd2v323rhEmIKbHIBjJ8ew1aR2YaJY416xoleVR3y1pZg/viewform';
+
+                        const requirementsMap: Record<string, React.ReactNode> = {
                           'Green': 'Novice coxes must have a bankrider.',
-                          'Light Blue': 'Only Experienced and Senior coxes may go out. Novice coxes with more than one term\'s experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered >2 hours before outing.',
+                          'Light Blue': (
+                            <>
+                              Only Experienced and Senior coxes may go out. Novice coxes with more than one term&apos;s experience may go out with senior crews in daylight hours only, and be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277), with crew and bankrider registered {'>'}2 hours before outing.{' '}
+                              <a href={formUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB', textDecoration: 'underline' }}>
+                                Register here
+                              </a>
+                            </>
+                          ),
                           'Dark Blue': 'No Novice or unregistered coxes.',
                           'Amber': 'Senior coxes may go out only with senior crews. All crews must be accompanied by a bankrider with throw-line and lockkeeper number (01865 777 277).',
                           'Red': 'No crews are allowed out.',
                           'Black': 'No crews are allowed out.',
                           'Grey': 'Flag not currently being maintained. Anyone is allowed to cox.'
                         };
-                        return requirementsMap[flagColor] || 'Requirements not available.';
+
+                        const result = requirementsMap[flagColor];
+                        return result || 'Requirements not available.';
                       })()}
                     </div>
                   )}
@@ -1609,35 +1620,37 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
           </div>
 
-          {/* Submit Outing Report Button - Fixed below scrollable content */}
-          <div style={{ marginTop: '40px' }}>
-            <ActionButton
-              onClick={() => openReportDrawer(outingId)}
-              className="w-full"
-              style={{
-                display: 'flex',
-                padding: '12px 8px',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '10px',
-                alignSelf: 'stretch',
-                borderRadius: '6px',
-                background: 'var(--Theme-Primary-Soft, #E1E8FF)',
-                color: 'var(--Theme-Primary-Default, #4C6FFF)',
-                fontWeight: 600
-              }}
-            >
-              Outing Report
-            </ActionButton>
-          </div>
+          {/* Submit Outing Report Button - Fixed below scrollable content (only for Water Outing) */}
+          {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+            <div style={{ marginTop: '40px' }}>
+              <ActionButton
+                onClick={() => openReportDrawer(outingId)}
+                className="w-full"
+                style={{
+                  display: 'flex',
+                  padding: '12px 8px',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  alignSelf: 'stretch',
+                  borderRadius: '6px',
+                  background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                  color: 'var(--Theme-Primary-Default, #4C6FFF)',
+                  fontWeight: 600
+                }}
+              >
+                Outing Report
+              </ActionButton>
+            </div>
+          )}
 
           {/* Report Drawer is now managed outside the Sheet component */}
         </div>
       )}
     </Sheet>
 
-    {/* Report Drawer - Overlaid on top */}
-    {outing && (
+    {/* Report Drawer - Overlaid on top (only for Water Outing) */}
+    {outing && outing?.properties?.Type?.select?.name === 'Water Outing' && (
       <ReportDrawer
         outingId={outingId}
         isOpen={isReportDrawerOpen}
