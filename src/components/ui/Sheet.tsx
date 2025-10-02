@@ -162,6 +162,7 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             relative bg-white overflow-y-auto focus:outline-none
             transform transition-all duration-300 ease-out
             ${isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
+            ${isMobile ? 'mobile-drawer' : ''}
             ${className}
           `}
           style={{
@@ -169,14 +170,16 @@ export default function Sheet({ isOpen, onClose, children, className = '', title
             boxShadow: '-16px 0 34px 0 rgba(176, 179, 189, 0.10)',
             // Custom flexbox layout as requested
             display: 'flex',
-            width: '420px',
-            height: '100vh',
+            width: isMobile ? '100vw' : '420px',
+            height: isMobile ? 'calc(100vh - 80px)' : '100vh',
+            top: isMobile ? '80px' : '0',
             padding: '32px',
             flexDirection: 'column',
             alignItems: 'stretch',
             gap: '40px',
             flexGrow: 1,
             pointerEvents: 'auto',
+            position: isMobile ? 'absolute' : 'relative',
           }}
           tabIndex={-1}
           onClick={(e) => e.stopPropagation()}
