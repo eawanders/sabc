@@ -2,6 +2,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 interface MobileHeaderProps {
   onMenuClick: () => void;
@@ -67,12 +68,14 @@ export default function MobileHeader({ onMenuClick, isOpen = false, title = 'SAB
             gap: '12px',
           }}
         >
-          <Image
-            src="/sabc-logo.png"
-            alt="SABC Logo"
-            width={40}
-            height={40}
-          />
+          <Link href="/home" style={{ display: 'flex', cursor: 'pointer' }}>
+            <Image
+              src="/sabc-logo.png"
+              alt="SABC Logo"
+              width={40}
+              height={40}
+            />
+          </Link>
           <div
             style={{
               color: '#27272e',
