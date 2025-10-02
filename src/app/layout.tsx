@@ -3,6 +3,7 @@ import { gilroy } from "@/config/fonts";
 import "@/app/globals.css";
 import Sidebar from "@/app/(app shell)/sidebar/Sidebar";
 import Box from "@/components/ui/Box";
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </Box>
         </div>
+        <Analytics />
       </body>
     </html>
   );
