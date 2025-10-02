@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import CalendarHeader from './CalendarHeader'
+import CoxingCalendarHeaderResponsive from './CoxingCalendarHeaderResponsive'
 import { useMembers } from '@/hooks/useMembers'
 import { useCoxingAvailability } from '../(app shell)/hooks/useCoxingAvailability'
 import { useUpdateCoxingAvailability } from '../(app shell)/hooks/useUpdateCoxingAvailability'
@@ -12,6 +12,8 @@ import { CoxingAvailability } from '@/types/coxing'
 import { WeekRange } from '@/types/calendar'
 import { getWeekDays, getWeekStart, getWeekEnd, formatWeekRange } from '@/lib/date'
 import MembershipSignUp from '@/components/MembershipSignUp'
+import { LeftArrow } from '@/components/icons/LeftArrow'
+import { RightArrow } from '@/components/icons/RightArrow'
 
 type TimeSlotKey = 'earlyAM' | 'midAM' | 'midPM' | 'latePM'
 
@@ -54,6 +56,23 @@ export default function CoxingPageClient() {
   const { updateAvailability, updating } = useUpdateCoxingAvailability()
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  const [currentDayIndex, setCurrentDayIndex] = useState(0)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   useEffect(() => {
     if (pathname === '/coxing') {
@@ -90,6 +109,40 @@ export default function CoxingPageClient() {
     setSelectedMember(member)
     setMember(member?.id)
   }, [setMember])
+
+  // Carousel navigation functions
+  const goToNextDay = useCallback(() => {
+    setCurrentDayIndex(prev => Math.min(prev + 1, 6))
+  }, [])
+
+  const goToPreviousDay = useCallback(() => {
+    setCurrentDayIndex(prev => Math.max(prev - 1, 0))
+  }, [])
+
+  // Touch handlers for swipe gestures
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe && currentDayIndex < 6) {
+      goToNextDay()
+    }
+    if (isRightSwipe && currentDayIndex > 0) {
+      goToPreviousDay()
+    }
+  }
 
   const weekDays = useMemo(() => {
     return getWeekDays(currentWeek.start).map(d => formatLocalDate(d))
@@ -138,9 +191,28 @@ export default function CoxingPageClient() {
   }
 
   return (
-    <div className="p-6">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-start' }}>
-        <CalendarHeader
+    <main
+      className="mobile-coxing-page"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: '32px',
+        boxSizing: 'border-box',
+      }}
+    >
+      <h1 className="sr-only">Coxing</h1>
+      <div
+        style={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '32px',
+          flexShrink: 1,
+        }}
+      >
+        {/* Calendar Header */}
+        <CoxingCalendarHeaderResponsive
           currentWeek={currentWeek}
           onPreviousWeek={goToPreviousWeek}
           onNextWeek={goToNextWeek}
@@ -149,20 +221,23 @@ export default function CoxingPageClient() {
           onMemberChange={handleMemberChange}
           refreshMembers={refreshMembers}
         />
-      </div>
 
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 0 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
           {/* Calendar grid (contains an internal labels column to the left of days) */}
           <div>
             {/* Calendar background with internal grid: labels column + 7 day columns and rows for header + time slots */}
             <div
+              onTouchStart={isMobile ? onTouchStart : undefined}
+              onTouchMove={isMobile ? onTouchMove : undefined}
+              onTouchEnd={isMobile ? onTouchEnd : undefined}
               style={{
-                padding: '32px',
+                padding: isMobile ? '32px 32px 72px 32px' : '32px',
                 borderRadius: '10px',
                 background: 'rgba(246, 247, 249, 0.60)',
                 minHeight: '273px',
-                width: '100%'
+                width: '100%',
+                position: 'relative'
               }}
             >
               {/* centered inner wrapper matches /schedule: keeps background full width but centers content */}
@@ -170,30 +245,41 @@ export default function CoxingPageClient() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'auto repeat(7, 110px)',
-                    gridTemplateRows: '48px repeat(4, 48px)',
-                    columnGap: '24px',
+                    gridTemplateColumns: isMobile ? '1fr' : 'auto repeat(7, 110px)',
+                    gridTemplateRows: isMobile ? '48px repeat(4, 48px)' : '48px repeat(4, 48px)',
+                    columnGap: isMobile ? '0' : '24px',
                     rowGap: '24px',
                     alignItems: 'center'
                   }}
                 >
-                  {/* top-left spacer */}
-                  <div style={{ gridColumn: '1', gridRow: '1' }} />
+                  {/* top-left spacer - hidden on mobile */}
+                  {!isMobile && <div style={{ gridColumn: '1', gridRow: '1' }} />}
 
-                  {/* Day headers (columns 2..8) */}
-                  {weekDays.map((day, idx) => (
-                    <div key={day} style={{ textAlign: 'center', gridColumn: `${idx + 2}`, gridRow: '1' }}>
+                  {/* Day headers - show all on desktop, only current day on mobile */}
+                  {isMobile ? (
+                    <div key={weekDays[currentDayIndex]} style={{ textAlign: 'center', gridColumn: '1', gridRow: '1' }}>
                       <div className="text-sm font-medium text-muted-foreground" style={{ marginBottom: '12px' }}>
-                        {new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}
+                        {new Date(weekDays[currentDayIndex]).toLocaleDateString(undefined, { weekday: 'short' })}
                       </div>
                       <div className="text-lg font-semibold text-foreground">
-                        {new Date(day).getDate().toString().padStart(2, '0')}
+                        {new Date(weekDays[currentDayIndex]).getDate().toString().padStart(2, '0')}
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    weekDays.map((day, idx) => (
+                      <div key={day} style={{ textAlign: 'center', gridColumn: `${idx + 2}`, gridRow: '1' }}>
+                        <div className="text-sm font-medium text-muted-foreground" style={{ marginBottom: '12px' }}>
+                          {new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}
+                        </div>
+                        <div className="text-lg font-semibold text-foreground">
+                          {new Date(day).getDate().toString().padStart(2, '0')}
+                        </div>
+                      </div>
+                    ))
+                  )}
 
-                  {/* Labels column (rows 2..5 in column 1) */}
-                  {TIME_SLOTS.map((s, idx) => (
+                  {/* Labels column (rows 2..5 in column 1) - hidden on mobile */}
+                  {!isMobile && TIME_SLOTS.map((s, idx) => (
                     <div
                       key={`label-${s.key}`}
                       style={{ display: 'flex', alignItems: 'center', paddingLeft: '8px', gridColumn: '1', gridRow: `${idx + 2}` }}
@@ -204,14 +290,16 @@ export default function CoxingPageClient() {
                   ))}
 
                   {/* Availability buttons for each day/time slot placed into grid cells */}
-                  {TIME_SLOTS.map((slot, rowIdx) => (
-                    weekDays.map((day, colIdx) => {
+                  {isMobile ? (
+                    // Mobile: show only current day's buttons
+                    TIME_SLOTS.map((slot, rowIdx) => {
+                      const day = weekDays[currentDayIndex]
                       const dateAvail = availabilityMap[day]
                       const isAvailable = selectedMember ? (dateAvail?.[slot.key] || []).includes(selectedMember.id) : false
                       return (
                         <div
                           key={`${day}-${slot.key}`}
-                          style={{ width: '100%', display: 'flex', justifyContent: 'center', gridColumn: `${colIdx + 2}`, gridRow: `${rowIdx + 2}` }}
+                          style={{ width: '100%', display: 'flex', justifyContent: 'center', gridColumn: '1', gridRow: `${rowIdx + 2}` }}
                         >
                           <button
                             onClick={() => handleToggle(day, slot.key)}
@@ -240,14 +328,107 @@ export default function CoxingPageClient() {
                                 lineHeight: '20px'
                               }}
                           >
-                            {isAvailable ? 'Available' : 'Unavailable'}
+                            {slot.label}
                           </button>
                         </div>
                       )
                     })
-                  ))}
+                  ) : (
+                    // Desktop: show all days
+                    TIME_SLOTS.map((slot, rowIdx) => (
+                      weekDays.map((day, colIdx) => {
+                        const dateAvail = availabilityMap[day]
+                        const isAvailable = selectedMember ? (dateAvail?.[slot.key] || []).includes(selectedMember.id) : false
+                        return (
+                          <div
+                            key={`${day}-${slot.key}`}
+                            style={{ width: '100%', display: 'flex', justifyContent: 'center', gridColumn: `${colIdx + 2}`, gridRow: `${rowIdx + 2}` }}
+                          >
+                            <button
+                              onClick={() => handleToggle(day, slot.key)}
+                              disabled={!selectedMember || updating}
+                              aria-pressed={isAvailable}
+                                style={{
+                                  display: 'flex',
+                                  height: '28px',
+                                  width: '100%',
+                                  padding: '5px 20px',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  flexShrink: 0,
+                                  alignSelf: 'stretch',
+                                  borderRadius: '5px',
+                                  background: isAvailable ? 'rgb(0, 197, 62)' : '#FFFFFF',
+                                  color: isAvailable ? '#FFFFFF' : '#4C5A6E',
+                                  boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)',
+                                  border: 'none',
+                                  cursor: (!selectedMember || updating) ? 'not-allowed' : 'pointer',
+                                  opacity: !selectedMember ? 0.5 : 1,
+                                  fontFamily: 'Gilroy',
+                                  fontSize: '14px',
+                                  fontWeight: 300,
+                                  lineHeight: '20px'
+                                }}
+                            >
+                              {isAvailable ? 'Available' : 'Unavailable'}
+                            </button>
+                          </div>
+                        )
+                      })
+                    ))
+                  )}
                 </div>
               </div>
+
+              {/* Mobile carousel arrows - center aligned */}
+              {isMobile && (
+                <>
+                  {/* Left arrow */}
+                  <button
+                    onClick={goToPreviousDay}
+                    disabled={currentDayIndex === 0}
+                    className="flex items-center justify-center bg-[rgba(246,247,249,0.60)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      bottom: '16px',
+                      transform: 'translateX(calc(-50% - 22px))',
+                      width: '36px',
+                      height: '36px',
+                      padding: 0,
+                      borderRadius: '10px',
+                      cursor: currentDayIndex === 0 ? 'not-allowed' : 'pointer',
+                      opacity: currentDayIndex === 0 ? 0.5 : 1
+                    }}
+                    aria-label="Previous day"
+                  >
+                    <LeftArrow />
+                  </button>
+
+                  {/* Right arrow */}
+                  <button
+                    onClick={goToNextDay}
+                    disabled={currentDayIndex === 6}
+                    className="flex items-center justify-center bg-[rgba(246,247,249,0.60)] hover:bg-[rgba(125,141,166,0.20)] transition-colors border-0"
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      bottom: '16px',
+                      transform: 'translateX(calc(-50% + 22px))',
+                      width: '36px',
+                      height: '36px',
+                      padding: 0,
+                      borderRadius: '10px',
+                      cursor: currentDayIndex === 6 ? 'not-allowed' : 'pointer',
+                      opacity: currentDayIndex === 6 ? 0.5 : 1
+                    }}
+                    aria-label="Next day"
+                  >
+                    <RightArrow />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -270,7 +451,8 @@ export default function CoxingPageClient() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </main>
   )
 }
 

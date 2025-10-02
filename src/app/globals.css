@@ -231,6 +231,11 @@ select:focus-visible {
     margin-top: 20px !important;
   }
 
+  /* Mobile coxing page */
+  .mobile-coxing-page {
+    padding-top: 60px !important;
+  }
+
   .mobile-flag-status-card {
     width: 100% !important;
     padding: 20px !important;
@@ -265,7 +270,13 @@ select:focus-visible {
     width: 100% !important;
   }
 
+  /* Ensure all react-select controls are 100% width on mobile */
   .mobile-calendar-header .rs__control {
+    width: 100% !important;
+  }
+
+  /* Ensure the dropdown wrapper divs are also 100% width */
+  .mobile-calendar-header > div > div:last-child > div:last-child > div {
     width: 100% !important;
   }
 

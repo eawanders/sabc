@@ -26,6 +26,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     if (pathname?.startsWith('/events')) return 'Events';
     if (pathname?.startsWith('/membership')) return 'Membership';
     if (pathname?.startsWith('/feedback')) return 'Feedback';
+    if (pathname?.startsWith('/coxing')) return 'Coxing';
     return 'SABC';
   };
 
@@ -59,7 +60,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
         {/* Main Content Area */}
         <Box
           as="main"
-          className="flex-1 min-h-screen max-h-screen overflow-hidden bg-surface"
+          className={`flex-1 min-h-screen bg-surface ${isDesktop ? 'max-h-screen overflow-hidden' : 'overflow-y-auto'}`}
           style={{
             paddingTop: isDesktop ? 0 : 'var(--mobile-header-height)',
             padding: isDesktop ? '32px' : '16px',

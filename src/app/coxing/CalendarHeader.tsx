@@ -84,7 +84,7 @@ export default function CalendarHeader({
       style={{ gap: '40px' }}
     >
   {/* Title */}
-  <h1 className="font-bold" style={{ fontSize: '32px'}}>Coxing Availability</h1>
+  <h1 className="font-bold mobile-hide-header" style={{ fontSize: '32px'}}>Coxing Availability</h1>
 
       {/* Week Display and Filter Row */}
       <div
