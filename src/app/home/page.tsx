@@ -31,7 +31,7 @@ export default function HomePage() {
           borderRadius: '20px',
           background: '#FAFAFB',
           flex: 1,
-          alignItems: 'center',
+          alignItems: 'flex-start',
           justifyContent: 'center',
         }}
       >

@@ -4,7 +4,8 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useUpcomingTests } from '@/hooks/useUpcomingTests';
 import { TestCalendarEvent } from '@/types/test';
-import { formatTime } from '@/lib/date';
+import { formatTime, getWeekStart } from '@/lib/date';
+import { buildTestUrl } from '@/lib/urlParams';
 
 function ChevronRightIcon({ color = '#4C6FFF' }: { color?: string }) {
   return (
@@ -39,7 +40,7 @@ function TestItem({ test, onSignUp }: TestItemProps) {
 
   // Background color: blue for Swim Test, white for Capsize Drill
   const backgroundColor = isSwimTest ? '#0177FB' : '#FFF';
-  
+
   // Text color: white for Swim Test, default for Capsize Drill
   const textColor = isSwimTest ? '#FFFFFF' : undefined;
 
@@ -166,8 +167,20 @@ export default function UpcomingTestsCard() {
     router.push('/tests');
   };
 
-  const handleTestClick = (testId: string) => {
-    router.push(`/tests?testId=${testId}`);
+  const handleTestClick = (test: TestCalendarEvent) => {
+    // Calculate the week start date for this test (same logic as UpcomingSessionsCard)
+    const weekStart = getWeekStart(test.startTime);
+
+    // Build URL with drawer state to open the test drawer
+    const url = buildTestUrl({
+      date: weekStart,
+      filter: 'all',
+      drawer: {
+        type: 'test',
+        id: test.id,
+      },
+    });
+    router.push(url);
   };
 
   return (
@@ -182,7 +195,8 @@ export default function UpcomingTestsCard() {
         borderRadius: '20px',
         background: '#FFF',
         boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)',
-        gap: '20px',
+              gap: '20px',
+        minHeight: '300px',
       }}
     >
       {/* Header section */}
@@ -242,7 +256,7 @@ export default function UpcomingTestsCard() {
             <TestItem
               key={test.id}
               test={test}
-              onSignUp={() => handleTestClick(test.id)}
+              onSignUp={() => handleTestClick(test)}
             />
           ))
         )}

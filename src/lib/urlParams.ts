@@ -161,13 +161,13 @@ export function parseTestUrl(pathname: string): {
 
   // Test drawer parsing
   if (segments[2] && segments[3]) {
-    // For tests, the structure might be /tests/date/test-type/test-id
-    // where test-type could be the filter and test-id is the drawer
-    const testType = segments[2];
+    // For tests, the structure might be /tests/date/filter/test-id
+    // where filter could be 'all', 'swim-test', or 'capsize-drill'
+    const filterSegment = segments[2];
     const testId = segments[3];
 
-    if (['swim-test', 'capsize-drill'].includes(testType)) {
-      defaultState.filter = testType as TestFilterType;
+    if (['all', 'swim-test', 'capsize-drill'].includes(filterSegment)) {
+      defaultState.filter = filterSegment as TestFilterType;
       defaultState.drawer = {
         type: 'test',
         id: testId

@@ -141,7 +141,8 @@ export default function CoxingOverviewCard() {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'flex-start',
+          alignItems: coxes.length === 0 ? 'center' : 'flex-start',
+          justifyContent: coxes.length === 0 ? 'center' : 'flex-start',
           gap: '12px',
           alignSelf: 'stretch',
           flex: 1,
