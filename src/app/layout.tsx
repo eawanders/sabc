@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { gilroy } from "@/config/fonts";
 import "@/app/globals.css";
-import Sidebar from "@/app/(app shell)/sidebar/Sidebar";
-import Box from "@/components/ui/Box";
+import ResponsiveLayout from "@/components/ResponsiveLayout";
 import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
@@ -33,12 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" type="image/svg+xml" href="/sabc-logo.svg" />
       </head>
       <body className="min-h-screen bg-bg text-foreground antialiased overflow-x-hidden">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <Box as="main" className="flex-1 min-h-screen max-h-screen overflow-hidden bg-surface" p={32}>
-            {children}
-          </Box>
-        </div>
+        <ResponsiveLayout>
+          {children}
+        </ResponsiveLayout>
         <Analytics />
       </body>
     </html>

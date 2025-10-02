@@ -77,8 +77,8 @@ export default function EventsPageClient() {
 
   if (loading) {
     return (
-      <main className="flex flex-col">
-        <h1 className="text-2xl font-bold" style={{ marginBottom: 40 }}>Events</h1>
+      <main className="flex flex-col mobile-events-page">
+        <h1 className="text-2xl font-bold mobile-hide-header" style={{ marginBottom: 40 }}>Events</h1>
         <div className="text-center py-12 flex items-center justify-center" style={{ width: '100%', minHeight: '200px' }}>
           <p className="text-muted-foreground mb-2">Loading events...</p>
         </div>
@@ -88,8 +88,8 @@ export default function EventsPageClient() {
 
   if (error) {
     return (
-      <div className="container mx-auto p-6">
-        <h1 className="font-bold text-4xl" style={{ marginBottom: 40 }}>Events</h1>
+      <div className="container mx-auto p-6 mobile-events-page">
+        <h1 className="font-bold text-4xl mobile-hide-header" style={{ marginBottom: 40 }}>Events</h1>
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -110,8 +110,8 @@ export default function EventsPageClient() {
 
   if (events.length === 0) {
     return (
-        <main className="flex flex-col">
-          <h1 className="text-2xl font-bold" style={{ marginBottom: 100 }}>Events</h1>
+        <main className="flex flex-col mobile-events-page">
+          <h1 className="text-2xl font-bold mobile-hide-header" style={{ marginBottom: 100 }}>Events</h1>
           <div className="text-center py-12 flex items-center justify-center" style={{ width: '100%', minHeight: '200px' }}>
             <p className="text-muted-foreground mb-2">No upcoming events</p>
           </div>
@@ -120,8 +120,8 @@ export default function EventsPageClient() {
   }
 
   return (
-    <main className="flex flex-col bg-transparent">
-      <h1 className="text-2xl font-bold flex-shrink-0" style={{ marginBottom: 100 }}>Events</h1>
+    <main className="flex flex-col bg-transparent mobile-events-page">
+      <h1 className="text-2xl font-bold flex-shrink-0 mobile-hide-header" style={{ marginBottom: 100 }}>Events</h1>
 
       <div style={{ width: '100%', overflow: 'visible' }}>
           {error && <div>Error loading events</div>}

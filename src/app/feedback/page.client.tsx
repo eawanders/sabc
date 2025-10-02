@@ -2,8 +2,8 @@
 
 export default function FeedbackPageClient() {
   return (
-    <div className="container mx-auto p-2">
-      <h1 className="font-bold" style={{ fontSize: '32px' }}>Feedback Form</h1>
+    <div className="container mx-auto p-2 mobile-feedback-page">
+      <h1 className="font-bold mobile-hide-header" style={{ fontSize: '32px' }}>Feedback Form</h1>
       <div className="w-full">
         <iframe
           src="https://stantonysboatclub.notion.site/ebd/24e80040a8fa8035bec2c5387a981512"

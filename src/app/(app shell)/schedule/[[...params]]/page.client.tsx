@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { CalendarEvent, WeekRange } from "@/types/calendar";
 import { useCalendarData } from "../../hooks/useCalendarData";
-import CalendarHeader from "../CalendarHeader";
+import CalendarHeaderResponsive from "../CalendarHeaderResponsive";
 import CalendarWeek from "../CalendarWeek";
+import CalendarWeekMobile from "../CalendarWeekMobile";
 import OutingDrawer from "../OutingDrawer";
 import ReportDrawer from "../ReportDrawer";
 import { getFlagStatus } from "../../../../lib/flagStatus";
@@ -43,6 +44,19 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
   }, [pathname, router]);
 
 
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Local state for drawer management
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -182,6 +196,7 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
   return (
     <>
       <main
+        className="mobile-schedule-page"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -202,7 +217,7 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
           }}
         >
           {/* Calendar Header */}
-          <CalendarHeader
+          <CalendarHeaderResponsive
             currentWeek={currentWeek}
             onPreviousWeek={goToPreviousWeek}
             onNextWeek={goToNextWeek}
@@ -217,12 +232,20 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
             </div>
           )}
 
-          {/* Calendar Grid */}
-          <CalendarWeek
-            calendarDays={calendarDays}
-            onEventClick={handleEventClick}
-            loading={loading}
-          />
+          {/* Calendar Grid - Mobile vs Desktop */}
+          {isMobile ? (
+            <CalendarWeekMobile
+              calendarDays={calendarDays}
+              onEventClick={handleEventClick}
+              loading={loading}
+            />
+          ) : (
+            <CalendarWeek
+              calendarDays={calendarDays}
+              onEventClick={handleEventClick}
+              loading={loading}
+            />
+          )}
 
           {/* No events message */}
           {!loading && !stats.hasEvents && (

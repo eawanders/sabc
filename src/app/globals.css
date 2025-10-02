@@ -77,6 +77,19 @@
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 60px;
   --drawer-width: 380px;
+
+  /* Mobile Layout */
+  --mobile-header-height: 80px;
+  --mobile-drawer-width: 280px;
+  --mobile-padding: 16px;
+
+  /* Responsive Spacing */
+  --spacing-mobile-sm: 8px;
+  --spacing-mobile-md: 16px;
+  --spacing-mobile-lg: 24px;
+  --spacing-desktop-sm: 16px;
+  --spacing-desktop-md: 32px;
+  --spacing-desktop-lg: 48px;
 }
 
 /* Set base text size/line-height per spec */
@@ -157,4 +170,118 @@ select:focus-visible {
   font-family: var(--font-gilroy), system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
   font-weight: 800;
+}
+
+/* Mobile-only styles for home page */
+@media (max-width: 767px) {
+  .mobile-home-page {
+    padding-top: 60px !important;
+    margin-top: 0 !important;
+  }
+
+  .mobile-hide-header {
+    display: none !important;
+  }
+
+  .mobile-home-title {
+    margin-bottom: 32px !important;
+  }
+
+  .mobile-home-text {
+    margin-bottom: 40px !important;
+  }
+
+  .mobile-home-container {
+    padding-top: 20px !important;
+  }
+
+  /* Mobile schedule page */
+  .mobile-schedule-page {
+    padding-top: 60px !important;
+  }
+
+  /* Mobile tests page */
+  .mobile-tests-page {
+    padding-top: 60px !important;
+  }
+
+  /* Mobile flag status page */
+  .mobile-flag-status-page {
+    padding-top: 60px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    margin-top: 100px !important;
+  }
+
+  /* Mobile events page */
+  .mobile-events-page {
+    padding-top: 60px !important;
+    margin-top: 100px !important;
+  }
+
+  /* Mobile membership page */
+  .mobile-membership-page {
+    padding-top: 60px !important;
+    margin-top: 20px !important;
+  }
+
+  /* Mobile feedback page */
+  .mobile-feedback-page {
+    padding-top: 60px !important;
+    margin-top: 20px !important;
+  }
+
+  /* Mobile coxing page */
+  .mobile-coxing-page {
+    padding-top: 60px !important;
+  }
+
+  .mobile-flag-status-card {
+    width: 100% !important;
+    padding: 20px !important;
+  }
+
+  .mobile-flag-status-icon {
+    display: none !important;
+  }
+
+  /* Mobile schedule calendar header */
+  .mobile-calendar-header {
+    margin-top: 20px !important;
+  }
+
+  .mobile-calendar-header > div {
+    gap: 20px !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child > div:first-child {
+    order: 2 !important;
+    justify-content: flex-start !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child > div:last-child {
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  /* Ensure all react-select controls are 100% width on mobile */
+  .mobile-calendar-header .rs__control {
+    width: 100% !important;
+  }
+
+  /* Ensure the dropdown wrapper divs are also 100% width */
+  .mobile-calendar-header > div > div:last-child > div:last-child > div {
+    width: 100% !important;
+  }
+
+  /* Hide 'Club Schedule' heading on mobile */
+  .mobile-calendar-header h1 {
+    display: none !important;
+  }
 }
