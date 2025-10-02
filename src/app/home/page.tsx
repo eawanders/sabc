@@ -2,6 +2,7 @@ import React from 'react';
 import CoxingOverviewCard from '@/components/CoxingOverviewCard';
 import FlagStatusCard from '@/components/FlagStatusCard';
 import UpcomingSessionsCard from '@/components/UpcomingSessionsCard';
+import RecentWaterOutingsCard from '@/components/RecentWaterOutingsCard';
 
 export const metadata = {
   title: 'Home',
@@ -33,6 +34,7 @@ export default function HomePage() {
         <CoxingOverviewCard />
         <FlagStatusCard />
         <UpcomingSessionsCard />
+        <RecentWaterOutingsCard />
       </div>
     </div>
   );
