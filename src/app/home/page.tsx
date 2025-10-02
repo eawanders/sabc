@@ -3,6 +3,7 @@ import CoxingOverviewCard from '@/components/CoxingOverviewCard';
 import FlagStatusCard from '@/components/FlagStatusCard';
 import UpcomingSessionsCard from '@/components/UpcomingSessionsCard';
 import RecentWaterOutingsCard from '@/components/RecentWaterOutingsCard';
+import NextEventCard from '@/components/NextEventCard';
 
 export const metadata = {
   title: 'Home',
@@ -22,19 +23,54 @@ export default function HomePage() {
 
       {/* Container for interactive components */}
       <div
-        className="flex flex-1 self-stretch"
         style={{
-          padding: '20px',
-          alignItems: 'flex-start',
+          display: 'flex',
           gap: '20px',
+          padding: '20px',
           borderRadius: '20px',
           background: '#FAFAFB',
+          flex: 1,
+          alignItems: 'flex-start',
+          justifyContent: 'center',
         }}
       >
-        <CoxingOverviewCard />
-        <FlagStatusCard />
-        <UpcomingSessionsCard />
-        <RecentWaterOutingsCard />
+        {/* Left column: Coxing (top) and Flag Status (bottom) */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            width: '300px',
+          }}
+        >
+          <CoxingOverviewCard />
+          <FlagStatusCard />
+        </div>
+
+        {/* Middle column: Upcoming Sessions */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            width: '300px',
+          }}
+        >
+          <UpcomingSessionsCard />
+        </div>
+
+        {/* Right column: Next Event (top) and Recent Outings (bottom) */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            width: '300px',
+          }}
+        >
+          <NextEventCard />
+          <RecentWaterOutingsCard />
+        </div>
       </div>
     </div>
   );
