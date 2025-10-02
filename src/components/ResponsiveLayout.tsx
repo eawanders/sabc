@@ -26,6 +26,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     if (pathname?.startsWith('/events')) return 'Events';
     if (pathname?.startsWith('/membership')) return 'Membership';
     if (pathname?.startsWith('/feedback')) return 'Feedback';
+    if (pathname?.startsWith('/faqs')) return 'FAQs';
     if (pathname?.startsWith('/coxing')) return 'Coxing';
     return 'SABC';
   };

@@ -105,6 +105,17 @@ function SendIcon({ stroke = "#425466" }: { stroke?: string }) {
   );
 }
 
+function ChatIcon({ stroke = "#425466" }: { stroke?: string }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path fillRule="evenodd" clipRule="evenodd" d="M19.0714 19.07C16.0152 22.1265 11.4898 22.7868 7.78642 21.0741C7.23971 20.854 6.79148 20.6761 6.36537 20.6761C5.17849 20.6832 3.70117 21.834 2.93336 21.0671C2.16555 20.2992 3.31726 18.8207 3.31726 17.6267C3.31726 17.2005 3.14642 16.7603 2.92632 16.2125C1.21283 12.5097 1.87411 7.98281 4.93026 4.92733C8.8316 1.02455 15.17 1.02455 19.0714 4.92632C22.9797 8.83513 22.9727 15.1682 19.0714 19.07Z" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M15.9393 12.4131H15.9483" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11.9303 12.4131H11.9393" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7.92128 12.4131H7.93028" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   // Close drawer on escape key
   useEffect(() => {
@@ -204,6 +215,12 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             href="/feedback"
             icon={<SendIcon />}
             label="Feedback"
+            onClick={onClose}
+          />
+          <MobileNavItem
+            href="/faqs"
+            icon={<ChatIcon />}
+            label="FAQs"
             onClick={onClose}
           />
         </nav>
