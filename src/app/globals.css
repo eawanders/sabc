@@ -194,4 +194,43 @@ select:focus-visible {
   .mobile-home-container {
     padding-top: 20px !important;
   }
+
+  /* Mobile schedule page */
+  .mobile-schedule-page {
+    padding-top: 60px !important;
+  }
+
+  /* Mobile schedule calendar header */
+  .mobile-calendar-header {
+    margin-top: 20px !important;
+  }
+
+  .mobile-calendar-header > div {
+    gap: 20px !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child > div:first-child {
+    order: 2 !important;
+    justify-content: flex-start !important;
+  }
+
+  .mobile-calendar-header > div > div:last-child > div:last-child {
+    order: 1 !important;
+    width: 100% !important;
+  }
+
+  .mobile-calendar-header .rs__control {
+    width: 100% !important;
+  }
+
+  /* Hide 'Club Schedule' heading on mobile */
+  .mobile-calendar-header h1 {
+    display: none !important;
+  }
 }

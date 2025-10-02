@@ -6,6 +6,7 @@ import Image from "next/image";
 interface MobileHeaderProps {
   onMenuClick: () => void;
   isOpen?: boolean;
+  title?: string;
 }
 
 /** Hamburger menu icon */
@@ -29,7 +30,7 @@ function CloseIcon() {
   );
 }
 
-export default function MobileHeader({ onMenuClick, isOpen = false }: MobileHeaderProps) {
+export default function MobileHeader({ onMenuClick, isOpen = false, title = 'SABC' }: MobileHeaderProps) {
   return (
     <header
       style={{
@@ -81,7 +82,7 @@ export default function MobileHeader({ onMenuClick, isOpen = false }: MobileHead
               lineHeight: 'normal',
             }}
           >
-            SABC
+            {title}
           </div>
         </div>
 

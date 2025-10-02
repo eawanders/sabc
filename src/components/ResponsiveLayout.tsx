@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useMobileMenu } from "@/hooks/useMobileMenu";
 import Sidebar from "@/app/(app shell)/sidebar/Sidebar";
 import MobileHeader from "@/components/mobile/MobileHeader";
@@ -15,6 +16,13 @@ interface ResponsiveLayoutProps {
 export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   const { isOpen, toggle, close } = useMobileMenu();
   const [isDesktop, setIsDesktop] = useState(true);
+  const pathname = usePathname();
+
+  // Determine the title based on the current route
+  const getMobileTitle = () => {
+    if (pathname?.startsWith('/schedule')) return 'Schedule';
+    return 'SABC';
+  };
 
   useEffect(() => {
     // Check if screen is desktop (>= 768px)
@@ -33,7 +41,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   return (
     <>
       {/* Mobile Header - visible only on mobile (< 768px) */}
-      {!isDesktop && <MobileHeader onMenuClick={toggle} isOpen={isOpen} />}
+      {!isDesktop && <MobileHeader onMenuClick={toggle} isOpen={isOpen} title={getMobileTitle()} />}
 
       {/* Mobile Drawer - visible only on mobile when open */}
       {!isDesktop && <MobileDrawer isOpen={isOpen} onClose={close} />}
