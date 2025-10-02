@@ -16,7 +16,7 @@ export default function HomePage() {
       <h1 className="font-bold" style={{ fontSize: '32px' }}>Home</h1>
 
       {/* Welcome text */}
-      <p className="font-light" style={{ fontSize: '14px', marginTop: '24Spx', marginBottom: '24px' }}>
+      <p className="font-light" style={{ fontSize: '14px', marginTop: '24px', marginBottom: '24px' }}>
         Welcome to the Home of St Antony&apos;s College, Oxford&apos;s Boat Club.
         <br /><br />
         Use this app to sign up for club outings, coxing, and OURC tests. See outing reports, events, and more!
