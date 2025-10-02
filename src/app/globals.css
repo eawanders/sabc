@@ -231,6 +231,12 @@ select:focus-visible {
     margin-top: 20px !important;
   }
 
+  /* Mobile FAQs page */
+  .mobile-faqs-page {
+    padding-top: 60px !important;
+    margin-top: 20px !important;
+  }
+
   /* Mobile coxing page */
   .mobile-coxing-page {
     padding-top: 60px !important;

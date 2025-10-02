@@ -6,6 +6,7 @@ import SwimIcon from "./SwimIcon";
 import PersonIcon from "./PersonIcon";
 import { MoreSquareIcon } from "./MoreSquareIcon";
 import { SendIcon } from "./SendIcon";
+import { ChatIcon } from "./ChatIcon";
 import { HomeIcon } from "./HomeIcon";
 import { CoxingIcon } from "./CoxingIcon";
 import { EventsIcon } from "./EventsIcon";
@@ -157,6 +158,12 @@ export default function Sidebar() {
             label="Feedback"
             icon={<SendIcon width={20} height={20} stroke={pathname?.startsWith("/feedback") ? "#fff" : "#425466"} />}
             active={pathname?.startsWith("/feedback")}
+          />
+          <NavItem
+            href="/faqs"
+            label="FAQs"
+            icon={<ChatIcon stroke={pathname?.startsWith("/faqs") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/faqs")}
           />
         </div>
       </Box>
