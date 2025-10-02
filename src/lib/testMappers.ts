@@ -7,10 +7,20 @@ import { isSameDay, parseISO } from '@/lib/date';
  * Convert Test objects to TestCalendarEvent objects for calendar display
  */
 export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
+  console.log('🔄 [testMappers] mapTestsToEvents called with', tests.length, 'tests');
+
   return tests.map(test => {
     // Parse dates
     const startDate = parseISO(test.date.start);
     const endDate = test.date.end ? parseISO(test.date.end) : startDate;
+
+    console.log('📅 [testMappers] Parsing test date:', {
+      id: test.id,
+      rawStart: test.date.start,
+      rawEnd: test.date.end,
+      parsedStart: startDate.toISOString(),
+      parsedEnd: endDate.toISOString(),
+    });
 
     // Count booked slots
     const bookedSlots = countBookedSlots(test);
@@ -38,7 +48,7 @@ export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
     // Set color based on test type and status
     const color = getTestEventColor(test.type, status);
 
-    return {
+    const event = {
       id: test.id,
       title: test.title,
       startTime: startDate,
@@ -51,6 +61,15 @@ export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
       isPublished: true, // Assume all tests are published
       originalTest: test
     };
+
+    console.log('✅ [testMappers] Mapped test event:', {
+      id: event.id,
+      type: event.type,
+      startTime: event.startTime.toISOString(),
+      endTime: event.endTime.toISOString(),
+    });
+
+    return event;
   });
 }
 
@@ -62,11 +81,28 @@ export function filterTestEventsByDateRange(
   startDate: Date,
   endDate: Date
 ): TestCalendarEvent[] {
-  return events.filter(event => {
-    return (event.startTime >= startDate && event.startTime <= endDate) ||
+  console.log('📅 [testMappers] filterTestEventsByDateRange:', {
+    totalEvents: events.length,
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+  });
+
+  const filtered = events.filter(event => {
+    const inRange = (event.startTime >= startDate && event.startTime <= endDate) ||
            (event.endTime >= startDate && event.endTime <= endDate) ||
            (event.startTime <= startDate && event.endTime >= endDate);
+
+    console.log(`  ${inRange ? '✅' : '❌'} Event ${event.id}:`, {
+      startTime: event.startTime.toISOString(),
+      endTime: event.endTime.toISOString(),
+      inRange,
+    });
+
+    return inRange;
   });
+
+  console.log(`📊 [testMappers] Filtered ${filtered.length} events in date range`);
+  return filtered;
 }
 
 /**
@@ -83,23 +119,28 @@ export function filterTestEventsByType(
 }
 
 /**
- * Group test events by date key (YYYY-MM-DD)
+ * Group test events by date key (matching Date.toDateString() format)
  */
 export function groupTestEventsByDate(events: TestCalendarEvent[]): Record<string, TestCalendarEvent[]> {
   const grouped: Record<string, TestCalendarEvent[]> = {};
 
   events.forEach(event => {
-    const date = event.startTime;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
+    // Use toDateString() to match the format used in calendar days
+    const dateKey = event.startTime.toDateString();
+
+    console.log('🔑 [testMappers] Grouping event with dateKey:', {
+      eventId: event.id,
+      dateKey,
+      startTime: event.startTime.toISOString(),
+    });
 
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];
     }
     grouped[dateKey].push(event);
   });
+
+  console.log('📦 [testMappers] Grouped events:', Object.keys(grouped));
 
   return grouped;
 }
@@ -158,7 +199,7 @@ function countBookedSlots(test: Test): number {
   if (count === 0) {
     console.log('[countBookedSlots] fallback to outcome-based counting');
     const filledOutcomes = ['Test Booked', 'Passed', 'Failed', 'Rescheduled'];
-    
+
     if (test.slot1Outcome && filledOutcomes.includes(test.slot1Outcome)) count++;
     if (test.slot2Outcome && filledOutcomes.includes(test.slot2Outcome)) count++;
     if (test.slot3Outcome && filledOutcomes.includes(test.slot3Outcome)) count++;

@@ -103,36 +103,94 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
 
   // Transform tests to calendar events and filter by current week
   const weekEvents = useMemo(() => {
-    if (!tests.length) return [];
+    console.log('🔄 [Tests Page] Processing tests:', {
+      totalTests: tests.length,
+      currentWeekStart: currentWeek.start.toISOString(),
+      currentWeekEnd: currentWeek.end.toISOString(),
+      filterType: componentFilterType,
+    });
+
+    if (!tests.length) {
+      console.log('⚠️ [Tests Page] No tests available');
+      return [];
+    }
 
     const allEvents = mapTestsToEvents(tests);
+    console.log('📋 [Tests Page] All mapped events:', allEvents.length, allEvents.map(e => ({
+      id: e.id,
+      type: e.type,
+      startTime: e.startTime.toISOString(),
+      title: e.title,
+    })));
+
     const dateFilteredEvents = filterTestEventsByDateRange(allEvents, currentWeek.start, currentWeek.end);
-    return filterTestEventsByType(dateFilteredEvents, componentFilterType);
+    console.log('📅 [Tests Page] After date filtering:', dateFilteredEvents.length, dateFilteredEvents.map(e => ({
+      id: e.id,
+      type: e.type,
+      startTime: e.startTime.toISOString(),
+    })));
+
+    const typeFilteredEvents = filterTestEventsByType(dateFilteredEvents, componentFilterType);
+    console.log('🔍 [Tests Page] After type filtering:', typeFilteredEvents.length, typeFilteredEvents.map(e => ({
+      id: e.id,
+      type: e.type,
+    })));
+
+    return typeFilteredEvents;
   }, [tests, currentWeek, componentFilterType]);
 
   // Group events by date and create calendar days
   const calendarDays = useMemo(() => {
     const eventsByDate = groupTestEventsByDate(weekEvents);
+    console.log('🗓️ [Tests Page] Events grouped by date:', Object.keys(eventsByDate).length, 'days with events');
+    console.log('📊 [Tests Page] Events by date detail:', Object.entries(eventsByDate).map(([date, events]) => ({
+      date,
+      count: events.length,
+      events: events.map(e => ({ id: e.id, type: e.type, time: e.startTime.toISOString() })),
+    })));
+
     const weekDays = getWeekDays(currentWeek.start);
+    console.log('📆 [Tests Page] Week days:', weekDays.map(d => d.toDateString()));
 
     return weekDays.map((date) => {
       const dateKey = date.toDateString();
       const dayEvents = eventsByDate[dateKey] || [];
 
+      console.log(`📍 [Tests Page] Processing day ${dateKey}:`, {
+        hasEvents: dayEvents.length > 0,
+        eventCount: dayEvents.length,
+        events: dayEvents.map(e => ({ id: e.id, type: e.type })),
+      });
+
       // Map test events to calendar events for compatibility
-      const compatibleEvents: CalendarEvent[] = dayEvents.map((event: TestCalendarEvent): CalendarEvent => ({
-        id: event.id,
-        title: event.title,
-        startTime: event.startTime,
-        endTime: event.endTime,
-        type: 'Water', // Default type for test events
-        division: '',
-        status: 'Outing Confirmed' as const,
-        color: event.color,
-        isPublished: true,
-        outingId: 0,
-        originalOuting: event.originalTest?.id || event.id,
-      }));
+      const compatibleEvents: CalendarEvent[] = dayEvents.map((event: TestCalendarEvent): CalendarEvent => {
+        console.log('🔄 [Tests Page] Converting test event to calendar event:', {
+          id: event.id,
+          type: event.type,
+          startTime: event.startTime.toISOString(),
+          originalTestId: event.originalTest?.id,
+        });
+
+        return {
+          id: event.id,
+          title: event.title,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          type: 'Water' as const, // Use Water as base type for CalendarEvent compatibility
+          division: '',
+          status: event.status as any,
+          color: event.color,
+          isPublished: true,
+          outingId: 0,
+          originalOuting: event.originalTest?.id || event.id,
+          // Add test-specific properties for EventChip
+          isTestEvent: true,
+          originalTestType: event.type,
+          availableSlots: event.availableSlots,
+          bookedSlots: event.bookedSlots,
+          originalTest: event.originalTest,
+        } as any;
+      });
 
       return {
         date,
@@ -171,6 +229,12 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
         }
 
         console.log('✅ Tests loaded successfully:', data.tests.length);
+        console.log('📋 [Tests Page] Raw tests data:', data.tests.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          type: t.type,
+          date: t.date,
+        })));
         setTests(data.tests);
         setError(null);
       } catch (err) {
@@ -188,19 +252,31 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
   const handleEventClick = (event: CalendarEvent) => {
     console.log('=== Test Event Clicked ===');
     console.log('Event data:', event);
+    console.log('originalOuting:', event.originalOuting);
+    console.log('id:', event.id);
 
+    // For test events, get the test ID from the event
+    let testId: string | undefined;
+
+    // Try to get from originalOuting first
     if (event.originalOuting) {
-      let testId: string;
       if (typeof event.originalOuting === 'string') {
         testId = event.originalOuting;
       } else if (typeof event.originalOuting === 'object' && 'id' in event.originalOuting) {
         testId = (event.originalOuting as any).id;
-      } else {
-        console.warn('No valid test ID found in event');
-        return;
       }
+    }
 
+    // Fallback to event.id if originalOuting is not set
+    if (!testId) {
+      testId = event.id;
+    }
+
+    if (testId) {
+      console.log('✅ Opening test drawer with ID:', testId);
       openTestDrawer(testId);
+    } else {
+      console.warn('❌ No valid test ID found in event');
     }
   };
 
