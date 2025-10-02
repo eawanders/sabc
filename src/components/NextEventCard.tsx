@@ -74,19 +74,19 @@ export default function NextEventCard() {
         }}
       >
         {loading && (
-          <p className="font-light" style={{ fontSize: '12px', color: '#999' }}>
+          <p className="text-muted-foreground font-light" style={{ fontSize: '14px', textAlign: 'center', width: '100%' }}>
             Loading...
           </p>
         )}
 
         {error && (
-          <p className="font-light" style={{ fontSize: '12px', color: '#ff0000' }}>
+          <p style={{ fontSize: '14px', color: '#ff0000', textAlign: 'center', width: '100%' }}>
             {error}
           </p>
         )}
 
         {!loading && !error && !event && (
-          <p className="font-light" style={{ fontSize: '14px', color: '#999' }}>
+          <p className="text-muted-foreground font-light" style={{ fontSize: '14px', textAlign: 'center', width: '100%' }}>
             No upcoming events
           </p>
         )}

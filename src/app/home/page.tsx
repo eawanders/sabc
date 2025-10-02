@@ -4,6 +4,7 @@ import FlagStatusCard from '@/components/FlagStatusCard';
 import UpcomingSessionsCard from '@/components/UpcomingSessionsCard';
 import RecentWaterOutingsCard from '@/components/RecentWaterOutingsCard';
 import NextEventCard from '@/components/NextEventCard';
+import UpcomingTestsCard from '@/components/UpcomingTestsCard';
 
 export const metadata = {
   title: 'Home',
@@ -15,7 +16,7 @@ export default function HomePage() {
       <h1 className="font-bold" style={{ fontSize: '32px' }}>Home</h1>
 
       {/* Welcome text */}
-      <p className="font-light" style={{ fontSize: '14px', marginTop: '8px', marginBottom: '20px' }}>
+      <p className="font-light" style={{ fontSize: '14px', marginTop: '24Spx', marginBottom: '24px' }}>
         Welcome to the Home of St Antony&apos;s College, Oxford&apos;s Boat Club.
         <br /><br />
         Use this app to sign up for club outings, coxing, and OURC tests. See outing reports, events, and more!
@@ -30,11 +31,11 @@ export default function HomePage() {
           borderRadius: '20px',
           background: '#FAFAFB',
           flex: 1,
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        {/* Left column: Coxing (top) and Flag Status (bottom) */}
+        {/* Left column: Coxing (top) and Upcoming Tests (bottom) */}
         <div
           style={{
             display: 'flex',
@@ -44,10 +45,10 @@ export default function HomePage() {
           }}
         >
           <CoxingOverviewCard />
-          <FlagStatusCard />
+          <UpcomingTestsCard />
         </div>
 
-        {/* Middle column: Upcoming Sessions */}
+        {/* Middle column: Upcoming Sessions and Flag Status */}
         <div
           style={{
             display: 'flex',
@@ -57,6 +58,7 @@ export default function HomePage() {
           }}
         >
           <UpcomingSessionsCard />
+          <FlagStatusCard />
         </div>
 
         {/* Right column: Next Event (top) and Recent Outings (bottom) */}

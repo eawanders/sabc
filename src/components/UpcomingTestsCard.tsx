@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useRecentWaterOutings } from '@/hooks/useRecentWaterOutings';
-import { CalendarEvent } from '@/types/calendar';
-import { formatTime, getWeekStart } from '@/lib/date';
-import { buildScheduleUrl } from '@/lib/urlParams';
+import { useUpcomingTests } from '@/hooks/useUpcomingTests';
+import { TestCalendarEvent } from '@/types/test';
+import { formatTime } from '@/lib/date';
 
 function ChevronRightIcon({ color = '#4C6FFF' }: { color?: string }) {
   return (
@@ -20,25 +19,48 @@ function ChevronRightIcon({ color = '#4C6FFF' }: { color?: string }) {
   );
 }
 
-interface OutingItemProps {
-  event: CalendarEvent;
-  onViewReport: () => void;
+interface TestItemProps {
+  test: TestCalendarEvent;
+  onSignUp: () => void;
 }
 
-function OutingItem({ event, onViewReport }: OutingItemProps) {
+function TestItem({ test, onSignUp }: TestItemProps) {
   // Format day and time (e.g., "Wed 9:00")
-  const dayName = event.startTime.toLocaleDateString('en-GB', { weekday: 'short' });
-  const time = formatTime(event.startTime);
+  const dayName = test.startTime.toLocaleDateString('en-GB', { weekday: 'short' });
+  const time = formatTime(test.startTime);
   const dayTime = `${dayName} ${time}`;
 
-  // Water outings always have white background (not blue like Erg)
-  const backgroundColor = '#FFF';
-  const textColor = undefined; // Use default text colors
+  // Determine button styling based on status
+  const testStatus = test.status;
 
-  // Report button - always active with consistent styling
-  const buttonBg = '#E1E8FF';
-  const buttonText = 'Report';
-  const buttonTextColor = '#4C6FFF';
+  // Determine background and text color based on test type
+  const isSwimTest = test.type === 'Swim Test';
+  const isCapsizeDrill = test.type === 'Capsize Drill';
+
+  // Background color: blue for Swim Test, white for Capsize Drill
+  const backgroundColor = isSwimTest ? '#0177FB' : '#FFF';
+  
+  // Text color: white for Swim Test, default for Capsize Drill
+  const textColor = isSwimTest ? '#FFFFFF' : undefined;
+
+  // Button styling based on status
+  let buttonBg = undefined;
+  let buttonText = 'Sign up';
+  let buttonTextColor = undefined;
+
+  if (testStatus === 'Full') {
+    buttonBg = '#00C53E';
+    buttonText = 'Full';
+    buttonTextColor = '#FFFFFF';
+  } else if (testStatus === 'Cancelled') {
+    buttonBg = '#EF4444';
+    buttonText = 'Cancelled';
+    buttonTextColor = '#FFFFFF';
+  }
+
+  // Default button styling when no status override
+  const defaultButtonBg = buttonBg || (isSwimTest ? '#FFFFFF' : '#E1E8FF');
+  const defaultButtonTextColor = buttonTextColor || (isSwimTest ? '#4C6FFF' : '#4C6FFF');
 
   return (
     <div
@@ -50,7 +72,7 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
         alignSelf: 'stretch',
         borderRadius: '10px',
         background: backgroundColor,
-        boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)',
+        boxShadow: '0px 9px 44px 0px rgba(174, 174, 174, 0.20)',
       }}
     >
       {/* Left side: Title and day/time */}
@@ -69,7 +91,7 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
           }}
           className={!textColor ? 'text-foreground' : undefined}
         >
-          {`${event.division} ${event.type}`}
+          {test.title}
         </span>
         <span
           style={{
@@ -82,9 +104,9 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
         </span>
       </div>
 
-      {/* Right side: Report button - matching ActionButton styling */}
+      {/* Right side: Sign up button */}
       <button
-        onClick={onViewReport}
+        onClick={onSignUp}
         style={{
           display: 'flex',
           padding: '12px 8px',
@@ -92,17 +114,21 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
           alignItems: 'center',
           gap: '10px',
           borderRadius: '6px',
-          background: buttonBg,
+          background: defaultButtonBg,
           border: 'none',
           cursor: 'pointer',
           transition: 'background-color 0.2s ease',
           minWidth: '90px',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#D1DAFF';
+          if (!buttonBg) {
+            e.currentTarget.style.background = '#D1DAFF';
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = buttonBg;
+          if (!buttonBg) {
+            e.currentTarget.style.background = defaultButtonBg;
+          }
         }}
       >
         <div
@@ -120,52 +146,35 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
               fontStyle: 'normal',
               fontWeight: 800,
               lineHeight: '12px',
-              color: buttonTextColor,
+              color: defaultButtonTextColor,
             }}
           >
             {buttonText}
           </span>
-          <ChevronRightIcon color={buttonTextColor} />
+          {!buttonBg && <ChevronRightIcon color={defaultButtonTextColor} />}
         </div>
       </button>
     </div>
   );
 }
 
-export default function RecentWaterOutingsCard() {
+export default function UpcomingTestsCard() {
   const router = useRouter();
-  const { outings, loading, error } = useRecentWaterOutings(3);
+  const { tests, loading, error } = useUpcomingTests();
 
-  const handleNavigateToSchedule = () => {
-    router.push('/schedule');
+  const handleNavigate = () => {
+    router.push('/tests');
   };
 
-  const handleViewReport = (event: CalendarEvent) => {
-    // Calculate the week start date for this event
-    const weekStart = getWeekStart(event.startTime);
-
-    // Build the URL with report drawer open
-    const url = buildScheduleUrl({
-      date: weekStart,
-      filter: 'all',
-      drawer: {
-        type: 'report',
-        id: event.originalOuting,
-      },
-    });
-
-    router.push(url);
+  const handleTestClick = (testId: string) => {
+    router.push(`/tests?testId=${testId}`);
   };
-
-  // Fixed height to accommodate 3 outings
-  const cardMinHeight = '380px';
 
   return (
     <div
       style={{
         display: 'flex',
         width: '300px',
-        height: '300px',
         padding: '20px',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -176,7 +185,7 @@ export default function RecentWaterOutingsCard() {
         gap: '20px',
       }}
     >
-      {/* Header container */}
+      {/* Header section */}
       <div
         style={{
           display: 'flex',
@@ -186,56 +195,62 @@ export default function RecentWaterOutingsCard() {
           alignSelf: 'stretch',
         }}
       >
-        <h2 className="font-bold" style={{ fontSize: '22px' }}>
-          Recent Outings
+        <h2
+          className="font-bold"
+          style={{
+            fontSize: '22px',
+          }}
+        >
+          Upcoming Tests
         </h2>
-        <p className="font-light" style={{ fontSize: '14px' }}>
-          See the reports of recent water outings.
+        <p
+          className="font-light"
+          style={{
+            fontSize: '14px',
+          }}
+        >
+          Sign up for an OURC swim or capsize test.
         </p>
       </div>
 
-      {/* Central container for outing items */}
+      {/* Test items */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
-          gap: '12px',
+          gap: '20px',
           alignSelf: 'stretch',
           flex: 1,
           justifyContent: 'center',
         }}
       >
-        {loading && (
+        {loading ? (
           <p className="text-muted-foreground font-light" style={{ fontSize: '14px', textAlign: 'center', width: '100%' }}>
             Loading...
           </p>
-        )}
-
-        {error && (
+        ) : error ? (
           <p style={{ fontSize: '14px', color: '#ff0000', textAlign: 'center', width: '100%' }}>
             {error}
           </p>
-        )}
-
-        {!loading && !error && outings.length === 0 && (
+        ) : tests.length === 0 ? (
           <p className="text-muted-foreground font-light" style={{ fontSize: '14px', textAlign: 'center', width: '100%' }}>
-            No recent water outings.
+            No upcoming tests.
           </p>
+        ) : (
+          tests.map((test) => (
+            <TestItem
+              key={test.id}
+              test={test}
+              onSignUp={() => handleTestClick(test.id)}
+            />
+          ))
         )}
-
-        {!loading && !error && outings.map((outing) => (
-          <OutingItem
-            key={outing.id}
-            event={outing}
-            onViewReport={() => handleViewReport(outing)}
-          />
-        ))}
       </div>
 
       {/* Navigation button */}
       <button
-        onClick={handleNavigateToSchedule}
+        onClick={handleNavigate}
         style={{
           display: 'flex',
           width: '30px',
@@ -255,7 +270,7 @@ export default function RecentWaterOutingsCard() {
         onMouseLeave={(e) => {
           e.currentTarget.style.background = '#E1E8FF';
         }}
-        aria-label="Navigate to schedule page"
+        aria-label="Navigate to tests page"
       >
         <ChevronRightIcon color="#4C6FFF" />
       </button>
