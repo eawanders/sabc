@@ -21,6 +21,8 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
   // Determine the title based on the current route
   const getMobileTitle = () => {
     if (pathname?.startsWith('/schedule')) return 'Schedule';
+    if (pathname?.startsWith('/tests')) return 'Tests';
+    if (pathname?.startsWith('/flag-status')) return 'Flag Status';
     return 'SABC';
   };
 

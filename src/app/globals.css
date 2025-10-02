@@ -200,6 +200,28 @@ select:focus-visible {
     padding-top: 60px !important;
   }
 
+  /* Mobile tests page */
+  .mobile-tests-page {
+    padding-top: 60px !important;
+  }
+
+  /* Mobile flag status page */
+  .mobile-flag-status-page {
+    padding-top: 60px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    margin-top: 100px !important;
+  }
+
+  .mobile-flag-status-card {
+    width: 100% !important;
+    padding: 20px !important;
+  }
+
+  .mobile-flag-status-icon {
+    display: none !important;
+  }
+
   /* Mobile schedule calendar header */
   .mobile-calendar-header {
     margin-top: 20px !important;

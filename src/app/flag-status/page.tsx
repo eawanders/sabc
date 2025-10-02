@@ -26,8 +26,9 @@ export default async function FlagStatusPage() {
 
   return (
     <>
-  <h1 className="font-bold" style={{ fontSize: '32px' }}>Flag Status</h1>
+  <h1 className="font-bold mobile-hide-header" style={{ fontSize: '32px' }}>Flag Status</h1>
       <main
+        className="mobile-flag-status-page"
         style={{
           display: 'flex',
           padding: '100px',
@@ -49,6 +50,7 @@ export default async function FlagStatusPage() {
         }}
       />
       <div
+        className="mobile-flag-status-card"
         style={{
           display: 'flex',
           padding: '36px 54px',
@@ -77,6 +79,7 @@ export default async function FlagStatusPage() {
                 }}
               >
                 <span
+                  className="mobile-flag-status-icon"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -109,6 +112,7 @@ export default async function FlagStatusPage() {
                 }}
               >
                 <span
+                  className="mobile-flag-status-icon"
                   style={{
                     display: 'flex',
                     alignItems: 'center',

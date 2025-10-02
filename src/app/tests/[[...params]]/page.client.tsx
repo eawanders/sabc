@@ -4,8 +4,9 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { TestCalendarEvent, TestFilterType } from "@/types/test";
 import { CalendarEvent, WeekRange } from "@/types/calendar";
-import TestCalendarHeader from "../TestCalendarHeader";
+import TestCalendarHeaderResponsive from "../TestCalendarHeaderResponsive";
 import CalendarWeek from "@/app/(app shell)/schedule/CalendarWeek";
+import TestCalendarWeekMobile from "../TestCalendarWeekMobile";
 import TestDrawer from "@/app/(app shell)/swim-tests/TestDrawer";
 import { mapTestsToEvents, filterTestEventsByType, filterTestEventsByDateRange, groupTestEventsByDate } from "@/lib/testMappers";
 import { getWeekDays, getDayNameShort, isToday, getWeekStart, getWeekEnd, formatWeekRange } from "@/lib/date";
@@ -45,6 +46,19 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
       router.replace(`/tests/current`);
     }
   }, [pathname, router]);
+
+  // Mobile detection
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -329,6 +343,7 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
 
   return (
     <main
+      className="mobile-tests-page"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -349,7 +364,7 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
         }}
       >
         {/* Calendar Header */}
-        <TestCalendarHeader
+        <TestCalendarHeaderResponsive
           currentWeek={currentWeek}
           onPreviousWeek={() => handleWeekNavigation('prev')}
           onNextWeek={() => handleWeekNavigation('next')}
@@ -365,12 +380,20 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
           </div>
         )}
 
-        {/* Calendar Grid */}
-        <CalendarWeek
-          calendarDays={calendarDays}
-          onEventClick={handleEventClick}
-          loading={loading}
-        />
+        {/* Calendar Grid - Mobile vs Desktop */}
+        {isMobile ? (
+          <TestCalendarWeekMobile
+            calendarDays={calendarDays}
+            onEventClick={handleEventClick}
+            loading={loading}
+          />
+        ) : (
+          <CalendarWeek
+            calendarDays={calendarDays}
+            onEventClick={handleEventClick}
+            loading={loading}
+          />
+        )}
 
         {/* No events message */}
         {!loading && !stats.hasEvents && (
