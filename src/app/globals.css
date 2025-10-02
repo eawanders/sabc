@@ -213,6 +213,24 @@ select:focus-visible {
     margin-top: 100px !important;
   }
 
+  /* Mobile events page */
+  .mobile-events-page {
+    padding-top: 60px !important;
+    margin-top: 100px !important;
+  }
+
+  /* Mobile membership page */
+  .mobile-membership-page {
+    padding-top: 60px !important;
+    margin-top: 20px !important;
+  }
+
+  /* Mobile feedback page */
+  .mobile-feedback-page {
+    padding-top: 60px !important;
+    margin-top: 20px !important;
+  }
+
   .mobile-flag-status-card {
     width: 100% !important;
     padding: 20px !important;
