@@ -9,7 +9,7 @@ export const timeStringSchema = z.string().regex(/^\d{2}:\d{2}$/);
 // Member schemas
 export const addMemberSchema = z.object({
   name: z.string().min(1).max(120),
-  email: emailSchema,
+  email: emailSchema.optional(),
   role: z.enum(['admin', 'coach', 'member']).default('member'),
   college: z.string().max(100).optional(),
 }).strict();

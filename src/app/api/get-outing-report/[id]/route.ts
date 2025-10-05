@@ -1,7 +1,8 @@
 // src/app/api/get-outing-report/[id]/route.ts
 
 import { NextResponse } from 'next/server';
-import { Client } from '@notionhq/client';
+import { notionRequest } from '@/server/notion/client';
+import { startTiming, createServerTiming } from '@/server/timing';
 
 // Type definitions for Notion API responses
 interface NotionRichTextItem {
@@ -24,28 +25,15 @@ interface NotionPageResponse {
   [key: string]: unknown;
 }
 
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-  notionVersion: '2025-09-03'
-});
-
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const start = startTiming();
   try {
     console.log('🎯 Fetching outing report data...');
 
     const { id } = await params;
-
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set');
-      return NextResponse.json(
-        { error: 'Missing Notion token configuration', success: false },
-        { status: 500 }
-      );
-    }
 
     if (!id) {
       console.error('❌ Missing outingId in request');
@@ -67,9 +55,10 @@ export async function GET(
     console.log('🔍 Fetching report data for outing:', id);
 
     // Fetch the outing page from Notion
-    const response = await notion.pages.retrieve({
-      page_id: id,
-    });
+    const response = await notionRequest<NotionPageResponse>({
+      method: 'get',
+      path: `pages/${id}`,
+    }, `pages/${id}`);
 
     // Type guard to ensure we have properties
     if (!('properties' in response)) {
@@ -106,10 +95,12 @@ export async function GET(
 
     console.log(`✅ Successfully fetched report data for ${id}:`, reportData);
 
-    return NextResponse.json({
+    const outingResponse = NextResponse.json({
       success: true,
       data: reportData
     });
+    outingResponse.headers.set('Server-Timing', createServerTiming(start));
+    return outingResponse;
   } catch (error) {
     console.error('❌ Error fetching outing report:', error);
 
@@ -140,9 +131,11 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to fetch outing report', success: false },
       { status: 500 }
     );
+    errorResponse.headers.set('Server-Timing', createServerTiming(start));
+    return errorResponse;
   }
 }

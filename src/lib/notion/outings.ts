@@ -36,8 +36,10 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
   try {
     if (memberIds.length === 0) return [];
 
-    // Fetch all members first - use relative URL to work in all environments
-    const response = await fetch(`/api/get-members`);
+    const params = new URLSearchParams({ ids: memberIds.join(',') });
+
+    // Fetch only the members we need - use relative URL to work in all environments
+    const response = await fetch(`/api/get-members?${params.toString()}`);
 
     if (!response.ok) {
       console.error('Failed to fetch members:', response.status);
@@ -48,30 +50,21 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
     const allMembers = data.members as Array<{id: string; name: string; email: string; memberType: string}>;
 
     // Convert to our Member type and filter to only requested IDs
-    return allMembers
-      .filter(member => memberIds.includes(member.id))
-      .map(member => ({
-        id: member.id,
-        name: member.name,
-        role: member.memberType
-      }));
+    return allMembers.map(member => ({
+      id: member.id,
+      name: member.name,
+      role: member.memberType
+    }));
   } catch (error) {
     console.error('Error fetching members:', error);
     return [];
   }
 }
 
-// Simple in-memory cache for outing details
-const outingDetailsCache = new Map<string, DetailedOuting>();
-
 /**
  * Convert raw outing data to detailed outing with populated member data
  */
 export async function getOutingWithMembers(id: string): Promise<DetailedOuting | null> {
-  // Return cached outing if available
-  if (outingDetailsCache.has(id)) {
-    return outingDetailsCache.get(id)!;
-  }
   try {
     // Fetch the basic outing data
     const outing = await getOutingById(id);

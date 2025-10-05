@@ -1,64 +1,81 @@
 // src/hooks/useTestDetails.ts
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Test } from '@/types/test';
+import { useTestsResource } from './useTestsResource';
 
 export function useTestDetails(testId: string | null) {
-  const [test, setTest] = useState<Test | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { tests, loading: listLoading, error: listError, refresh } = useTestsResource();
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackError, setFallbackError] = useState<string | null>(null);
+  const [fallbackTest, setFallbackTest] = useState<Test | null>(null);
+
+  const cachedTest = useMemo(() => {
+    if (!testId) return null;
+    return tests.find((test) => test.id === testId) ?? null;
+  }, [tests, testId]);
 
   useEffect(() => {
     if (!testId) {
-      setTest(null);
-      setLoading(false);
-      setError(null);
+      setFallbackTest(null);
+      setFallbackError(null);
+      setFallbackLoading(false);
       return;
     }
 
-    async function fetchTestDetails() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // For now, we'll get test details from the get-tests API
-        // In the future, you might want to create a specific get-test/[id] endpoint
-        const response = await fetch('/api/get-tests');
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch test details');
-        }
-
-        const foundTest = data.tests?.find((t: Test) => t.id === testId);
-        if (!foundTest) {
-          throw new Error('Test not found');
-        }
-
-        setTest(foundTest);
-      } catch (err) {
-        console.error('Error fetching test details:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        setTest(null);
-      } finally {
-        setLoading(false);
-      }
+    if (cachedTest) {
+      setFallbackTest(null);
+      setFallbackError(null);
+      setFallbackLoading(false);
+      return;
     }
 
-    fetchTestDetails();
-  }, [testId]);
+    if (listLoading) {
+      setFallbackLoading(true);
+      return;
+    }
+
+    let cancelled = false;
+    setFallbackLoading(true);
+    setFallbackError(null);
+
+    fetch(`/api/get-test?id=${testId}`)
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || `Failed to fetch test ${testId}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setFallbackTest((data?.test ?? null) as Test | null);
+        setFallbackLoading(false);
+      })
+      .catch((error: Error) => {
+        if (cancelled) return;
+        setFallbackError(error.message);
+        setFallbackTest(null);
+        setFallbackLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cachedTest, listLoading, testId]);
+
+  const test = cachedTest ?? fallbackTest;
+  const loading = listLoading || fallbackLoading;
+  const error = fallbackError ?? listError;
 
   const refetch = () => {
-    if (testId) {
-      setLoading(true);
-      setError(null);
-    }
+    refresh();
   };
 
   return {
     test,
     loading,
     error,
-    refetch
+    refetch,
   };
 }

@@ -1,43 +1,16 @@
 // src/hooks/useUpcomingTests.ts
 
-import { useState, useEffect, useMemo } from 'react';
-import { Test, TestCalendarEvent } from '@/types/test';
+import { useMemo } from 'react';
+import { TestCalendarEvent } from '@/types/test';
 import { mapTestsToEvents } from '@/lib/testMappers';
+import { useTestsResource } from './useTestsResource';
 
 /**
  * Hook for fetching upcoming tests
  * Returns the next 3 tests that haven't ended yet
  */
 export function useUpcomingTests() {
-  const [tests, setTests] = useState<Test[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch tests data
-  useEffect(() => {
-    async function fetchTests() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch('/api/get-tests');
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch tests');
-        }
-
-        setTests(data.tests || []);
-      } catch (err) {
-        console.error('Error fetching tests:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTests();
-  }, []);
+  const { tests, loading, error } = useTestsResource();
 
   // Get upcoming tests (next 3 that haven't ended yet)
   const upcomingTests: TestCalendarEvent[] = useMemo(() => {

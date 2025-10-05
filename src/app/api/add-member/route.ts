@@ -36,6 +36,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    logger.info(
+      {
+        route,
+        memberName: input.name,
+        hasEmail: !!input.email,
+        role: input.role,
+        hasCollege: !!input.college
+      },
+      'Creating member in Notion'
+    );
+
     // 4. Create member in Notion
     const response = await notion.pages.create({
       parent: {
@@ -51,13 +62,17 @@ export async function POST(req: NextRequest) {
             },
           ],
         },
-        'Email Address': {
-          email: input.email || null,
-        },
-        'Role': {
-          select: {
-            name: input.role.charAt(0).toUpperCase() + input.role.slice(1),
+        ...(input.email && {
+          'Email Address': {
+            email: input.email,
           },
+        }),
+        'Member Type': {
+          multi_select: [
+            {
+              name: input.role.charAt(0).toUpperCase() + input.role.slice(1),
+            },
+          ],
         },
         ...(input.college && {
           'College': {
@@ -74,8 +89,8 @@ export async function POST(req: NextRequest) {
     });
 
     logger.info(
-      { route, memberId: response.id },
-      'Member created successfully'
+      { route, memberId: response.id, memberName: input.name },
+      'Member created successfully in Notion'
     );
 
     // 5. Return success response with security headers (no-store cache)
@@ -89,6 +104,19 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    // Log Notion-specific errors with more detail
+    if (error && typeof error === 'object' && 'code' in error) {
+      logger.error(
+        {
+          route,
+          notionError: error,
+          code: (error as any).code,
+          message: (error as any).message
+        },
+        'Notion API error creating member'
+      );
+    }
+
     // Handle all errors consistently with PII redaction
     return handleApiError(error, {
       route,

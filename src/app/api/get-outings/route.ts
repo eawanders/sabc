@@ -1,73 +1,23 @@
 // src/app/api/get-outings/route.ts
 import { NextResponse } from 'next/server'
-import { Client } from '@notionhq/client'
 import { Outing } from '@/types/outing'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
+import { getEnvVar } from '@/server/notion/env'
+import { queryDataSource } from '@/server/notion/query'
+import { startTiming, createServerTiming } from '@/server/timing'
 
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-  notionVersion: '2025-09-03',
-})
+export const revalidate = 30
 
 export async function GET() {
+  const start = startTiming()
   try {
-    console.log('🔍 Fetching outings from Notion database...')
-
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set')
-      return NextResponse.json(
-        { error: 'Missing Notion token configuration', success: false },
-        { status: 500 }
-      )
-    }
-
-    if (!process.env.NOTION_OUTINGS_DB_ID) {
-      console.error('❌ NOTION_OUTINGS_DB_ID is not set')
-      return NextResponse.json(
-        { error: 'Missing Notion outings database ID configuration', success: false },
-        { status: 500 }
-      )
-    }
-
-    console.log('🗄️ Retrieving database:', process.env.NOTION_OUTINGS_DB_ID)
-
-    // First get the database to find data sources
-    const databaseResponse = await notion.request({
-      method: 'get',
-      path: `databases/${process.env.NOTION_OUTINGS_DB_ID}`,
-    }) as { data_sources?: { id: string }[] }
-
-    if (!databaseResponse.data_sources || databaseResponse.data_sources.length === 0) {
-      console.error('❌ No data sources found for outings database')
-      return NextResponse.json(
-        { error: 'No data sources found for outings database', success: false },
-        { status: 500 }
-      )
-    }
-
-    const dataSourceId = databaseResponse.data_sources[0].id
-    console.log(`📊 Using data source: ${dataSourceId}`)
-
-    // Query the data source
-    const response = await notion.request({
-      method: 'post',
-      path: `data_sources/${dataSourceId}/query`,
-      body: {
-        page_size: 100, // Increase page size for better performance
+    const databaseId = getEnvVar('NOTION_OUTINGS_DB_ID')
+    const results = await queryDataSource<PageObjectResponse>(
+      databaseId,
+      {
       },
-    }) as { results: unknown[] }
-
-    console.log('📊 Raw Notion response:', response.results.length, 'records')
-
-    const results = response.results.filter(
-      (r: unknown): r is PageObjectResponse => {
-        const obj = r as Record<string, unknown>
-        return 'properties' in obj
-      }
+      'outings.query'
     )
-
-    console.log(`📋 Filtered results: ${results.length} valid pages`)
 
     const getPropertyValue = (property: unknown) => {
       if (!property || typeof property !== 'object' || property === null) return undefined;
@@ -107,7 +57,9 @@ export async function GET() {
       }
     };
 
-    const outings = results.map((page: PageObjectResponse) => ({
+    const outings = results
+      .filter((page): page is PageObjectResponse => Boolean(page && 'properties' in page))
+      .map((page: PageObjectResponse) => ({
       id: page.id,
       properties: {
         Term: getPropertyValue(page.properties['Term']),
@@ -153,32 +105,19 @@ export async function GET() {
       },
     })) as Outing[]
 
-    console.log(`📤 Returning ${outings.length} outings`)
-    console.log("📤 First outing summary:", outings[0] ? {
-      id: outings[0].id,
-      name: outings[0].properties?.Name,
-      div: outings[0].properties?.Div?.select?.name,
-      type: outings[0].properties?.Type?.select?.name
-    } : "None")
-
-    return NextResponse.json({ outings })
+    const response = NextResponse.json({ outings })
+    response.headers.set('Server-Timing', createServerTiming(start))
+    return response
   } catch (error) {
     console.error('❌ Error fetching outings from Notion:', error)
 
-    // More detailed error information
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    const errorStack = error instanceof Error ? error.stack : ''
 
-    console.error('❌ Error details:', {
-      message: errorMessage,
-      stack: errorStack,
-      notionToken: process.env.NOTION_TOKEN ? 'Present' : 'Missing',
-      databaseId: process.env.NOTION_OUTINGS_DB_ID ? 'Present' : 'Missing'
-    })
-
-    return NextResponse.json(
-      { error: 'Failed to fetch outings' },
+    const response = NextResponse.json(
+      { error: 'Failed to fetch outings', details: errorMessage },
       { status: 500 }
     )
+    response.headers.set('Server-Timing', createServerTiming(start))
+    return response
   }
 }
