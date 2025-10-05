@@ -21,7 +21,7 @@ export function getNotionClient(options?: ClientOptions) {
   return notionClient;
 }
 
-export async function notionRequest<TResponse>(params: RequestParameters, label?: string): Promise<TResponse> {
+export async function notionRequest<TResponse extends object>(params: RequestParameters, label?: string): Promise<TResponse> {
   const client = getNotionClient();
   const start = performance.now();
   try {
