@@ -87,7 +87,7 @@ function mapRelationMembers(property: any, memberMap: Map<string, Member>): Memb
   if (!property?.relation) return [];
   return property.relation
     .map(({ id }: { id: string }) => memberMap.get(id))
-    .filter((member): member is Member => Boolean(member));
+    .filter((member: Member | undefined): member is Member => Boolean(member));
 }
 
 function extractPlainText(property: any): string | undefined {
