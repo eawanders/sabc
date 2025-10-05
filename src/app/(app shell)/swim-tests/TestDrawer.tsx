@@ -571,9 +571,17 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
 
       console.log('🆕 [TestDrawer] Member assigned successfully');
 
-      // Set outcome to "Test Booked"
+      // Update local state immediately (optimistic update)
+      console.log('🆕 [TestDrawer] Updating local state optimistically:', { slot, memberName: data.member.name });
+      setAssignments(prev => ({
+        ...prev,
+        [slot]: data.member.name,
+        [`${slot}_outcome`]: 'Test Booked'
+      }));
+
+      // Set outcome to "Test Booked" (best effort, don't block UI)
       console.log('🆕 [TestDrawer] Setting outcome to Test Booked:', { testId: currentTest.id, slotNumber });
-      await fetch('/api/update-test-outcome', {
+      fetch('/api/update-test-outcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'Test Booked' }),
@@ -581,15 +589,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
         console.error('🆕 [TestDrawer] Failed to update outcome:', e);
       });
 
-      // Update local state
-      console.log('🆕 [TestDrawer] Updating local state:', { slot, memberName: data.member.name });
-      setAssignments(prev => ({
-        ...prev,
-        [slot]: data.member.name,
-        [`${slot}_outcome`]: 'Test Booked'
-      }));
-
-      // Clear loading state
+      // Clear loading state immediately
       console.log('🆕 [TestDrawer] Clearing loading state');
       setIsLoadingStatus(false);
 
