@@ -29,7 +29,15 @@ export async function getDataSourceId(identifier: string) {
     dataSourceCache.set(identifier, dataSourceId);
     return dataSourceId;
   } catch (error) {
-    console.warn(`[notion] Falling back to using provided identifier as data source id: ${identifier}`, error);
+    // Silently fall back to using the database ID directly
+    // This is expected behavior when the database doesn't have separate data sources
+    if (process.env.NODE_ENV === 'development') {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Only log if it's not the expected "object_not_found" error
+      if (!errorMessage.includes('object_not_found') && !errorMessage.includes('Could not find database')) {
+        console.warn(`[notion] Falling back to direct database ID for: ${identifier}`);
+      }
+    }
     dataSourceCache.set(identifier, identifier);
     return identifier;
   }

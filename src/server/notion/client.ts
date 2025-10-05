@@ -1,4 +1,4 @@
-import { Client } from '@notionhq/client';
+import { Client, LogLevel } from '@notionhq/client';
 import type { ClientOptions, RequestParameters } from '@notionhq/client/build/src/Client';
 import { performance } from 'node:perf_hooks';
 import { NOTION_VERSION, getEnvVar, ensureNotionEnv } from './env';
@@ -10,6 +10,8 @@ function createClient(options?: ClientOptions) {
   return new Client({
     auth: getEnvVar('NOTION_TOKEN'),
     notionVersion: NOTION_VERSION,
+    // Suppress client warnings - we handle errors gracefully in our code
+    logLevel: LogLevel.ERROR,
     ...options,
   });
 }

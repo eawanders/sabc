@@ -31,6 +31,8 @@ import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
+import { buildGoogleCalendarLink, extractPlainTextFromRichText } from '@/utils/calendarLinks';
+import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -578,6 +580,36 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     return startDateObj?.date?.start || undefined;
   }, [outing]);
 
+  const outingStartDateTime = React.useMemo(() => {
+    const startDateObj = outing?.properties?.StartDateTime as NotionDate | undefined;
+    const startValue = startDateObj?.date?.start;
+    return startValue ? new Date(startValue) : undefined;
+  }, [outing]);
+
+  const outingEndDateTime = React.useMemo(() => {
+    const endDateObj = outing?.properties?.EndDateTime as NotionDate | undefined;
+    const endValue = endDateObj?.date?.start || endDateObj?.date?.end;
+    return endValue ? new Date(endValue) : undefined;
+  }, [outing]);
+
+  type NotionRichTextProperty = { plain_text?: string; rich_text?: unknown };
+
+  const outingNotes = React.useMemo(() => {
+    const details = outing?.properties?.SessionDetails as NotionRichTextProperty | undefined;
+    if (!details) return undefined;
+
+    const plain = details.plain_text?.trim();
+    if (plain) {
+      return plain;
+    }
+
+    if (details.rich_text) {
+      return extractPlainTextFromRichText(details.rich_text) || undefined;
+    }
+
+    return undefined;
+  }, [outing]);
+
   useEffect(() => {
     if (!loading && outing) {
       setHasLoadedOnce(true);
@@ -723,28 +755,65 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     return true;
   }, []);
 
-  // Helper function to format title as "Div Type" (e.g. "O1 Water Outing")
-  const getOutingTitle = (): string => {
-    // Construct from Div and Type properties (like event item headers)
-    const divValue = outing?.properties?.Div?.select?.name || "";
-    const typeValue = outing?.properties?.Type?.select?.name || "";
+  const outingTitle = React.useMemo(() => {
+    const divValue = outing?.properties?.Div?.select?.name || '';
+    const typeValue = outing?.properties?.Type?.select?.name || '';
 
     if (divValue && typeValue) {
       return `${divValue} ${typeValue}`;
-    } else if (divValue) {
+    }
+
+    if (divValue) {
       return `${divValue} Outing`;
-    } else if (typeValue) {
+    }
+
+    if (typeValue) {
       return `${typeValue} Outing`;
     }
 
-    // Fallback to Name property if Div/Type are not available
-    if (outing?.properties?.Name?.title?.length && outing.properties.Name.title[0].plain_text) {
-      return outing.properties.Name.title[0].plain_text;
+    const nameTitle = outing?.properties?.Name?.title;
+    if (Array.isArray(nameTitle) && nameTitle.length > 0) {
+      const firstTitle = nameTitle[0];
+      if (firstTitle && typeof firstTitle === 'object' && 'plain_text' in firstTitle) {
+        const value = (firstTitle as { plain_text?: string }).plain_text;
+        if (value && value.trim().length > 0) {
+          return value.trim();
+        }
+      }
     }
 
-    // Final fallback if no data is available
-    return "Unnamed Outing";
-  };
+    return 'Unnamed Outing';
+  }, [outing]);
+
+  const calendarTitle = React.useMemo(() => `SABC: ${outingTitle}`, [outingTitle]);
+
+  const googleCalendarUrl = React.useMemo(() => {
+    if (!outingStartDateTime) return undefined;
+
+    const fallbackDurationMs = 60 * 60 * 1000;
+    const tentativeEnd = outingEndDateTime && outingEndDateTime > outingStartDateTime
+      ? outingEndDateTime
+      : new Date(outingStartDateTime.getTime() + fallbackDurationMs);
+
+    try {
+      return buildGoogleCalendarLink({
+        title: calendarTitle,
+        description: outingNotes,
+        start: outingStartDateTime,
+        end: tentativeEnd,
+      });
+    } catch (err) {
+      console.error('[OutingDrawer] Failed to create Google Calendar link', err);
+      return undefined;
+    }
+  }, [calendarTitle, outingEndDateTime, outingNotes, outingStartDateTime]);
+
+  const handleAddToGoogleCalendar = React.useCallback(() => {
+    if (!googleCalendarUrl || typeof window === 'undefined') return;
+    window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
+  }, [googleCalendarUrl]);
+
+  const isCalendarButtonDisabled = !googleCalendarUrl;
 
   // Initialize assignments from outing data - using the proven pattern
   React.useEffect(() => {
@@ -1485,7 +1554,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       lineHeight: 'normal',
                       margin: 0
                     }}>
-                      {getOutingTitle()}
+                      {outingTitle}
                     </h3>
 
                   {/* 2. Date/Time (e.g., Date: Wednesday 10:00-12:00) */}
@@ -1766,29 +1835,66 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
           </div>
 
-          {/* Submit Outing Report Button - Fixed below scrollable content (only for Water Outing) */}
-          {outing?.properties?.Type?.select?.name === 'Water Outing' && (
-            <div style={{ marginTop: '40px' }}>
-              <ActionButton
-                onClick={() => openReportDrawer(outingId)}
-                className="w-full"
+          <div style={{ marginTop: '32px' }}>
+            <div
+              style={{
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                gap: '12px',
+              }}
+            >
+              <button
+                onClick={handleAddToGoogleCalendar}
+                disabled={isCalendarButtonDisabled}
                 style={{
                   display: 'flex',
-                  padding: '12px 8px',
-                  flexDirection: 'column',
+                  width: outing?.properties?.Type?.select?.name === 'Water Outing' ? '36px' : '100%',
+                  height: '36px',
+                  justifyContent: 'center',
                   alignItems: 'center',
-                  gap: '10px',
-                  alignSelf: 'stretch',
+                  gap: '8px',
                   borderRadius: '6px',
                   background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                  border: 'none',
+                  cursor: isCalendarButtonDisabled ? 'not-allowed' : 'pointer',
+                  padding: outing?.properties?.Type?.select?.name === 'Water Outing' ? '0' : '12px 8px',
+                  opacity: isCalendarButtonDisabled ? 0.5 : 1,
+                  flexShrink: 0,
                   color: 'var(--Theme-Primary-Default, #4C6FFF)',
-                  fontWeight: 600
+                  fontFamily: 'Gilroy',
+                  fontSize: '13px',
+                  fontWeight: 600,
                 }}
               >
-                Outing Report
-              </ActionButton>
+                <GoogleCalendarIcon />
+                {outing?.properties?.Type?.select?.name !== 'Water Outing' && (
+                  <span>Add to calendar</span>
+                )}
+              </button>
+
+              {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                <ActionButton
+                  onClick={() => openReportDrawer(outingId)}
+                  style={{
+                    display: 'flex',
+                    padding: '12px 8px',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '10px',
+                    alignSelf: 'stretch',
+                    borderRadius: '6px',
+                    background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                    color: 'var(--Theme-Primary-Default, #4C6FFF)',
+                    fontWeight: 600,
+                    flex: '1 1 auto',
+                  }}
+                >
+                  Outing Report
+                </ActionButton>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Report Drawer is now managed outside the Sheet component */}
         </div>
