@@ -171,7 +171,7 @@ export default function CalendarHeader({
                 return null;
               }
             }}
-            formatCreateLabel={(inputValue) => `Add "${inputValue}" as new cox`}
+            formatCreateLabel={(inputValue) => `Add "${inputValue}" as a guest cox.`}
             styles={{
               control: (base) => ({
                 ...base,

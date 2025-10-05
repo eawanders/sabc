@@ -170,7 +170,7 @@ const TestRow: React.FC<TestRowProps> = ({
               isDisabled={isSubmitting || membersLoading}
               isLoading={membersLoading}
               placeholder={membersLoading ? 'Loading members...' : 'Select member'}
-              formatCreateLabel={(inputValue) => `Add &quot;${inputValue}&quot; as new member`}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}" as a guest attendee.`}
               styles={{
                 control: (base, state) => ({
                   ...base,
