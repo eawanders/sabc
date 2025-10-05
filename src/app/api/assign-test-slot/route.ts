@@ -73,18 +73,6 @@ export async function POST(request: NextRequest) {
 
     await notion.pages.update({ page_id: testId, ...updateData })
 
-    // Fetch the page again to log resulting properties
-    try {
-      const updatedPage = await notion.pages.retrieve({ page_id: testId }) as { properties?: Record<string, unknown> };
-      console.log('[assign-test-slot] updated page properties:', {
-        id: testId,
-        slotRelation: updatedPage.properties?.[`Slot ${slotNumber}`],
-        slotOutcome: updatedPage.properties?.[`Slot ${slotNumber} Outcome`]
-      });
-    } catch (e) {
-      console.warn('[assign-test-slot] warning: failed to retrieve updated page after update', e);
-    }
-
     console.log(`✅ Successfully assigned member to test slot`)
 
     return NextResponse.json({

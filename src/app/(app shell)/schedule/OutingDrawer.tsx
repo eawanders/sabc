@@ -948,7 +948,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
       const requestBody = {
         name: inputValue.trim(),
-        role: 'member'
+        role: 'non-member'
       };
       console.log('🆕 [OutingDrawer] Request body:', requestBody);
 
@@ -1008,11 +1008,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
       console.log('🆕 [OutingDrawer] Member assigned successfully');
 
-      // Set status to "Awaiting Approval"
+      // Update local state immediately (optimistic update)
+      console.log('🆕 [OutingDrawer] Updating local state optimistically:', { seat, memberName: data.member.name });
+      setAssignments(prev => ({
+        ...prev,
+        [seat]: data.member.name,
+        [`${seat}_status`]: 'Awaiting Approval'
+      }));
+
+      // Set status to "Awaiting Approval" (best effort, don't block UI)
       const statusField = getStatusField(seat);
       console.log('🆕 [OutingDrawer] Setting status to Awaiting Approval:', { outingId: outing.id, statusField });
-
-      await fetch('/api/update-availability', {
+      fetch('/api/update-availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ outingId: outing.id, statusField, status: 'Awaiting Approval' }),
@@ -1020,15 +1027,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         console.error('🆕 [OutingDrawer] Failed to update status:', e);
       });
 
-      // Update local state
-      console.log('🆕 [OutingDrawer] Updating local state:', { seat, memberName: data.member.name });
-      setAssignments(prev => ({
-        ...prev,
-        [seat]: data.member.name,
-        [`${seat}_status`]: 'Awaiting Approval'
-      }));
-
-      // Clear loading state
+      // Clear loading state immediately
       console.log('🆕 [OutingDrawer] Clearing loading state');
       setIsLoadingStatus(false);
 
@@ -1631,7 +1630,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
           {/* Show loading indicator below outing details if updating rower/availability */}
           {isLoadingStatus && (
-            <div className="flex items-center justify-center py-4">
+            <div className="flex items-center justify-center py-4" style={{ marginBottom: '16px' }}>
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
               <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
             </div>

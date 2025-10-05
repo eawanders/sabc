@@ -15,7 +15,7 @@ export interface SessionUser {
   id: string;
   email?: string | null;
   name?: string | null;
-  role?: 'admin' | 'coach' | 'member';
+  role?: 'admin' | 'coach' | 'member' | 'non-member';
 }
 
 export interface AuthSession {

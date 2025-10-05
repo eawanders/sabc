@@ -572,22 +572,13 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
       console.log('🆕 [TestDrawer] Member assigned successfully');
 
       // Update local state immediately (optimistic update)
+      // Note: assign-test-slot API already sets outcome to "Test Booked", so no need for separate call
       console.log('🆕 [TestDrawer] Updating local state optimistically:', { slot, memberName: data.member.name });
       setAssignments(prev => ({
         ...prev,
         [slot]: data.member.name,
         [`${slot}_outcome`]: 'Test Booked'
       }));
-
-      // Set outcome to "Test Booked" (best effort, don't block UI)
-      console.log('🆕 [TestDrawer] Setting outcome to Test Booked:', { testId: currentTest.id, slotNumber });
-      fetch('/api/update-test-outcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'Test Booked' }),
-      }).catch((e) => {
-        console.error('🆕 [TestDrawer] Failed to update outcome:', e);
-      });
 
       // Clear loading state immediately
       console.log('🆕 [TestDrawer] Clearing loading state');
@@ -1029,7 +1020,8 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '16px 0'
+              padding: '16px 0',
+              marginBottom: '16px'
             }}>
               <span style={{
                 fontSize: '14px',
