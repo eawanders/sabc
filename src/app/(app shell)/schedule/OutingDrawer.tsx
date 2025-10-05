@@ -31,7 +31,7 @@ import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
-import { buildGoogleCalendarLink, extractPlainTextFromRichText } from '@/utils/calendarLinks';
+import { buildGoogleCalendarLink, extractPlainTextFromRichText, buildICalendarFile, downloadICalendarFile } from '@/utils/calendarLinks';
 import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
 
 // Type definitions for Notion properties
@@ -809,11 +809,40 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   }, [calendarTitle, outingEndDateTime, outingNotes, outingStartDateTime]);
 
   const handleAddToGoogleCalendar = React.useCallback(() => {
-    if (!googleCalendarUrl || typeof window === 'undefined') return;
-    window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
-  }, [googleCalendarUrl]);
+    if (!outingStartDateTime || typeof window === 'undefined') return;
 
-  const isCalendarButtonDisabled = !googleCalendarUrl;
+    const fallbackDurationMs = 60 * 60 * 1000;
+    const tentativeEnd = outingEndDateTime && outingEndDateTime > outingStartDateTime
+      ? outingEndDateTime
+      : new Date(outingStartDateTime.getTime() + fallbackDurationMs);
+
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // On mobile, download .ics file which will prompt to open in calendar app
+      try {
+        const icsContent = buildICalendarFile({
+          title: calendarTitle,
+          description: outingNotes,
+          start: outingStartDateTime,
+          end: tentativeEnd,
+          location: 'St Anne\'s College Boat Club',
+        });
+        const filename = `${outingTitle.replace(/[^a-zA-Z0-9]/g, '-')}.ics`;
+        downloadICalendarFile(icsContent, filename);
+      } catch (err) {
+        console.error('[OutingDrawer] Failed to create iCalendar file', err);
+      }
+    } else {
+      // On desktop, use Google Calendar link
+      if (googleCalendarUrl) {
+        window.open(googleCalendarUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+  }, [calendarTitle, outingEndDateTime, outingNotes, outingStartDateTime, outingTitle, googleCalendarUrl]);
+
+  const isCalendarButtonDisabled = !outingStartDateTime;
 
   // Initialize assignments from outing data - using the proven pattern
   React.useEffect(() => {
