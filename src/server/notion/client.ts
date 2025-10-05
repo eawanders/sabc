@@ -1,5 +1,5 @@
 import { Client } from '@notionhq/client';
-import type { ClientOptions, ClientRequestParameters } from '@notionhq/client/build/src/Client';
+import type { ClientOptions, RequestParameters } from '@notionhq/client/build/src/Client';
 import { performance } from 'node:perf_hooks';
 import { NOTION_VERSION, getEnvVar, ensureNotionEnv } from './env';
 
@@ -21,7 +21,7 @@ export function getNotionClient(options?: ClientOptions) {
   return notionClient;
 }
 
-export async function notionRequest<TResponse>(params: ClientRequestParameters, label?: string): Promise<TResponse> {
+export async function notionRequest<TResponse>(params: RequestParameters, label?: string): Promise<TResponse> {
   const client = getNotionClient();
   const start = performance.now();
   try {
