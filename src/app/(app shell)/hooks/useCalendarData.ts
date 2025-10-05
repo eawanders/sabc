@@ -1,45 +1,17 @@
 // src/app/(app shell)/hooks/useCalendarData.ts
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { CalendarEvent, WeekRange, CalendarDay, EventType } from '@/types/calendar';
-import { Outing } from '@/types/outing';
 import { mapOutingsToEvents, filterEventsByDateRange, filterEventsByType, groupEventsByDate, sortEventsByTime } from '../mappers/mapOutingsToEvents';
 import { getWeekDays, getDayNameShort, isToday, isSameDay } from '@/lib/date';
+import { useOutingsResource } from '@/hooks/useOutingsResource';
 
 /**
  * Hook for fetching and managing calendar data
  * Provides events for the current week with loading and error states
  */
 export function useCalendarData(currentWeek: WeekRange, filterType: EventType | 'All' = 'All') {
-  const [outings, setOutings] = useState<Outing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch outings data
-  useEffect(() => {
-    async function fetchOutings() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch('/api/get-outings');
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch outings');
-        }
-
-        setOutings(data.outings || []);
-      } catch (err) {
-        console.error('Error fetching outings:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchOutings();
-  }, []); // Only fetch once, not dependent on currentWeek
+  const { outings, loading, error, refresh } = useOutingsResource();
 
   // Transform outings to calendar events and filter by current week
   const weekEvents: CalendarEvent[] = useMemo(() => {
@@ -104,5 +76,6 @@ export function useCalendarData(currentWeek: WeekRange, filterType: EventType | 
     getEventsForDate,
     // Helper for debugging
     rawOutings: outings,
+    refresh,
   };
 }

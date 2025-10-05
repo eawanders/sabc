@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { TestCalendarEvent, TestFilterType } from "@/types/test";
+import { Test, TestCalendarEvent, TestFilterType } from "@/types/test";
 import { CalendarEvent, WeekRange } from "@/types/calendar";
 import TestCalendarHeaderResponsive from "../TestCalendarHeaderResponsive";
 import CalendarWeek from "@/app/(app shell)/schedule/CalendarWeek";
@@ -13,6 +13,7 @@ import { getWeekDays, getDayNameShort, isToday, getWeekStart, getWeekEnd, format
 import MembershipSignUp from "@/components/MembershipSignUp";
 import { useTestsUrlState } from "@/hooks/useUrlState";
 import { TestFilterType as UrlTestFilterType } from "@/lib/urlParams";
+import { useTestsResource } from "@/hooks/useTestsResource";
 
 // Helper function to get week number of the year
 function getWeekNumber(date: Date): number {
@@ -60,10 +61,11 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tests, setTests] = useState([]);
-  const [selectedTest, setSelectedTest] = useState<{id: string; title: string; [key: string]: unknown} | null>(null);
+  const { tests, loading, error } = useTestsResource();
+  const [selectedTest, setSelectedTest] = useState<Test | null>(null);
+  const handleTestUpdate = useCallback((updatedTest: Test) => {
+    setSelectedTest(updatedTest);
+  }, []);
 
   // Create currentWeek directly from URL state
   const currentWeek: WeekRange = useMemo(() => {
@@ -106,7 +108,7 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
   React.useEffect(() => {
     if (urlState.drawer && urlState.drawer.type === 'test') {
       // Find the test by ID
-      const test = tests.find((t: any) => t.id === urlState.drawer!.id);
+      const test = tests.find((t) => t.id === urlState.drawer!.id);
       if (test) {
         setSelectedTest(test);
       }
@@ -226,41 +228,6 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
     };
   }, [tests, weekEvents]);
 
-  // Fetch tests data automatically on mount
-  React.useEffect(() => {
-    const fetchTests = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/get-tests');
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch tests: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch tests');
-        }
-
-        console.log('✅ Tests loaded successfully:', data.tests.length);
-        console.log('📋 [Tests Page] Raw tests data:', data.tests.map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          type: t.type,
-          date: t.date,
-        })));
-        setTests(data.tests);
-        setError(null);
-      } catch (err) {
-        console.error('❌ Error loading tests:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load tests');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTests();
-  }, []);
 
   // Event handlers with URL updates
   const handleEventClick = (event: CalendarEvent) => {
@@ -416,9 +383,10 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
       {/* Test Drawer */}
       {selectedTest && (
         <TestDrawer
-          test={selectedTest as any}
+          test={selectedTest}
           isOpen={!!selectedTest}
           onClose={handleCloseDrawer}
+          onTestUpdate={handleTestUpdate}
         />
       )}
     </main>

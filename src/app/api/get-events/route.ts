@@ -1,81 +1,50 @@
 // src/app/api/get-events/route.ts
 import { NextResponse } from 'next/server'
-import { Client } from '@notionhq/client'
+import { queryDataSource } from '@/server/notion/query'
+import { startTiming, createServerTiming } from '@/server/timing'
 
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-  notionVersion: '2025-09-03',
-})
-
-const EVENTS_DB_ID = '27a80040-a8fa-804a-9f8b-d536dcc548a7'
+export const revalidate = 120
 
 export async function GET() {
+  const start = startTiming()
   try {
-    console.log('🔍 Fetching events from Notion...')
+    const databaseId = resolveEventsDatabaseId()
 
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set')
-      return NextResponse.json(
-        { error: 'Missing Notion token configuration' },
-        { status: 500 }
-      )
-    }
-
-    console.log(`🗄️ Using Events database: ${EVENTS_DB_ID}`)
-
-    // First get the database to find data sources
-    const databaseResponse = await notion.request({
-      method: 'get',
-      path: `databases/${EVENTS_DB_ID}`,
-    }) as { data_sources?: { id: string }[] }
-
-    if (!databaseResponse.data_sources || databaseResponse.data_sources.length === 0) {
-      console.error('❌ No data sources found for events database')
-      return NextResponse.json(
-        { error: 'No data sources found for events database' },
-        { status: 500 }
-      )
-    }
-
-    const dataSourceId = databaseResponse.data_sources[0].id
-    console.log(`📊 Using data source: ${dataSourceId}`)
-
-    // Query the Events database
-    const queryResponse = await notion.request({
-      method: 'post',
-      path: `data_sources/${dataSourceId}/query`,
-      body: {
+    const pages = await queryDataSource<any>(
+      databaseId,
+      {
         sorts: [
           {
             property: 'Date',
-            direction: 'ascending'
-          }
+            direction: 'ascending',
+          },
         ],
-        page_size: 50, // Limit to 50 events for performance
+        page_size: 50,
       },
-    }) as any
+      'events.query'
+    )
 
-    console.log(`✅ Retrieved ${queryResponse.results?.length || 0} events`)
+    const events = pages.map((page: any) => transformNotionPageToEvent(page))
 
-    // Transform the Notion results to our Event format
-    const events = queryResponse.results?.map((page: any) => transformNotionPageToEvent(page)) || []
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       events,
       count: events.length
     })
+    response.headers.set('Server-Timing', createServerTiming(start))
+    return response
 
   } catch (error) {
     console.error('❌ Error fetching events:', error)
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         error: 'Failed to fetch events',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
+    response.headers.set('Server-Timing', createServerTiming(start))
+    return response
   }
 }
 
@@ -151,4 +120,12 @@ function transformNotionPageToEvent(page: any): any {
     dateTime,
     imageUrl: imageUrl || undefined,
   }
+}
+
+function resolveEventsDatabaseId() {
+  const explicit = process.env.NOTION_EVENTS_DB_ID
+  if (explicit && explicit.trim().length > 0) {
+    return explicit.trim()
+  }
+  return '27a80040-a8fa-804a-9f8b-d536dcc548a7'
 }

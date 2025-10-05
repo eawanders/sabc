@@ -1,19 +1,18 @@
 // src/app/api/get-outing/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { Client } from '@notionhq/client'
+import { NextResponse } from 'next/server'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
+import { notionRequest } from '@/server/notion/client'
+import { startTiming, createServerTiming } from '@/server/timing'
 
-const notion = new Client({
-  auth: process.env.NOTION_TOKEN,
-})
+export const revalidate = 15
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const start = startTiming()
   try {
     const { id } = await params;
-    console.log('🔍 Fetching individual outing:', id);
 
     if (!id) {
       return NextResponse.json(
@@ -23,19 +22,20 @@ export async function GET(
     }
 
     // Fetch the individual page from Notion
-    const response = await notion.pages.retrieve({
-      page_id: id,
-    })
+    const response = await notionRequest<PageObjectResponse>({
+      method: 'get',
+      path: `pages/${id}`,
+    }, `pages/${id}`)
 
     // Type guard to ensure we have properties
-    if (!('properties' in response)) {
+    if (!response || !('properties' in response)) {
       return NextResponse.json(
         { error: 'Invalid page response' },
         { status: 404 }
       )
     }
 
-    const page = response as PageObjectResponse;
+    const page = response;
 
     const getPropertyValue = (property: unknown) => {
       if (!property || typeof property !== 'object' || property === null) return undefined;
@@ -144,10 +144,9 @@ export async function GET(
       },
     };
 
-    console.log(`✅ Successfully fetched outing details for ${id}`);
-    console.log(`📊 Outing data:`, JSON.stringify(outing, null, 2));
-
-    return NextResponse.json({ outing })
+    const outingResponse = NextResponse.json({ outing })
+    outingResponse.headers.set('Server-Timing', createServerTiming(start))
+    return outingResponse
   } catch (error) {
     console.error('Error fetching outing details from Notion:', error)
 
@@ -170,9 +169,11 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(
+    const errorResponse = NextResponse.json(
       { error: 'Failed to fetch outing details' },
       { status: 500 }
     )
+    errorResponse.headers.set('Server-Timing', createServerTiming(start))
+    return errorResponse
   }
 }

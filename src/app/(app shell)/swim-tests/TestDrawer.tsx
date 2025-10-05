@@ -7,6 +7,7 @@ import { Member } from '@/types/members';
 import { Test } from '@/types/test';
 import Sheet from '@/components/ui/Sheet';
 import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
+import { updateTestInCache } from '@/hooks/useTestsResource';
 
 // Custom DropdownIndicator for react-select with thinner arrow
 const DropdownIndicator = (
@@ -48,6 +49,7 @@ interface TestRowProps {
   onOutcomeUpdate: (slot: string, outcome: string) => void;
   isLoadingStatus: boolean;
   refreshMembers: () => Promise<void>;
+  onCreateMember: (slot: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
 }
 
 const TestRow: React.FC<TestRowProps> = ({
@@ -61,7 +63,8 @@ const TestRow: React.FC<TestRowProps> = ({
   onAssignmentChange,
   onOutcomeUpdate,
   isLoadingStatus,
-  refreshMembers
+  refreshMembers,
+  onCreateMember
 }) => {
   const isMemberSelected = Boolean(selectedMember);
 
@@ -162,34 +165,12 @@ const TestRow: React.FC<TestRowProps> = ({
                 }
               }}
               onCreateOption={async (inputValue) => {
-                try {
-                  const response = await fetch('/api/add-member', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ name: inputValue }),
-                  });
-
-                  if (!response.ok) {
-                    throw new Error('Failed to create member');
-                  }
-
-                  const data = await response.json();
-                  await refreshMembers(); // Refresh the members list
-                  onAssignmentChange(slot, data.member.name); // Update assignments state
-                  // Return the new option for CreatableSelect
-                  return { value: data.member.id, label: data.member.name, member: data.member };
-                } catch (error) {
-                  console.error('Error creating member:', error);
-                  // Could show a toast notification here
-                  return null;
-                }
+                return await onCreateMember(slot, inputValue);
               }}
               isDisabled={isSubmitting || membersLoading}
               isLoading={membersLoading}
               placeholder={membersLoading ? 'Loading members...' : 'Select member'}
-              formatCreateLabel={(inputValue) => `Add &quot;${inputValue}&quot; as new member`}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}" as a guest attendee.`}
               styles={{
                 control: (base, state) => ({
                   ...base,
@@ -403,6 +384,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [updatingSlot, setUpdatingSlot] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [currentTest, setCurrentTest] = useState<Test>(test);
 
@@ -456,6 +438,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
         console.log('✅ Successfully refreshed test data');
         console.log('✅ Updated test object:', data.test);
         setCurrentTest(data.test);
+        updateTestInCache(data.test);
         if (onTestUpdate) {
           onTestUpdate(data.test);
         }
@@ -525,11 +508,113 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
     }
   }, [currentTest, isOpen]);
 
+  const handleCreateMember = async (slot: string, inputValue: string): Promise<{ value: string; label: string; member: Member } | null> => {
+    try {
+      console.log('🆕 [TestDrawer] Creating new member:', { slot, inputValue, testId: currentTest.id });
+      setIsLoadingStatus(true);
+
+      const requestBody = {
+        name: inputValue.trim(),
+        role: 'non-member'
+      };
+      console.log('🆕 [TestDrawer] Request body:', requestBody);
+
+      const response = await fetch('/api/add-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('🆕 [TestDrawer] Add member response:', { status: response.status, ok: response.ok });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch((e) => {
+          console.error('🆕 [TestDrawer] Failed to parse error response:', e);
+          return { error: 'Unknown error' };
+        });
+        console.error('🆕 [TestDrawer] Failed to create member:', errorData);
+        throw new Error(errorData.error || 'Failed to create member');
+      }
+
+      const data = await response.json();
+      console.log('🆕 [TestDrawer] Member created successfully:', data);
+
+      // Immediately assign the new member to the slot using their ID
+      const slotNumber = parseInt(slot.replace('Slot ', ''));
+      console.log('🆕 [TestDrawer] Assigning new member to slot:', { slotNumber, memberId: data.member.id, testId: currentTest.id });
+
+      const assignBody = {
+        testId: currentTest.id,
+        slotNumber,
+        memberId: data.member.id
+      };
+      console.log('🆕 [TestDrawer] Assign request body:', assignBody);
+
+      const assignResponse = await fetch('/api/assign-test-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assignBody),
+      });
+
+      console.log('🆕 [TestDrawer] Assign response:', { status: assignResponse.status, ok: assignResponse.ok });
+
+      if (!assignResponse.ok) {
+        const assignError = await assignResponse.json().catch((e) => {
+          console.error('🆕 [TestDrawer] Failed to parse assign error:', e);
+          return { error: 'Unknown error' };
+        });
+        console.error('🆕 [TestDrawer] Failed to assign newly created member:', assignError);
+        throw new Error(assignError.error || 'Failed to assign newly created member');
+      }
+
+      console.log('🆕 [TestDrawer] Member assigned successfully');
+
+      // Update local state immediately (optimistic update)
+      // Note: assign-test-slot API already sets outcome to "Test Booked", so no need for separate call
+      console.log('🆕 [TestDrawer] Updating local state optimistically:', { slot, memberName: data.member.name });
+      setAssignments(prev => ({
+        ...prev,
+        [slot]: data.member.name,
+        [`${slot}_outcome`]: 'Test Booked'
+      }));
+
+      // Clear loading state immediately
+      console.log('🆕 [TestDrawer] Clearing loading state');
+      setIsLoadingStatus(false);
+
+      // Refresh members list and test data in background
+      console.log('🆕 [TestDrawer] Starting background refresh');
+      Promise.all([
+        refreshMembers(),
+        refreshTestData()
+      ]).then(() => {
+        console.log('🆕 [TestDrawer] Background refresh completed successfully');
+      }).catch(err => {
+        console.error('🆕 [TestDrawer] Error refreshing data:', err);
+      });
+
+      // Return the new option for CreatableSelect
+      console.log('🆕 [TestDrawer] Member creation flow completed successfully');
+      return { value: data.member.id, label: data.member.name, member: data.member };
+    } catch (error) {
+      console.error('🆕 [TestDrawer] Error in handleCreateMember:', error);
+      console.error('🆕 [TestDrawer] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      setIsLoadingStatus(false);
+      alert(error instanceof Error ? error.message : 'Failed to create new member. Please try again.');
+      return null;
+    }
+  };
+
   const handleAssignmentChange = async (slot: string, memberName: string) => {
-    // Optimistic update: prepare previous state for potential rollback
+    console.log('📝 [TestDrawer] handleAssignmentChange called:', { slot, memberName, testId: currentTest.id });
     const previousAssignments = { ...assignments };
+    setUpdatingSlot(slot);
+    setIsLoadingStatus(true);
 
     // Update local state immediately for better UX
+    console.log('📝 [TestDrawer] Updating local state optimistically');
     setAssignments(prev => ({
       ...prev,
       [slot]: memberName,
@@ -539,9 +624,11 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
 
     // Extract slot number from slot string (e.g., "Slot 1" -> 1)
     const slotNumber = parseInt(slot.replace('Slot ', ''));
+    console.log('📝 [TestDrawer] Slot number:', slotNumber);
 
     // If memberName is empty, call API to clear the slot (unassign)
     if (!memberName) {
+      console.log('📝 [TestDrawer] Clearing slot assignment');
       try {
         const response = await fetch('/api/assign-test-slot', {
           method: 'POST',
@@ -549,117 +636,188 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
           body: JSON.stringify({ testId: currentTest.id, slotNumber, memberId: null }),
         });
 
+        console.log('📝 [TestDrawer] Clear assignment response:', { status: response.status, ok: response.ok });
+
         if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
+          const err = await response.json().catch((e) => {
+            console.error('📝 [TestDrawer] Failed to parse clear error:', e);
+            return {};
+          });
+          console.error('📝 [TestDrawer] Clear assignment failed:', err);
           throw new Error(err.error || 'Failed to clear assignment');
         }
 
+        console.log('📝 [TestDrawer] Slot cleared successfully');
+
         // Also explicitly set the outcome to 'No Show' to reflect clearing.
+        console.log('📝 [TestDrawer] Setting outcome to No Show after clear');
         await fetch('/api/update-test-outcome', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'No Show' }),
-        }).catch((e) => console.warn('Failed to update outcome on clear:', e));
+        }).catch((e) => {
+          console.error('📝 [TestDrawer] Failed to update outcome on clear:', e);
+        });
 
-        // Refresh test data to ensure canonical state
+        // Clear loading state immediately after successful API call
+        console.log('📝 [TestDrawer] Clearing loading state after clear');
+        setIsLoadingStatus(false);
+        setUpdatingSlot(null);
+
+        // Refresh test data to ensure canonical state (in background)
+        console.log('📝 [TestDrawer] Starting background refresh after clear');
         await refreshTestData();
+        console.log('📝 [TestDrawer] Clear assignment flow completed');
       } catch (error) {
-        console.error('Error clearing assignment:', error);
+        console.error('📝 [TestDrawer] Error clearing assignment:', error);
+        console.error('📝 [TestDrawer] Error stack:', error instanceof Error ? error.stack : 'No stack');
         setAssignments(previousAssignments);
         alert(error instanceof Error ? error.message : 'Failed to clear assignment');
+        setIsLoadingStatus(false);
+        setUpdatingSlot(null);
       }
 
       return;
     }
 
     // Otherwise assign/change member
+    console.log('📝 [TestDrawer] Assigning member to slot');
     try {
       // Find the member object to get the ID
+      console.log('📝 [TestDrawer] Looking up member:', { memberName, totalMembers: members.length });
       const member = members.find(m => m.name === memberName);
       if (!member) {
+        console.error('📝 [TestDrawer] Member not found in members list:', { memberName, availableMembers: members.map(m => m.name) });
         throw new Error(`Member not found: ${memberName}`);
       }
+
+      console.log('📝 [TestDrawer] Member found:', { id: member.id, name: member.name });
+
+      const assignBody = { testId: currentTest.id, slotNumber, memberId: member.id };
+      console.log('📝 [TestDrawer] Assign request body:', assignBody);
 
       const response = await fetch('/api/assign-test-slot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testId: currentTest.id, slotNumber, memberId: member.id }),
+        body: JSON.stringify(assignBody),
       });
 
+      console.log('📝 [TestDrawer] Assign response:', { status: response.status, ok: response.ok });
+
       if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
+        const err = await response.json().catch((e) => {
+          console.error('📝 [TestDrawer] Failed to parse assign error:', e);
+          return {};
+        });
+        console.error('📝 [TestDrawer] Assignment failed:', err);
         throw new Error(err.error || 'Failed to assign member to test slot');
       }
 
+      console.log('📝 [TestDrawer] Member assigned successfully');
+
       // After successful member assignment, attempt to set the outcome to "Test Booked" (best-effort)
+      console.log('📝 [TestDrawer] Setting outcome to Test Booked after assignment');
       const outcomeRes = await fetch('/api/update-test-outcome', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testId: currentTest.id, slotNumber, outcome: 'Test Booked' }),
       });
 
+      console.log('📝 [TestDrawer] Outcome update response:', { status: outcomeRes.status, ok: outcomeRes.ok });
+
       if (!outcomeRes.ok) {
-        console.warn('Member assigned but failed to set outcome to Test Booked');
+        console.warn('📝 [TestDrawer] Member assigned but failed to set outcome to Test Booked');
       }
 
-      // Refresh test data to ensure canonical state
+      // Clear loading state immediately after successful API call
+      console.log('📝 [TestDrawer] Clearing loading state after assignment');
+      setIsLoadingStatus(false);
+      setUpdatingSlot(null);
+
+      // Refresh test data in background
+      console.log('📝 [TestDrawer] Starting background refresh after assignment');
       await refreshTestData();
+      console.log('📝 [TestDrawer] Assignment flow completed');
     } catch (error) {
-      console.error('Error assigning member to test slot:', error);
+      console.error('📝 [TestDrawer] Error assigning member to test slot:', error);
+      console.error('📝 [TestDrawer] Error stack:', error instanceof Error ? error.stack : 'No stack');
       // Revert on error
       setAssignments(previousAssignments);
       alert(error instanceof Error ? error.message : 'Failed to assign member to test slot');
+      setIsLoadingStatus(false);
+      setUpdatingSlot(null);
     }
   };
 
   const handleAvailabilityUpdate = async (slot: string, outcome: string) => {
+    console.log('✅ [TestDrawer] handleAvailabilityUpdate called:', { slot, outcome, testId: currentTest.id });
     setIsLoadingStatus(true);
+    setUpdatingSlot(slot);
 
+    const previousAssignments = { ...assignments };
     try {
       // Update local state immediately for better UX
+      console.log('✅ [TestDrawer] Updating local state optimistically');
       setAssignments(prev => ({
         ...prev,
         [`${slot}_outcome`]: outcome
       }));
 
       // Extract slot number from slot string (e.g., "Slot 1" -> 1)
-      const slotNumber = parseInt(slot.replace('Slot ', ''));      // Make API call to update the test outcome
+      const slotNumber = parseInt(slot.replace('Slot ', ''));
+      console.log('✅ [TestDrawer] Slot number:', slotNumber);
+
+      const requestBody = {
+        testId: currentTest.id,
+        slotNumber,
+        outcome,
+      };
+      console.log('✅ [TestDrawer] Update outcome request body:', requestBody);
+
+      // Make API call to update the test outcome
       const response = await fetch('/api/update-test-outcome', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          testId: currentTest.id,
-          slotNumber,
-          outcome,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      console.log(`📡 API response received:`, {
+      console.log('✅ [TestDrawer] API response received:', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`API Error updating outcome:`, errorData);
+        const errorData = await response.json().catch((e) => {
+          console.error('✅ [TestDrawer] Failed to parse error response:', e);
+          return { error: 'Unknown error' };
+        });
+        console.error('✅ [TestDrawer] API Error updating outcome:', errorData);
         throw new Error(errorData.error || 'Failed to update test outcome');
       }
 
+      // Clear loading state immediately after successful API call
+      console.log('✅ [TestDrawer] Clearing loading state after outcome update');
+      setIsLoadingStatus(false);
+      setUpdatingSlot(null);
+
+      // Refresh test data in background
+      console.log('✅ [TestDrawer] Starting background refresh after outcome update');
+      await refreshTestData();
+      console.log('✅ [TestDrawer] Outcome update flow completed');
+
     } catch (error) {
-      console.error('Error updating test outcome:', error);
+      console.error('✅ [TestDrawer] Error updating test outcome:', error);
+      console.error('✅ [TestDrawer] Error stack:', error instanceof Error ? error.stack : 'No stack');
 
       // Revert the optimistic update on error
-      setAssignments(prev => ({
-        ...prev,
-        [`${slot}_outcome`]: prev[`${slot}_outcome`]
-      }));
+      setAssignments(previousAssignments);
 
       alert(error instanceof Error ? error.message : 'Failed to update test outcome');
-    } finally {
       setIsLoadingStatus(false);
+      setUpdatingSlot(null);
     }
   };
 
@@ -772,12 +930,6 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
 
   return (
     <>
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
       <Sheet
         isOpen={isOpen}
         onClose={onClose}
@@ -860,7 +1012,24 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
               }}>
                 Attendees
               </h3>
-            </div>          {/* Container for test rows */}
+            </div>
+
+          {/* Show loading indicator if updating test slot/outcome */}
+          {isLoadingStatus && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px 0',
+            }}>
+              <span style={{
+                fontSize: '14px',
+                color: '#7D8DA6'
+              }}>Updating test...</span>
+            </div>
+          )}
+
+          {/* Container for test rows */}
           <div style={{
             display: 'flex',
             flexDirection: 'column',
@@ -880,6 +1049,7 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
                 onOutcomeUpdate={handleAvailabilityUpdate}
                 isLoadingStatus={isLoadingStatus}
                 refreshMembers={refreshMembers}
+                onCreateMember={handleCreateMember}
               />
             ))}
           </div>

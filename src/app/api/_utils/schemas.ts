@@ -9,8 +9,8 @@ export const timeStringSchema = z.string().regex(/^\d{2}:\d{2}$/);
 // Member schemas
 export const addMemberSchema = z.object({
   name: z.string().min(1).max(120),
-  email: emailSchema,
-  role: z.enum(['admin', 'coach', 'member']).default('member'),
+  email: emailSchema.optional(),
+  role: z.enum(['admin', 'coach', 'member', 'non-member']).default('member'),
   college: z.string().max(100).optional(),
 }).strict();
 
@@ -18,7 +18,7 @@ export const updateMemberSchema = z.object({
   memberId: notionPageIdSchema,
   name: z.string().min(1).max(120).optional(),
   email: emailSchema.optional(),
-  role: z.enum(['admin', 'coach', 'member']).optional(),
+  role: z.enum(['admin', 'coach', 'member', 'non-member']).optional(),
   college: z.string().max(100).optional(),
 }).strict();
 
@@ -102,7 +102,7 @@ export const getTestsQuerySchema = z.object({
 }).strict();
 
 export const getMembersQuerySchema = z.object({
-  role: z.enum(['admin', 'coach', 'member']).optional(),
+  role: z.enum(['admin', 'coach', 'member', 'non-member']).optional(),
   search: z.string().max(100).optional(),
   limit: z.coerce.number().min(1).max(100).default(50),
 }).strict();

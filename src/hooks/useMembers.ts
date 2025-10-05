@@ -2,6 +2,48 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Member } from '@/types/members'
 
+const CACHE_TTL_MS = 60_000
+let cachedMembers: Member[] | null = null
+let cacheTimestamp = 0
+let inflightPromise: Promise<Member[]> | null = null
+
+async function loadMembers(force = false): Promise<Member[]> {
+  if (!force && cachedMembers && Date.now() - cacheTimestamp < CACHE_TTL_MS) {
+    return cachedMembers
+  }
+
+  if (inflightPromise) {
+    return inflightPromise
+  }
+
+  inflightPromise = fetch('/api/get-members', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch members: ${response.status} ${response.statusText} ${errorText}`)
+      }
+      return response.json()
+    })
+    .then((data: ApiResponse) => {
+      if (!data.members || !Array.isArray(data.members)) {
+        throw new Error('Invalid response format: members array not found')
+      }
+      cachedMembers = data.members
+      cacheTimestamp = Date.now()
+      return cachedMembers
+    })
+    .finally(() => {
+      inflightPromise = null
+    })
+
+  return inflightPromise
+}
+
 interface UseMembersResult {
   members: Member[]
   loading: boolean
@@ -28,39 +70,8 @@ export function useMembers(): UseMembersResult {
     setError(null)
 
     try {
-      console.log('🌐 useMembers: Making API request to /api/get-members')
-      const response = await fetch('/api/get-members', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log(`📡 useMembers: Response status: ${response.status}`)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`❌ useMembers: API request failed with status ${response.status}:`, errorText)
-        throw new Error(`Failed to fetch members: ${response.status} ${response.statusText}`)
-      }
-
-      const data: ApiResponse = await response.json()
-      console.log('📥 useMembers: Raw API response:', data)
-
-      if (!data.success && data.error) {
-        console.error('❌ useMembers: API returned error:', data.error, data.details)
-        throw new Error(data.error + (data.details ? `: ${data.details}` : ''))
-      }
-
-      if (!data.members || !Array.isArray(data.members)) {
-        console.error('❌ useMembers: Invalid response format - members not found or not array:', data)
-        throw new Error('Invalid response format: members array not found')
-      }
-
-      console.log(`✅ useMembers: Successfully fetched ${data.members.length} members`)
-      console.log('👥 useMembers: Members:', data.members.map(m => `${m.name} (${m.id})`))
-
-      setMembers(data.members)
+      const data = await loadMembers()
+      setMembers(data)
       setError(null)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
@@ -93,6 +104,10 @@ export function useMembers(): UseMembersResult {
     members,
     loading,
     error,
-    refresh: fetchMembers,
+    refresh: async () => {
+      cachedMembers = null
+      cacheTimestamp = 0
+      await fetchMembers()
+    },
   }
 }

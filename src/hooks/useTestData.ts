@@ -1,10 +1,11 @@
 // src/hooks/useTestData.ts
 
-import { useState, useEffect, useMemo } from 'react';
-import { TestCalendarEvent, Test, TestFilterType } from '@/types/test';
+import { useMemo } from 'react';
+import { TestCalendarEvent, TestFilterType } from '@/types/test';
 import { WeekRange } from '@/types/calendar';
 import { mapTestsToEvents, filterTestEventsByDateRange, filterTestEventsByType, groupTestEventsByDate, sortTestEventsByTime } from '@/lib/testMappers';
 import { getWeekDays, getDayNameShort, isToday } from '@/lib/date';
+import { useTestsResource } from './useTestsResource';
 
 // Define a CalendarDay interface for tests
 export interface TestCalendarDay {
@@ -21,35 +22,7 @@ export interface TestCalendarDay {
  * Provides test events for the current week with loading and error states
  */
 export function useTestData(currentWeek: WeekRange, filterType: TestFilterType = 'All') {
-  const [tests, setTests] = useState<Test[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch tests data
-  useEffect(() => {
-    async function fetchTests() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch('/api/get-tests');
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch tests');
-        }
-
-        setTests(data.tests || []);
-      } catch (err) {
-        console.error('Error fetching tests:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTests();
-  }, []); // Only fetch once, not dependent on currentWeek
+  const { tests, loading, error, refresh } = useTestsResource();
 
   // Transform tests to calendar events and filter by current week
   const weekEvents: TestCalendarEvent[] = useMemo(() => {
@@ -103,11 +76,6 @@ export function useTestData(currentWeek: WeekRange, filterType: TestFilterType =
     loading,
     error,
     stats,
-    refetch: () => {
-      // Force refetch by clearing state and triggering useEffect
-      setTests([]);
-      setLoading(true);
-      setError(null);
-    }
+    refetch: refresh,
   };
 }
