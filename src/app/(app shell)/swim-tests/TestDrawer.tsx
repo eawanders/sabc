@@ -1021,7 +1021,6 @@ export default function TestDrawer({ test, isOpen, onClose, onTestUpdate }: Test
               alignItems: 'center',
               justifyContent: 'center',
               padding: '16px 0',
-              marginBottom: '16px'
             }}>
               <span style={{
                 fontSize: '14px',
