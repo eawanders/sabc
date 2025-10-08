@@ -86,6 +86,16 @@ export default function RowerAvailabilityPage() {
     })
   }
 
+  const handleMarkWholeDay = (day: DayOfWeek) => {
+    if (!localAvailability) return
+
+    // Set a single time range from 00:00 to 23:59 to mark the whole day as unavailable
+    setLocalAvailability({
+      ...localAvailability,
+      [day]: [{ start: '00:00', end: '23:59' }]
+    })
+  }
+
   const handleSave = async () => {
     if (!localAvailability || !selectedMember) return
 
@@ -118,10 +128,10 @@ export default function RowerAvailabilityPage() {
     }}>
       <div>
         <h1 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '8px' }}>
-          Rower Availability
+          Availability
         </h1>
         <p style={{ color: '#64748b', fontSize: '14px' }}>
-          Set your recurring weekly unavailability times
+          Set your recurring weekly unavailability times (for both rowing and coxing)
         </p>
       </div>
 
@@ -195,6 +205,7 @@ export default function RowerAvailabilityPage() {
                 onAdd={() => handleAddTimeRange(day)}
                 onRemove={(index) => handleRemoveTimeRange(day, index)}
                 onTimeChange={(index, field, value) => handleTimeChange(day, index, field, value)}
+                onMarkWholeDay={() => handleMarkWholeDay(day)}
               />
             ))}
           </div>
@@ -263,16 +274,43 @@ interface DaySectionProps {
   onAdd: () => void
   onRemove: (index: number) => void
   onTimeChange: (index: number, field: 'start' | 'end', value: string) => void
+  onMarkWholeDay: () => void
 }
 
-function DaySection({ day, ranges, onAdd, onRemove, onTimeChange }: DaySectionProps) {
+function DaySection({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay }: DaySectionProps) {
   const canAddMore = ranges.length < 3
+  const isWholeDay = ranges.length === 1 && ranges[0].start === '00:00' && ranges[0].end === '23:59'
 
   return (
     <div>
-      <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
-        {DAY_LABELS[day]}
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>
+          {DAY_LABELS[day]}
+        </h3>
+        <button
+          onClick={onMarkWholeDay}
+          disabled={isWholeDay}
+          style={{
+            padding: '6px 12px',
+            background: isWholeDay ? '#f1f5f9' : 'white',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            color: isWholeDay ? '#94a3b8' : '#3b82f6',
+            cursor: isWholeDay ? 'not-allowed' : 'pointer',
+            fontSize: '12px',
+            fontWeight: 500,
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            if (!isWholeDay) e.currentTarget.style.backgroundColor = '#f0f9ff'
+          }}
+          onMouseLeave={(e) => {
+            if (!isWholeDay) e.currentTarget.style.backgroundColor = 'white'
+          }}
+        >
+          {isWholeDay ? '✓ Whole day marked' : 'Mark whole day'}
+        </button>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {ranges.length === 0 && (

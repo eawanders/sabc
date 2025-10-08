@@ -124,16 +124,10 @@ export default function Sidebar() {
             active={!!isSchedule}
           />
           <NavItem
-            href="/coxing"
-            label="Coxing"
-            icon={<CoxingIcon stroke={pathname?.startsWith("/coxing") ? "#fff" : "#425466"} />}
-            active={pathname?.startsWith("/coxing")}
-          />
-          <NavItem
-            href="/rower-availability"
-            label="Rower Availability"
-            icon={<RowerIcon stroke={pathname?.startsWith("/rower-availability") ? "#fff" : "#425466"} />}
-            active={pathname?.startsWith("/rower-availability")}
+            href="/availability"
+            label="Availability"
+            icon={<RowerIcon stroke={pathname?.startsWith("/availability") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/availability")}
           />
           <NavItem
             href="/flag-status"
