@@ -167,7 +167,7 @@ function SessionItem({ event, onSignUp }: SessionItemProps) {
 
 export default function UpcomingSessionsCard() {
   const router = useRouter();
-  const { sessions, loading, error } = useUpcomingSessions(3);
+  const { sessions, loading, error } = useUpcomingSessions(2);
 
   const handleNavigateToSchedule = () => {
     router.push('/schedule');
