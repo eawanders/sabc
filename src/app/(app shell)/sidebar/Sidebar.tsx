@@ -9,6 +9,7 @@ import { SendIcon } from "./SendIcon";
 import { ChatIcon } from "./ChatIcon";
 import { HomeIcon } from "./HomeIcon";
 import { CoxingIcon } from "./CoxingIcon";
+import { RowerIcon } from "./RowerIcon";
 import { EventsIcon } from "./EventsIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
@@ -127,6 +128,12 @@ export default function Sidebar() {
             label="Coxing"
             icon={<CoxingIcon stroke={pathname?.startsWith("/coxing") ? "#fff" : "#425466"} />}
             active={pathname?.startsWith("/coxing")}
+          />
+          <NavItem
+            href="/rower-availability"
+            label="Rower Availability"
+            icon={<RowerIcon stroke={pathname?.startsWith("/rower-availability") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/rower-availability")}
           />
           <NavItem
             href="/flag-status"

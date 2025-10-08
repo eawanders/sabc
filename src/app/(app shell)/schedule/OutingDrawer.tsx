@@ -1,13 +1,32 @@
 // Custom DropdownIndicator for react-select with thinner arrow
-import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
+import { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select';
+
+type MemberOptionType = {
+  value: string;
+  label: string;
+  member: Member | null;
+  isUnavailable?: boolean;
+};
+
+// Custom Option component to style unavailable members
+const CustomOption = (props: OptionProps<MemberOptionType, false, GroupBase<MemberOptionType>>) => {
+  const isUnavailable = props.data.isUnavailable;
+
+  return (
+    <components.Option {...props}>
+      <div style={{
+        color: isUnavailable ? '#94a3b8' : 'inherit',
+        fontStyle: isUnavailable ? 'italic' : 'normal'
+      }}>
+        {props.children}
+      </div>
+    </components.Option>
+  );
+};
 
 // Remove explicit any from DropdownIndicatorProps usage
 const DropdownIndicator = (
-  props: DropdownIndicatorProps<
-    { value: string; label: string; member: Member | null },
-    false,
-    GroupBase<{ value: string; label: string; member: Member | null }>
-  >
+  props: DropdownIndicatorProps<MemberOptionType, false, GroupBase<MemberOptionType>>
 ) => (
   <components.DropdownIndicator {...props}>
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -28,6 +47,8 @@ import Sheet from '@/components/ui/Sheet';
 import { getEligibleCoxes } from '@/utils/coxEligibility';
 import { CoxingAvailability } from '@/types/coxing';
 import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
+import { useAllRowerAvailability } from '@/hooks/useAllRowerAvailability';
+import { isRowerAvailable, extractTime } from '@/utils/rowerAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
@@ -125,6 +146,7 @@ interface RowerRowProps {
   outingDate?: string;
   outingTime?: string;
   coxingAvailability?: CoxingAvailability[];
+  rowerAvailabilityMap?: Map<string, Record<string, { start: string; end: string }[]>>;
   onCreateMember: (seat: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
 }
 
@@ -144,6 +166,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
   outingDate,
   outingTime,
   coxingAvailability,
+  rowerAvailabilityMap,
   onCreateMember
 }) => {
   const isMemberSelected = Boolean(selectedMember);
@@ -209,7 +232,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
           {/* Searchable member select using react-select */}
           <div style={{ flex: '1 0 0' }}>
             <CreatableSelect
-              components={{ DropdownIndicator }}
+              components={{ DropdownIndicator, Option: CustomOption }}
               classNamePrefix="rs"
               options={(() => {
                 // Base options with "Select Member"
@@ -239,10 +262,34 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   !assignedNames.includes(member.name) || member.name === selectedMember
                 );
 
-                const memberOptions = filteredMembers.map((member) => ({ value: member.id, label: member.name, member }));
+                // For rower seats (not Cox), check rower availability
+                const memberOptionsWithAvailability = filteredMembers.map((member) => {
+                  let isAvailable = true;
+
+                  // Check rower availability for non-Cox seats
+                  if (seat !== 'Cox' && outingDate && outingTime && rowerAvailabilityMap) {
+                    const memberAvailability = rowerAvailabilityMap.get(member.id);
+                    if (memberAvailability) {
+                      const sessionTime = extractTime(outingTime);
+                      isAvailable = isRowerAvailable(memberAvailability, outingDate, sessionTime);
+                    }
+                  }
+
+                  // Format label with availability indicator
+                  const label = isAvailable
+                    ? member.name
+                    : `${member.name} (Unavailable)`;
+
+                  return {
+                    value: member.id,
+                    label,
+                    member,
+                    isUnavailable: !isAvailable
+                  };
+                });
 
                 // For Cox seat, if no eligible coxes are available, show a disabled option
-                if (seat === 'Cox' && memberOptions.length === 0) {
+                if (seat === 'Cox' && memberOptionsWithAvailability.length === 0) {
                   return [
                     ...baseOptions,
                     { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true }
@@ -251,7 +298,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
 
                 return [
                   ...baseOptions,
-                  ...memberOptions
+                  ...memberOptionsWithAvailability
                 ];
               })()}
               value={(() => {
@@ -551,6 +598,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
   const { availability: coxingAvailability, loading: coxingLoading } = useCoxingAvailability();
+  const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading } = useAllRowerAvailability(members);
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -1771,6 +1819,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingDate={outingDate}
                     outingTime={outingTime}
                     coxingAvailability={coxingAvailability}
+                    rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
                 </div>
@@ -1818,6 +1867,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       outingDate={outingDate}
                       outingTime={outingTime}
                       coxingAvailability={coxingAvailability}
+                      rowerAvailabilityMap={rowerAvailabilityMap}
                       onCreateMember={handleCreateMember}
                     />
                   ))}
@@ -1856,6 +1906,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingDate={outingDate}
                     outingTime={outingTime}
                     coxingAvailability={coxingAvailability}
+                    rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
                 ))}
