@@ -46,8 +46,19 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
   const coxes = useMemo(() => {
     if (loading || error) return []
 
-    // Filter members who have Member Type == "Cox"
-    const coxMembers = members.filter(m => m.memberType === 'Cox')
+    console.log('🔍 All members:', members.length, members.map(m => ({ name: m.name, memberType: m.memberType, coxExperience: m.coxExperience })))
+
+    // Get unique member types to see what values exist
+    const uniqueTypes = [...new Set(members.map(m => m.memberType).filter(Boolean))]
+    console.log('📋 Unique member types in database:', uniqueTypes)
+
+    // Filter members who have Cox Experience (these are the coxes)
+    const coxMembers = members.filter(m => {
+      // A member is a cox if they have any cox experience value
+      return m.coxExperience && m.coxExperience.trim() !== ''
+    })
+
+    console.log('🎯 Cox members found (via coxExperience):', coxMembers.length, coxMembers.map(m => ({ name: m.name, memberType: m.memberType, coxExperience: m.coxExperience })))
 
     const coxOverviews: CoxOverview[] = coxMembers.map(member => {
       const nameParts = member.name.trim().split(' ')
@@ -94,10 +105,18 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
       }
     })
 
+    console.log('📊 Cox overviews before filtering:', coxOverviews.map(c => ({
+      name: c.name,
+      availability: c.availability,
+      hasAnyAvailability: Object.values(c.availability).some(isAvailable => isAvailable)
+    })))
+
     // Only filter out coxes who are completely unavailable ALL week (all 7 days are 00:00-23:59)
     const availableCoxes = coxOverviews.filter(cox =>
       Object.values(cox.availability).some(isAvailable => isAvailable)
     )
+
+    console.log('✅ Final available coxes:', availableCoxes.length, availableCoxes.map(c => c.name))
 
     return availableCoxes.sort((a, b) => a.name.localeCompare(b.name))
   }, [members, availabilityMap, loading, error])
