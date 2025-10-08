@@ -1821,7 +1821,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               </>
             )}
 
-            {/* Rowers Section */
+            {/* Rowers Section */}
             {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
               color: '#27272E',
@@ -1831,9 +1831,9 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               fontWeight: 800,
               lineHeight: 'normal',
               margin: '0 0 16px 0'
-            }}>{
-              (outing?.properties?.Type?.select?.name === 'Water') ? 'Rowers' : 'Attendees'
-            }</h4>
+            }}>
+              {(outing?.properties?.Type?.select?.name === 'Water') ? 'Rowers' : 'Attendees'}
+            </h4>
 
             {/* Interactive Seat Assignments with Member Selection - Dropdowns Container */}
             <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
