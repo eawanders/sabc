@@ -31,9 +31,10 @@ interface UseCoxingOverviewResult {
  * Hook to get coxing overview using the new unified availability system
  * Reads from Members DB "Unavailable [Day]" properties and inverts the logic
  *
- * Logic: If a cox has NO unavailable times for a day, they are available all day
- *        If a cox has unavailable times, we assume they're still generally available
- *        (just not during specific times)
+ * Logic: Display members where Member Type == "Cox"
+ *        Show day as available (green) if they have ANY availability on that day
+ *        Show day as unavailable (gray) ONLY if entire day is blocked (00:00-23:59)
+ *        Only filter out a cox if ALL 7 days are completely unavailable
  */
 export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
   const { members, loading: membersLoading, error: membersError } = useMembers()
@@ -45,8 +46,8 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
   const coxes = useMemo(() => {
     if (loading || error) return []
 
-    // Filter members who have cox experience
-    const coxMembers = members.filter(m => m.coxExperience)
+    // Filter members who have Member Type == "Cox"
+    const coxMembers = members.filter(m => m.memberType === 'Cox')
 
     const coxOverviews: CoxOverview[] = coxMembers.map(member => {
       const nameParts = member.name.trim().split(' ')
@@ -58,8 +59,7 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
       const memberUnavailability = availabilityMap.get(member.id)
 
       // Create availability object
-      // A cox is considered "available" for a day if they have NOT marked the ENTIRE day as unavailable
-      // If they have no unavailability data OR have partial unavailability, show them as available
+      // Default to available for all days
       const availability: CoxDayAvailability = {
         monday: true,
         tuesday: true,
@@ -75,13 +75,14 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
         DAYS_OF_WEEK.forEach(day => {
           const unavailableRanges = memberUnavailability[day]
 
-          // Only mark as unavailable if they've marked the ENTIRE day (or most of it)
-          // For simplicity, we'll show them as available unless they have extensive blocks
-          // This matches the coxing use case where partial availability still means "generally available"
+          // A day is ONLY unavailable if the ENTIRE day is blocked (00:00 to 23:59)
+          // Any other scenario (no ranges, partial ranges) means they have some availability
+          const isWholeDayUnavailable = unavailableRanges.length === 1 &&
+            unavailableRanges[0].start === '00:00' &&
+            unavailableRanges[0].end === '23:59'
 
-          // Alternative approach: Show as available if they have ANY time available
-          // For now, keep them all as available (green) - the schedule will do detailed time checking
-          availability[day as keyof CoxDayAvailability] = true
+          // Show as available unless the whole day is blocked
+          availability[day as keyof CoxDayAvailability] = !isWholeDayUnavailable
         })
       }
 
@@ -93,8 +94,12 @@ export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
       }
     })
 
-    // Filter out coxes who are completely unavailable all week (none exist with current logic)
-    return coxOverviews.sort((a, b) => a.name.localeCompare(b.name))
+    // Only filter out coxes who are completely unavailable ALL week (all 7 days are 00:00-23:59)
+    const availableCoxes = coxOverviews.filter(cox =>
+      Object.values(cox.availability).some(isAvailable => isAvailable)
+    )
+
+    return availableCoxes.sort((a, b) => a.name.localeCompare(b.name))
   }, [members, availabilityMap, loading, error])
 
   return { coxes, loading, error }
