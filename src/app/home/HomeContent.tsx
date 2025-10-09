@@ -32,7 +32,6 @@ export default function HomeContent() {
           alignItems: 'center',
           gap: '20px',
           padding: '20px',
-          paddingTop: '20px',
           borderRadius: '20px',
           background: '#FAFAFB',
           flex: 1,

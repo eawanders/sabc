@@ -206,6 +206,8 @@ export default function RowerAvailabilityPage() {
         overflowX: 'hidden',
         height: '100%',
         width: '100%',
+        position: 'relative',
+        paddingBottom: isMobile && selectedMember && localAvailability && !loading ? '100px' : '0'
       }}
     >
       <h1 className="sr-only">Availability</h1>
@@ -411,23 +413,26 @@ export default function RowerAvailabilityPage() {
 
         {/* Horizontal Calendar Grid - Availability Form */}
         {selectedMember && localAvailability && !loading && (
-          <div
-            onTouchStart={isMobile ? onTouchStart : undefined}
-            onTouchMove={isMobile ? onTouchMove : undefined}
-            onTouchEnd={isMobile ? onTouchEnd : undefined}
-            style={{
-              display: 'flex',
-              padding: isMobile ? '32px 32px 72px 32px' : '32px',
-              alignItems: 'flex-start',
-              justifyContent: 'center',
-              gap: '24px',
-              borderRadius: '10px',
-              background: 'rgba(246, 247, 249, 0.60)',
-              minHeight: '400px',
-              width: '100%',
-              position: 'relative'
-            }}
-          >
+          <>
+            <div
+              onTouchStart={isMobile ? onTouchStart : undefined}
+              onTouchMove={isMobile ? onTouchMove : undefined}
+              onTouchEnd={isMobile ? onTouchEnd : undefined}
+              style={{
+                display: 'flex',
+                padding: isMobile ? '32px' : '32px',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                gap: '24px',
+                borderRadius: '10px',
+                background: 'rgba(246, 247, 249, 0.60)',
+                minHeight: '400px',
+                maxHeight: isMobile ? 'calc(100vh - 280px)' : 'none',
+                width: '100%',
+                position: 'relative',
+                overflowY: isMobile ? 'auto' : 'visible'
+              }}
+            >
             {isMobile ? (
               // Mobile: show only current day
               <DayColumn
@@ -456,18 +461,42 @@ export default function RowerAvailabilityPage() {
               ))
             )}
 
-            {/* Mobile carousel arrows */}
+          </div>
+        </>
+        )}
+
+        {/* Save Button Row */}
+        {selectedMember && localAvailability && !loading && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            position: isMobile ? 'fixed' : 'relative',
+            bottom: isMobile ? '0' : 'auto',
+            left: isMobile ? '0' : 'auto',
+            right: isMobile ? '0' : 'auto',
+            padding: isMobile ? '16px' : '0',
+            backgroundColor: isMobile ? '#FFFFFF' : 'transparent',
+            borderTop: isMobile ? '1px solid #E5E7EB' : 'none',
+            zIndex: isMobile ? 10 : 'auto'
+          }}>
+            {/* Mobile carousel arrows - in fixed area */}
             {isMobile && (
-              <>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '12px'
+              }}>
                 {/* Left arrow */}
                 <button
                   onClick={goToPreviousDay}
                   disabled={currentDayIndex === 0}
                   style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: '16px',
-                    transform: 'translateX(calc(-50% - 22px))',
                     width: '36px',
                     height: '36px',
                     padding: 0,
@@ -498,10 +527,6 @@ export default function RowerAvailabilityPage() {
                   onClick={goToNextDay}
                   disabled={currentDayIndex === 6}
                   style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: '16px',
-                    transform: 'translateX(calc(-50% + 22px))',
                     width: '36px',
                     height: '36px',
                     padding: 0,
@@ -526,21 +551,9 @@ export default function RowerAvailabilityPage() {
                     <path d="M8 16L14 10L8 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
-              </>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* Save Button Row */}
-        {selectedMember && localAvailability && !loading && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%'
-          }}>
             <button
               onClick={handleSave}
               disabled={updating}
