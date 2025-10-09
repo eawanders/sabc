@@ -206,6 +206,8 @@ export default function RowerAvailabilityPage() {
         overflowX: 'hidden',
         height: '100%',
         width: '100%',
+        position: 'relative',
+        paddingBottom: isMobile && selectedMember && localAvailability && !loading ? '100px' : '0'
       }}
     >
       <h1 className="sr-only">Availability</h1>
@@ -424,8 +426,10 @@ export default function RowerAvailabilityPage() {
               borderRadius: '10px',
               background: 'rgba(246, 247, 249, 0.60)',
               minHeight: '400px',
+              maxHeight: isMobile ? 'calc(100vh - 400px)' : 'none',
               width: '100%',
-              position: 'relative'
+              position: 'relative',
+              overflowY: isMobile ? 'auto' : 'visible'
             }}
           >
             {isMobile ? (
@@ -539,7 +543,15 @@ export default function RowerAvailabilityPage() {
             gap: '12px',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '100%'
+            width: '100%',
+            position: isMobile ? 'fixed' : 'relative',
+            bottom: isMobile ? '0' : 'auto',
+            left: isMobile ? '0' : 'auto',
+            right: isMobile ? '0' : 'auto',
+            padding: isMobile ? '16px' : '0',
+            backgroundColor: isMobile ? '#FFFFFF' : 'transparent',
+            borderTop: isMobile ? '1px solid #E5E7EB' : 'none',
+            zIndex: isMobile ? 10 : 'auto'
           }}>
             <button
               onClick={handleSave}
