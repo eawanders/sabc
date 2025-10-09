@@ -599,7 +599,7 @@ export default function RowerAvailabilityPage() {
             color: '#64748b'
           }}>
             <p style={{ fontSize: '16px' }}>
-              Select a member above to set their availability
+              Select your name above to set your weekly availability.
             </p>
           </div>
         )}
