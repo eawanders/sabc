@@ -1604,13 +1604,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       )}
 
       {outing && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
           {/* 4. Outing Details Section - Sticky */}
           <div style={{
             position: 'sticky',
             top: 0,
             zIndex: 1,
-            backgroundColor: '#FFFFF',
+            backgroundColor: '#FFFFFF',
             paddingBottom: '40px'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1631,18 +1631,64 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     gap: '6px',
                     flex: 1
                   }}>
-                    {/* 1. Div + Type (e.g., O1 Water Outing) */}
-                    <h3 style={{
-                      color: '#27272E',
-                      fontFamily: 'Gilroy',
-                      fontSize: '18px',
-                      fontStyle: 'normal',
-                      fontWeight: 600,
-                      lineHeight: 'normal',
-                      margin: 0
+                    {/* Title row with chevron */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      width: '100%'
                     }}>
-                      {outingTitle}
-                    </h3>
+                      {/* 1. Div + Type (e.g., O1 Water Outing) */}
+                      <h3 style={{
+                        color: '#27272E',
+                        fontFamily: 'Gilroy',
+                        fontSize: '18px',
+                        fontStyle: 'normal',
+                        fontWeight: 600,
+                        lineHeight: 'normal',
+                        margin: 0
+                      }}>
+                        {outingTitle}
+                      </h3>
+
+                      {/* Chevron toggle button - only on mobile for Water Outings */}
+                      {isMobile && outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                        <button
+                          onClick={() => setIsMetadataCollapsed(!isMetadataCollapsed)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginLeft: '8px'
+                          }}
+                          aria-label={isMetadataCollapsed ? 'Show details' : 'Hide details'}
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 18 18"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            style={{
+                              transform: isMetadataCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.2s ease'
+                            }}
+                          >
+                            <path
+                              d="M4.5 6.75L9 11.25L13.5 6.75"
+                              stroke="#4C6FFF"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
 
                   {/* Collapsible metadata section */}
                   {(!isMobile || !isMetadataCollapsed || outing?.properties?.Type?.select?.name !== 'Water Outing') && (
@@ -1754,19 +1800,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       marginTop: '12px'
                     }}>
                       {/* Shell - Pill Component */}
-                      <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={false}>
+                      <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={isMobile}>
                         {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
                       </Pill>
 
                       {/* Flag Status - Pill Component */}
                       {flagStatus?.status_text && (
-                        <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={false}>
+                        <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={isMobile}>
                           {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
                         </Pill>
                       )}
 
                       {/* Outing Status - Pill Component */}
-                      <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={false}>
+                      <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={isMobile}>
                         {assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
                       </Pill>
                     </div>
@@ -1775,44 +1821,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   )}
 
                 </div>
-
-                {/* Chevron toggle button - only on mobile for Water Outings */}
-                {isMobile && outing?.properties?.Type?.select?.name === 'Water Outing' && (
-                  <button
-                    onClick={() => setIsMetadataCollapsed(!isMetadataCollapsed)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginLeft: '8px'
-                    }}
-                    aria-label={isMetadataCollapsed ? 'Show details' : 'Hide details'}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      style={{
-                        transform: isMetadataCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease'
-                      }}
-                    >
-                      <path
-                        d="M4.5 6.75L9 11.25L13.5 6.75"
-                        stroke="#4C6FFF"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                )}
 
                 {/* Right side - Pills - MOVED ABOVE TITLE */}
                 {/* Pills are now positioned above the outing title */}
@@ -1850,7 +1858,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           {/* 5. Crew Assignments Section - Scrollable */}
           <div style={{
             flex: 1,
-            overflowY: 'auto'
+            overflowY: 'auto',
+            paddingBottom: isMobile ? '80px' : '0' // Add padding for fixed button on mobile
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Bank Rider Section - Above Attendees (only for Water Outing) */}
@@ -1977,7 +1986,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
           </div>
 
-          <div style={{ marginTop: '32px' }}>
+          {/* Action Buttons - Fixed at bottom on mobile */}
+          <div style={{
+            marginTop: isMobile ? '0' : '32px',
+            position: isMobile ? 'fixed' : 'relative',
+            bottom: isMobile ? '0' : 'auto',
+            left: isMobile ? '0' : 'auto',
+            right: isMobile ? '0' : 'auto',
+            padding: isMobile ? '16px' : '0',
+            backgroundColor: isMobile ? '#FFFFFF' : 'transparent',
+            borderTop: isMobile ? '1px solid #E5E7EB' : 'none',
+            zIndex: isMobile ? 2 : 'auto'
+          }}>
             <div
               style={{
                 display: 'flex',
