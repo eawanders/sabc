@@ -10,6 +10,7 @@ import { ChatIcon } from "./ChatIcon";
 import { HomeIcon } from "./HomeIcon";
 import { CoxingIcon } from "./CoxingIcon";
 import { RowerIcon } from "./RowerIcon";
+import { CalendarIcon } from "./CalendarIcon";
 import { EventsIcon } from "./EventsIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
@@ -126,7 +127,7 @@ export default function Sidebar() {
           <NavItem
             href="/availability"
             label="Availability"
-            icon={<RowerIcon stroke={pathname?.startsWith("/availability") ? "#fff" : "#425466"} />}
+            icon={<CalendarIcon stroke={pathname?.startsWith("/availability") ? "#fff" : "#425466"} />}
             active={pathname?.startsWith("/availability")}
           />
           <NavItem
