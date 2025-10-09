@@ -610,6 +610,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   // Flag status state
   const [flagStatus, setFlagStatus] = useState<{ status_text?: string } | null>(null);
 
+  // Mobile detection and metadata collapse state
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMetadataCollapsed, setIsMetadataCollapsed] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Extract outing date and time for cox eligibility
   const outingDate = React.useMemo(() => {
     if (!outing?.properties?.StartDateTime) return undefined;
@@ -1615,7 +1628,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
-                    gap: '6px'
+                    gap: '6px',
+                    flex: 1
                   }}>
                     {/* 1. Div + Type (e.g., O1 Water Outing) */}
                     <h3 style={{
@@ -1630,6 +1644,9 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       {outingTitle}
                     </h3>
 
+                  {/* Collapsible metadata section */}
+                  {(!isMobile || !isMetadataCollapsed || outing?.properties?.Type?.select?.name !== 'Water Outing') && (
+                    <>
                   {/* 2. Date/Time (e.g., Date: Wednesday 10:00-12:00) */}
                   <div style={{
                     color: '#425466',
@@ -1726,40 +1743,92 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     </div>
                   )}
 
+                  {/* Pills - inside collapsible section for Water Outings */}
+                  {outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      alignItems: 'flex-start',
+                      gap: '12px',
+                      alignSelf: 'stretch',
+                      marginTop: '12px'
+                    }}>
+                      {/* Shell - Pill Component */}
+                      <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={false}>
+                        {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
+                      </Pill>
+
+                      {/* Flag Status - Pill Component */}
+                      {flagStatus?.status_text && (
+                        <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={false}>
+                          {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
+                        </Pill>
+                      )}
+
+                      {/* Outing Status - Pill Component */}
+                      <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={false}>
+                        {assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
+                      </Pill>
+                    </div>
+                  )}
+                  </>
+                  )}
 
                 </div>
+
+                {/* Chevron toggle button - only on mobile for Water Outings */}
+                {isMobile && outing?.properties?.Type?.select?.name === 'Water Outing' && (
+                  <button
+                    onClick={() => setIsMetadataCollapsed(!isMetadataCollapsed)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: '8px'
+                    }}
+                    aria-label={isMetadataCollapsed ? 'Show details' : 'Hide details'}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18 18"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{
+                        transform: isMetadataCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }}
+                    >
+                      <path
+                        d="M4.5 6.75L9 11.25L13.5 6.75"
+                        stroke="#4C6FFF"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                )}
 
                 {/* Right side - Pills - MOVED ABOVE TITLE */}
                 {/* Pills are now positioned above the outing title */}
               </div>
             </div>
 
-            {/* Status/Shell Pills - Beneath Notes */}
-            {(() => {
-              const hasShellPill = outing?.properties?.Type?.select?.name === 'Water Outing';
-              const hasFlagPill = hasShellPill && flagStatus?.status_text;
+            {/* Status/Shell Pills - Only for non-Water Outings (Water Outings have pills in collapsible section) */}
+            {outing?.properties?.Type?.select?.name !== 'Water Outing' && (() => {
               return (
                 <div style={{
                   display: 'flex',
-                  justifyContent: hasShellPill ? 'center' : 'flex-start',
+                  justifyContent: 'flex-start',
                   alignItems: 'flex-start',
                   gap: '12px',
                   alignSelf: 'stretch'
                 }}>
-                  {/* Shell - Pill Component (only for Water Outing) */}
-                  {hasShellPill && (
-                    <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={true}>
-                      {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
-                    </Pill>
-                  )}
-
-                  {/* Flag Status - Pill Component (only for Water Outing) */}
-                  {hasFlagPill && (
-                    <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={true}>
-                      {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
-                    </Pill>
-                  )}
-
                   {/* Outing Status - Pill Component */}
                   <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
                     {assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}

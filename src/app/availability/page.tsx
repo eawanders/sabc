@@ -236,7 +236,7 @@ export default function RowerAvailabilityPage() {
               }}
             >
               {/* Left: description text */}
-              <div className="text-muted-foreground" style={{ fontSize: '14px' }}>
+              <div className="text-muted-foreground" style={{ fontSize: '14px', textAlign: isMobile ? 'center' : 'left' }}>
                 Set the times that you are unavailable each week. Ensure to update your availability when it changes.
               </div>
 
