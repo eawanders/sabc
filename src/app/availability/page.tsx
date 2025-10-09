@@ -535,9 +535,9 @@ export default function RowerAvailabilityPage() {
         {selectedMember && localAvailability && !loading && (
           <div style={{
             display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: '16px',
-            alignItems: isMobile ? 'stretch' : 'center',
+            flexDirection: 'column',
+            gap: '12px',
+            alignItems: 'center',
             justifyContent: 'center',
             width: '100%'
           }}>
@@ -578,13 +578,24 @@ export default function RowerAvailabilityPage() {
             </button>
 
             {saveSuccess && (
-              <span style={{ color: '#16a34a', fontWeight: 500 }}>
+              <span style={{
+                color: '#16a34a',
+                fontWeight: 500,
+                textAlign: 'center',
+                fontFamily: 'Gilroy',
+                fontSize: '14px'
+              }}>
                 ✓ Saved successfully!
               </span>
             )}
 
             {updateError && (
-              <span style={{ color: '#dc2626', fontSize: '14px' }}>
+              <span style={{
+                color: '#dc2626',
+                fontSize: '14px',
+                textAlign: 'center',
+                fontFamily: 'Gilroy'
+              }}>
                 {updateError}
               </span>
             )}
@@ -629,7 +640,7 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay,
         display: 'flex',
         width: isMobile ? '100%' : '110px',
         flexDirection: 'column',
-        alignItems: 'center',
+        alignItems: isMobile ? 'stretch' : 'center',
         gap: '24px',
         flexShrink: 0
       }}
@@ -651,8 +662,12 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay,
 
       {/* Content Container */}
       <div
-        className="flex flex-col items-center"
-        style={{ gap: '12px' }}
+        className="flex flex-col"
+        style={{
+          gap: '12px',
+          alignItems: isMobile ? 'stretch' : 'center',
+          width: '100%'
+        }}
       >
         {/* Mark Whole Day Button */}
         <button
@@ -701,8 +716,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay,
             padding: '12px',
             borderRadius: '6px',
             boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)',
-            minWidth: '110px',
-            maxWidth: '110px'
+            minWidth: isMobile ? 'auto' : '110px',
+            maxWidth: isMobile ? 'none' : '110px',
+            width: isMobile ? '100%' : 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Range {index + 1}</span>
