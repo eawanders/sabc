@@ -413,25 +413,26 @@ export default function RowerAvailabilityPage() {
 
         {/* Horizontal Calendar Grid - Availability Form */}
         {selectedMember && localAvailability && !loading && (
-          <div
-            onTouchStart={isMobile ? onTouchStart : undefined}
-            onTouchMove={isMobile ? onTouchMove : undefined}
-            onTouchEnd={isMobile ? onTouchEnd : undefined}
-            style={{
-              display: 'flex',
-              padding: isMobile ? '32px 32px 72px 32px' : '32px',
-              alignItems: 'flex-start',
-              justifyContent: 'center',
-              gap: '24px',
-              borderRadius: '10px',
-              background: 'rgba(246, 247, 249, 0.60)',
-              minHeight: '400px',
-              maxHeight: isMobile ? 'calc(100vh - 400px)' : 'none',
-              width: '100%',
-              position: 'relative',
-              overflowY: isMobile ? 'auto' : 'visible'
-            }}
-          >
+          <>
+            <div
+              onTouchStart={isMobile ? onTouchStart : undefined}
+              onTouchMove={isMobile ? onTouchMove : undefined}
+              onTouchEnd={isMobile ? onTouchEnd : undefined}
+              style={{
+                display: 'flex',
+                padding: isMobile ? '32px' : '32px',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                gap: '24px',
+                borderRadius: '10px',
+                background: 'rgba(246, 247, 249, 0.60)',
+                minHeight: '400px',
+                maxHeight: isMobile ? 'calc(100vh - 400px)' : 'none',
+                width: '100%',
+                position: 'relative',
+                overflowY: isMobile ? 'auto' : 'visible'
+              }}
+            >
             {isMobile ? (
               // Mobile: show only current day
               <DayColumn
@@ -460,79 +461,79 @@ export default function RowerAvailabilityPage() {
               ))
             )}
 
-            {/* Mobile carousel arrows */}
-            {isMobile && (
-              <>
-                {/* Left arrow */}
-                <button
-                  onClick={goToPreviousDay}
-                  disabled={currentDayIndex === 0}
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: '16px',
-                    transform: 'translateX(calc(-50% - 22px))',
-                    width: '36px',
-                    height: '36px',
-                    padding: 0,
-                    borderRadius: '10px',
-                    background: 'rgba(246,247,249,0.60)',
-                    border: '0',
-                    cursor: currentDayIndex === 0 ? 'not-allowed' : 'pointer',
-                    opacity: currentDayIndex === 0 ? 0.5 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  aria-label="Previous day"
-                  onMouseEnter={(e) => {
-                    if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 16L6 10L12 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-
-                {/* Right arrow */}
-                <button
-                  onClick={goToNextDay}
-                  disabled={currentDayIndex === 6}
-                  style={{
-                    position: 'absolute',
-                    left: '50%',
-                    bottom: '16px',
-                    transform: 'translateX(calc(-50% + 22px))',
-                    width: '36px',
-                    height: '36px',
-                    padding: 0,
-                    borderRadius: '10px',
-                    background: 'rgba(246,247,249,0.60)',
-                    border: '0',
-                    cursor: currentDayIndex === 6 ? 'not-allowed' : 'pointer',
-                    opacity: currentDayIndex === 6 ? 0.5 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  aria-label="Next day"
-                  onMouseEnter={(e) => {
-                    if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
-                  }}
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 16L14 10L8 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </>
-            )}
           </div>
+
+          {/* Mobile carousel arrows - Below grey area */}
+          {isMobile && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '8px',
+              paddingTop: '16px'
+            }}>
+              {/* Left arrow */}
+              <button
+                onClick={goToPreviousDay}
+                disabled={currentDayIndex === 0}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  padding: 0,
+                  borderRadius: '10px',
+                  background: 'rgba(246,247,249,0.60)',
+                  border: '0',
+                  cursor: currentDayIndex === 0 ? 'not-allowed' : 'pointer',
+                  opacity: currentDayIndex === 0 ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                aria-label="Previous day"
+                onMouseEnter={(e) => {
+                  if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
+                }}
+                onMouseLeave={(e) => {
+                  if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 16L6 10L12 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {/* Right arrow */}
+              <button
+                onClick={goToNextDay}
+                disabled={currentDayIndex === 6}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  padding: 0,
+                  borderRadius: '10px',
+                  background: 'rgba(246,247,249,0.60)',
+                  border: '0',
+                  cursor: currentDayIndex === 6 ? 'not-allowed' : 'pointer',
+                  opacity: currentDayIndex === 6 ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                aria-label="Next day"
+                onMouseEnter={(e) => {
+                  if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
+                }}
+                onMouseLeave={(e) => {
+                  if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 16L14 10L8 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          )}
+        </>
         )}
 
         {/* Save Button Row */}
