@@ -7,12 +7,12 @@ import { useTestsResource } from './useTestsResource';
 
 /**
  * Hook for fetching upcoming tests
- * Returns the next 3 tests that haven't ended yet
+ * Returns the next N tests that haven't ended yet
  */
-export function useUpcomingTests() {
+export function useUpcomingTests(limit: number = 3) {
   const { tests, loading, error } = useTestsResource();
 
-  // Get upcoming tests (next 3 that haven't ended yet)
+  // Get upcoming tests (next N that haven't ended yet)
   const upcomingTests: TestCalendarEvent[] = useMemo(() => {
     if (!tests.length) return [];
 
@@ -25,9 +25,9 @@ export function useUpcomingTests() {
     // Sort by start time ascending
     futureTests.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
-    // Return first 3
-    return futureTests.slice(0, 3);
-  }, [tests]);
+    // Return first N
+    return futureTests.slice(0, limit);
+  }, [tests, limit]);
 
   return {
     tests: upcomingTests,

@@ -134,7 +134,7 @@ function OutingItem({ event, onViewReport }: OutingItemProps) {
 
 export default function RecentWaterOutingsCard() {
   const router = useRouter();
-  const { outings, loading, error } = useRecentWaterOutings(3);
+  const { outings, loading, error } = useRecentWaterOutings(2);
 
   const handleNavigateToSchedule = () => {
     router.push('/schedule');

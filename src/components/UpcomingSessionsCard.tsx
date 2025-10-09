@@ -167,7 +167,7 @@ function SessionItem({ event, onSignUp }: SessionItemProps) {
 
 export default function UpcomingSessionsCard() {
   const router = useRouter();
-  const { sessions, loading, error } = useUpcomingSessions(3);
+  const { sessions, loading, error } = useUpcomingSessions(2);
 
   const handleNavigateToSchedule = () => {
     router.push('/schedule');
@@ -198,7 +198,7 @@ export default function UpcomingSessionsCard() {
       style={{
         display: 'flex',
         width: '300px',
-        minHeight: cardMinHeight,
+        height: '300px',
         padding: '20px',
         flexDirection: 'column',
         justifyContent: 'space-between',

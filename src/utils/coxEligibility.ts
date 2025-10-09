@@ -1,4 +1,6 @@
 import { Member } from '@/types/members';
+import { DayOfWeek, TimeRange } from '@/types/rowerAvailability';
+import { isRowerAvailable, extractTime } from '@/utils/rowerAvailability';
 
 export type CoxExperience = "Novice" | "Novice (less than 1 term)" | "Experienced" | "Senior";
 export type FlagStatus = "green" | "light-blue" | "dark-blue" | "red" | "grey" | "black";
@@ -42,56 +44,34 @@ export function isCoxEligible(coxExperience: string | undefined, flagStatus: Fla
 }
 
 /**
- * Maps outing time to coxing availability time slot
+ * Filters available coxes using the unified availability system
+ * Uses Members DB "Unavailable [Day]" properties where data represents UNavailability
  */
-export function getTimeSlotForOuting(outingTime: string): 'earlyAM' | 'midAM' | 'midPM' | 'latePM' {
-  const hour = new Date(outingTime).getHours();
-
-  if (hour >= 6 && hour < 8) return 'earlyAM';
-  if (hour >= 8 && hour < 12) return 'midAM';
-  if (hour >= 12 && hour < 17) return 'midPM'; // 12PM-5PM
-  if (hour >= 17 && hour < 20) return 'latePM'; // 5PM-8PM
-
-  // Default to midPM for any other times
-  return 'midPM';
-}
-
-/**
- * Filters available coxes based on eligibility and availability for a specific outing
- */
-export function getEligibleCoxes(
+export function getEligibleCoxesUnified(
   allMembers: Member[],
   flagStatus: FlagStatus,
   outingDate: string,
   outingTime: string,
-  coxingAvailability: Array<{
-    date: string;
-    earlyAM: string[];
-    midAM: string[];
-    midPM: string[];
-    latePM: string[];
-  }>
+  availabilityMap: Map<string, Record<DayOfWeek, TimeRange[]>>
 ): Member[] {
-  const timeSlot = getTimeSlotForOuting(outingTime);
+  const sessionTime = extractTime(outingTime);
 
-  // Find availability for the outing date
-  const dateAvailability = coxingAvailability.find(
-    avail => avail.date === outingDate
+  // Filter members who are eligible
+  const eligibleCoxes = allMembers.filter(member =>
+    isCoxEligible(member.coxExperience, flagStatus)
   );
 
-  if (!dateAvailability) {
-    // No availability data for this date, return only eligible coxes
-    return allMembers.filter(member =>
-      isCoxEligible(member.coxExperience, flagStatus)
-    );
-  }
+  // Further filter by availability
+  // A cox is available if they have NOT marked this time as unavailable
+  return eligibleCoxes.filter(member => {
+    const memberAvailability = availabilityMap.get(member.id);
 
-  // Get available member IDs for the time slot
-  const availableMemberIds = dateAvailability[timeSlot] || [];
+    // If no unavailability data, they're available
+    if (!memberAvailability) {
+      return true;
+    }
 
-  // Filter members who are both eligible and available
-  return allMembers.filter(member =>
-    isCoxEligible(member.coxExperience, flagStatus) &&
-    availableMemberIds.includes(member.id)
-  );
+    // Check if they're available at the specific time
+    return isRowerAvailable(memberAvailability, outingDate, sessionTime);
+  });
 }

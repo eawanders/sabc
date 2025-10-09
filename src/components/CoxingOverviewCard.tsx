@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useCoxingOverview, CoxOverview } from '@/hooks/useCoxingOverview';
+import { useCoxingOverviewUnified, CoxOverview } from '@/hooks/useCoxingOverviewUnified';
 
 function ChevronRightIcon({ color = '#4C6FFF' }: { color?: string }) {
   return (
@@ -96,10 +96,10 @@ function CoxRow({ cox }: CoxRowProps) {
 
 export default function CoxingOverviewCard() {
   const router = useRouter();
-  const { coxes, loading, error } = useCoxingOverview();
+  const { coxes, loading, error } = useCoxingOverviewUnified();
 
   const handleNavigate = () => {
-    router.push('/coxing');
+    router.push('/availability');
   };
 
   return (

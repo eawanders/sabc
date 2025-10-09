@@ -1,13 +1,32 @@
 // Custom DropdownIndicator for react-select with thinner arrow
-import { components, DropdownIndicatorProps, GroupBase } from 'react-select';
+import { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select';
+
+type MemberOptionType = {
+  value: string;
+  label: string;
+  member: Member | null;
+  isUnavailable?: boolean;
+};
+
+// Custom Option component to style unavailable members
+const CustomOption = (props: OptionProps<MemberOptionType, false, GroupBase<MemberOptionType>>) => {
+  const isUnavailable = props.data.isUnavailable;
+
+  return (
+    <components.Option {...props}>
+      <div style={{
+        color: isUnavailable ? '#94a3b8' : 'inherit',
+        fontStyle: isUnavailable ? 'italic' : 'normal'
+      }}>
+        {props.children}
+      </div>
+    </components.Option>
+  );
+};
 
 // Remove explicit any from DropdownIndicatorProps usage
 const DropdownIndicator = (
-  props: DropdownIndicatorProps<
-    { value: string; label: string; member: Member | null },
-    false,
-    GroupBase<{ value: string; label: string; member: Member | null }>
-  >
+  props: DropdownIndicatorProps<MemberOptionType, false, GroupBase<MemberOptionType>>
 ) => (
   <components.DropdownIndicator {...props}>
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,9 +44,9 @@ import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
-import { getEligibleCoxes } from '@/utils/coxEligibility';
-import { CoxingAvailability } from '@/types/coxing';
-import { useCoxingAvailability } from '../hooks/useCoxingAvailability';
+import { getEligibleCoxesUnified } from '@/utils/coxEligibility';
+import { useAllRowerAvailability } from '@/hooks/useAllRowerAvailability';
+import { isRowerAvailable, extractTime } from '@/utils/rowerAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
@@ -124,7 +143,7 @@ interface RowerRowProps {
   flagStatus?: string;
   outingDate?: string;
   outingTime?: string;
-  coxingAvailability?: CoxingAvailability[];
+  rowerAvailabilityMap?: Map<string, Record<string, { start: string; end: string }[]>>;
   onCreateMember: (seat: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
 }
 
@@ -143,7 +162,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
   flagStatus,
   outingDate,
   outingTime,
-  coxingAvailability,
+  rowerAvailabilityMap,
   onCreateMember
 }) => {
   const isMemberSelected = Boolean(selectedMember);
@@ -209,7 +228,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
           {/* Searchable member select using react-select */}
           <div style={{ flex: '1 0 0' }}>
             <CreatableSelect
-              components={{ DropdownIndicator }}
+              components={{ DropdownIndicator, Option: CustomOption }}
               classNamePrefix="rs"
               options={(() => {
                 // Base options with "Select Member"
@@ -218,15 +237,15 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 // Filter members based on seat type and eligibility
                 let availableMembers = members;
 
-                if (seat === 'Cox' && flagStatus && outingDate && outingTime && coxingAvailability) {
-                  // For Cox seat, filter by eligibility and availability
+                if (seat === 'Cox' && flagStatus && outingDate && outingTime && rowerAvailabilityMap) {
+                  // For Cox seat, use unified availability system
                   const flagStatusNormalized = flagStatus.toLowerCase().replace(' ', '-') as 'green' | 'light-blue' | 'dark-blue' | 'red' | 'grey' | 'black';
-                  availableMembers = getEligibleCoxes(
+                  availableMembers = getEligibleCoxesUnified(
                     members,
                     flagStatusNormalized,
                     outingDate,
                     outingTime,
-                    coxingAvailability
+                    rowerAvailabilityMap
                   );
                 }
 
@@ -239,10 +258,34 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   !assignedNames.includes(member.name) || member.name === selectedMember
                 );
 
-                const memberOptions = filteredMembers.map((member) => ({ value: member.id, label: member.name, member }));
+                // For rower seats (not Cox), check rower availability
+                const memberOptionsWithAvailability = filteredMembers.map((member) => {
+                  let isAvailable = true;
+
+                  // Check rower availability for non-Cox seats
+                  if (seat !== 'Cox' && outingDate && outingTime && rowerAvailabilityMap) {
+                    const memberAvailability = rowerAvailabilityMap.get(member.id);
+                    if (memberAvailability) {
+                      const sessionTime = extractTime(outingTime);
+                      isAvailable = isRowerAvailable(memberAvailability, outingDate, sessionTime);
+                    }
+                  }
+
+                  // Format label with availability indicator
+                  const label = isAvailable
+                    ? member.name
+                    : `${member.name} (Unavailable)`;
+
+                  return {
+                    value: member.id,
+                    label,
+                    member,
+                    isUnavailable: !isAvailable
+                  };
+                });
 
                 // For Cox seat, if no eligible coxes are available, show a disabled option
-                if (seat === 'Cox' && memberOptions.length === 0) {
+                if (seat === 'Cox' && memberOptionsWithAvailability.length === 0) {
                   return [
                     ...baseOptions,
                     { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true }
@@ -251,7 +294,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
 
                 return [
                   ...baseOptions,
-                  ...memberOptions
+                  ...memberOptionsWithAvailability
                 ];
               })()}
               value={(() => {
@@ -550,7 +593,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const { urlState, openReportDrawer, closeDrawer, openSessionDrawer } = useScheduleUrlState();
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
-  const { availability: coxingAvailability, loading: coxingLoading } = useCoxingAvailability();
+  const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading } = useAllRowerAvailability(members);
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -1530,7 +1573,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     <Sheet
       isOpen={isOpen}
       onClose={isReportDrawerOpen ? () => {} : onClose} // Disable closing when report drawer is open
-      title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '##27272E', fontFamily: 'Gilroy'}}>{(() => {
+      title={<span style={{fontSize: '32px', fontWeight: 700, display: 'block', color: '#27272E', fontFamily: 'Gilroy'}}>{(() => {
         const type = outing?.properties?.Type?.select?.name || '';
         if (type === 'Water Outing') return 'Outing Details';
         if (type === 'Erg Session') return 'Erg Details';
@@ -1539,6 +1582,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         return 'Outing Details';
       })()}</span>}
     >
+      <div>
       {loading && !isLoadingStatus && !hasLoadedOnce && (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1575,7 +1619,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   }}>
                     {/* 1. Div + Type (e.g., O1 Water Outing) */}
                     <h3 style={{
-                      color: '##27272E',
+                      color: '#27272E',
                       fontFamily: 'Gilroy',
                       fontSize: '18px',
                       fontStyle: 'normal',
@@ -1770,7 +1814,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     flagStatus={flagStatus?.status_text}
                     outingDate={outingDate}
                     outingTime={outingTime}
-                    coxingAvailability={coxingAvailability}
+                    rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
                 </div>
@@ -1780,16 +1824,16 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             {/* Rowers Section */}
             {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
-              color: '##27272E',
+              color: '#27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
               fontWeight: 800,
               lineHeight: 'normal',
               margin: '0 0 16px 0'
-            }}>{
-              (outing?.properties?.Type?.select?.name === 'Water') ? 'Rowers' : 'Attendees'
-            }</h4>
+            }}>
+              {(outing?.properties?.Type?.select?.name === 'Water') ? 'Rowers' : 'Attendees'}
+            </h4>
 
             {/* Interactive Seat Assignments with Member Selection - Dropdowns Container */}
             <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
@@ -1817,7 +1861,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       flagStatus={flagStatus?.status_text}
                       outingDate={outingDate}
                       outingTime={outingTime}
-                      coxingAvailability={coxingAvailability}
+                      rowerAvailabilityMap={rowerAvailabilityMap}
                       onCreateMember={handleCreateMember}
                     />
                   ))}
@@ -1826,7 +1870,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
             {/* Subs Section */}
             <h4 style={{
-              color: '##27272E',
+              color: '#27272E',
               fontFamily: 'Gilroy',
               fontSize: '18px',
               fontStyle: 'normal',
@@ -1855,7 +1899,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     flagStatus={flagStatus?.status_text}
                     outingDate={outingDate}
                     outingTime={outingTime}
-                    coxingAvailability={coxingAvailability}
+                    rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
                 ))}
@@ -1928,6 +1972,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           {/* Report Drawer is now managed outside the Sheet component */}
         </div>
       )}
+      </div>
     </Sheet>
 
     {/* Report Drawer - Overlaid on top (only for Water Outing) */}

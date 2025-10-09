@@ -161,7 +161,7 @@ function TestItem({ test, onSignUp }: TestItemProps) {
 
 export default function UpcomingTestsCard() {
   const router = useRouter();
-  const { tests, loading, error } = useUpcomingTests();
+  const { tests, loading, error } = useUpcomingTests(2);
 
   const handleNavigate = () => {
     router.push('/tests');
