@@ -427,7 +427,7 @@ export default function RowerAvailabilityPage() {
                 borderRadius: '10px',
                 background: 'rgba(246, 247, 249, 0.60)',
                 minHeight: '400px',
-                maxHeight: isMobile ? 'calc(100vh - 400px)' : 'none',
+                maxHeight: isMobile ? 'calc(100vh - 320px)' : 'none',
                 width: '100%',
                 position: 'relative',
                 overflowY: isMobile ? 'auto' : 'visible'
