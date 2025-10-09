@@ -56,6 +56,16 @@ export const DAY_LABELS: Record<DayOfWeek, string> = {
   sunday: 'Sunday'
 };
 
+export const DAY_LABELS_SHORT: Record<DayOfWeek, string> = {
+  monday: 'Mon',
+  tuesday: 'Tue',
+  wednesday: 'Wed',
+  thursday: 'Thu',
+  friday: 'Fri',
+  saturday: 'Sat',
+  sunday: 'Sun'
+};
+
 /**
  * Parse time string "HH:MM" to minutes since midnight
  */

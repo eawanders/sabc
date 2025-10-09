@@ -10,11 +10,21 @@ import {
   TimeRange,
   DayOfWeek,
   DAYS_OF_WEEK,
-  DAY_LABELS
+  DAY_LABELS,
+  DAY_LABELS_SHORT
 } from '@/types/rowerAvailability'
-import Select, { components, DropdownIndicatorProps, GroupBase } from 'react-select'
+import Select, { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select'
+import { TimePicker } from '@/components/TimePicker'
 
 type OptionItem = { value: string; label: string; member: Member }
+
+// Narrow types for style functions
+interface StyleOptionState {
+  isSelected?: boolean;
+  isFocused?: boolean;
+  selectProps?: { options?: readonly OptionItem[] };
+  data?: OptionItem;
+}
 
 const DropdownIndicator = (
   props: DropdownIndicatorProps<OptionItem, false, GroupBase<OptionItem>>
@@ -181,8 +191,8 @@ export default function RowerAvailabilityPage() {
                 components={{ DropdownIndicator }}
                 classNamePrefix="rs"
                 instanceId="rower-availability-member-filter"
-                isSearchable
-                isClearable
+                isSearchable={false}
+                isClearable={false}
                 value={selectedOption}
                 onChange={handleMemberChange}
                 options={memberOptions}
@@ -237,47 +247,87 @@ export default function RowerAvailabilityPage() {
                   }),
                   singleValue: (base) => ({
                     ...base,
-                    color: '#1e293b',
+                    color: '#425466',
                     fontSize: '14px',
+                    lineHeight: '28px',
+                    fontWeight: 300,
                     fontFamily: 'Gilroy',
-                    margin: 0,
-                    padding: 0,
-                    maxWidth: 'calc(100% - 8px)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    textAlign: 'center',
                   }),
                   placeholder: (base) => ({
                     ...base,
-                    color: '#94a3b8',
-                    fontSize: '14px',
-                    fontFamily: 'Gilroy',
-                    margin: 0
+                    color: '#7D8DA6',
+                    fontWeight: 300,
+                  }),
+                  indicatorSeparator: (base) => ({
+                    ...base,
+                    display: 'none',
+                  }),
+                  dropdownIndicator: (base) => ({
+                    ...base,
+                    padding: 0,
+                    width: 25,
+                    height: 25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#7D8DA6',
+                    boxSizing: 'border-box',
+                    marginLeft: 0,
                   }),
                   menu: (base) => ({
                     ...base,
+                    zIndex: 9999,
+                    position: 'absolute',
+                    border: 'none',
+                    boxShadow: '0 4px 16px 0 rgba(174,174,174,0.10)',
                     borderRadius: '10px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     overflow: 'hidden',
-                    marginTop: '4px'
+                    left: 0,
+                    right: 0,
+                    width: '100%',
+                    minWidth: '100%',
+                    marginTop: '12px',
                   }),
                   menuList: (base) => ({
                     ...base,
-                    padding: '4px',
-                    maxHeight: '300px'
+                    border: 'none',
+                    boxShadow: 'none',
+                    borderRadius: '10px',
+                    padding: 0,
                   }),
-                  option: (base, state) => ({
+                  menuPortal: (base) => ({
                     ...base,
-                    backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? 'rgba(125,141,166,0.10)' : 'white',
-                    color: state.isSelected ? 'white' : '#1e293b',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    fontSize: '14px',
-                    fontFamily: 'Gilroy',
-                    transition: 'background-color 0.15s ease'
-                  })
+                    zIndex: 9999,
+                  }),
+                  option: (base, state: OptionProps<OptionItem, false, GroupBase<OptionItem>>) => {
+                    const optionListRaw = state && state.selectProps && state.selectProps.options ? state.selectProps.options : [];
+                    const optionList = (optionListRaw as readonly unknown[]).filter((opt): opt is OptionItem => typeof opt === 'object' && opt !== null && 'value' in opt) as readonly OptionItem[];
+                    const index = optionList.findIndex((opt) => opt.value === state.data.value);
+                    const isFirst = index === 0;
+                    const isLast = index === optionList.length - 1;
+                    let borderRadius = '0px';
+                    if ((state.isSelected || state.isFocused) && isFirst && isLast) {
+                      borderRadius = '10px';
+                    } else if ((state.isSelected || state.isFocused) && isFirst) {
+                      borderRadius = '10px 10px 0 0';
+                    } else if ((state.isSelected || state.isFocused) && isLast) {
+                      borderRadius = '0 0 10px 10px';
+                    }
+                    return {
+                      ...base,
+                      backgroundColor: state.isSelected ? '#238AFF' : state.isFocused ? '#E6F0FF' : 'transparent',
+                      color: state.isSelected ? '#fff' : '#4C5A6E',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 300,
+                      padding: '8px 10px',
+                      borderRadius,
+                      transition: 'background 0.2s',
+                    };
+                  },
                 }}
+                menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
               />
             </div>
           </div>
@@ -307,9 +357,13 @@ export default function RowerAvailabilityPage() {
         {selectedMember && localAvailability && !loading && (
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '20px',
+              display: 'flex',
+              padding: '32px',
+              alignItems: 'flex-start',
+              gap: '24px',
+              borderRadius: '10px',
+              background: 'rgba(246, 247, 249, 0.60)',
+              minHeight: '400px',
               width: '100%'
             }}
           >
@@ -334,21 +388,32 @@ export default function RowerAvailabilityPage() {
               onClick={handleSave}
               disabled={updating}
               style={{
-                padding: '12px 24px',
-                backgroundColor: updating ? '#94a3b8' : '#3b82f6',
-                color: 'white',
+                display: 'flex',
+                padding: '6px 20px',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '20px',
+                borderRadius: '10px',
                 border: 'none',
-                borderRadius: '8px',
+                background: updating ? '#94a3b8' : '#0177FB',
+                color: '#fff',
+                fontFamily: 'Gilroy',
                 fontSize: '16px',
-                fontWeight: 500,
+                fontStyle: 'normal',
+                fontWeight: 300,
+                lineHeight: 'normal',
+                minHeight: '36px',
                 cursor: updating ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s'
+                transition: 'background-color 0.2s',
+                boxShadow: 'none',
+                textDecoration: 'none'
               }}
               onMouseEnter={(e) => {
-                if (!updating) e.currentTarget.style.backgroundColor = '#2563eb'
+                if (!updating) e.currentTarget.style.backgroundColor = '#0166E0'
               }}
               onMouseLeave={(e) => {
-                if (!updating) e.currentTarget.style.backgroundColor = '#3b82f6'
+                if (!updating) e.currentTarget.style.backgroundColor = '#0177FB'
               }}
             >
               {updating ? 'Saving...' : 'Save Changes'}
@@ -403,52 +468,71 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
     <div
       style={{
         display: 'flex',
+        width: '110px',
         flexDirection: 'column',
-        gap: '12px',
-        background: 'rgba(246, 247, 249, 0.60)',
-        borderRadius: '10px',
-        padding: '16px',
-        minHeight: '400px'
+        alignItems: 'center',
+        gap: '24px',
+        flex: 1
       }}
     >
-      {/* Day Header */}
-      <div style={{ marginBottom: '8px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
-          {DAY_LABELS[day]}
-        </h3>
-      </div>
-
-      {/* Mark Whole Day Button */}
-      <button
-        onClick={onMarkWholeDay}
-        disabled={isWholeDay}
+      {/* Day Header - matching CalendarDay */}
+      <div
+        className="text-center"
         style={{
-          padding: '8px 12px',
-          background: isWholeDay ? '#f1f5f9' : 'white',
-          border: '1px solid #cbd5e1',
-          borderRadius: '6px',
-          color: isWholeDay ? '#94a3b8' : '#3b82f6',
-          cursor: isWholeDay ? 'not-allowed' : 'pointer',
-          fontSize: '11px',
-          fontWeight: 500,
-          transition: 'all 0.2s',
-          whiteSpace: 'nowrap'
-        }}
-        onMouseEnter={(e) => {
-          if (!isWholeDay) e.currentTarget.style.backgroundColor = '#f0f9ff'
-        }}
-        onMouseLeave={(e) => {
-          if (!isWholeDay) e.currentTarget.style.backgroundColor = 'white'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px'
         }}
       >
-        {isWholeDay ? '✓ Whole day' : 'Mark whole day'}
-      </button>
+        <div className="text-sm font-medium text-muted-foreground">
+          {DAY_LABELS_SHORT[day]}
+        </div>
+      </div>
 
-      {/* Time Ranges */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+      {/* Content Container */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          width: '100%',
+          alignItems: 'center'
+        }}
+      >
+        {/* Mark Whole Day Button */}
+        <button
+          onClick={onMarkWholeDay}
+          disabled={isWholeDay}
+          style={{
+            padding: '8px 12px',
+            background: isWholeDay ? '#f1f5f9' : 'white',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            color: isWholeDay ? '#94a3b8' : '#3b82f6',
+            cursor: isWholeDay ? 'not-allowed' : 'pointer',
+            fontSize: '11px',
+            fontWeight: 500,
+            fontFamily: 'Gilroy',
+            transition: 'all 0.2s',
+            whiteSpace: 'nowrap',
+            width: '100%'
+          }}
+          onMouseEnter={(e) => {
+            if (!isWholeDay) e.currentTarget.style.backgroundColor = '#f0f9ff'
+          }}
+          onMouseLeave={(e) => {
+            if (!isWholeDay) e.currentTarget.style.backgroundColor = 'white'
+          }}
+        >
+          {isWholeDay ? '✓ Unavailable' : 'No availability'}
+        </button>
+
+        {/* Time Ranges */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, width: '100%' }}>
         {ranges.length === 0 && (
           <p style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>
-            No unavailability
+            Available all day
           </p>
         )}
 
@@ -458,8 +542,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
             flexDirection: 'column',
             gap: '6px',
             background: 'white',
-            padding: '10px',
-            borderRadius: '6px'
+            padding: '12px',
+            borderRadius: '6px',
+            boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Range {index + 1}</span>
@@ -480,32 +565,16 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
               </button>
             </div>
 
-            <input
-              type="time"
+            <TimePicker
               value={range.start}
-              onChange={(e) => onTimeChange(index, 'start', e.target.value)}
-              style={{
-                padding: '6px 8px',
-                borderRadius: '4px',
-                border: '1px solid #e2e8f0',
-                fontSize: '12px',
-                width: '100%'
-              }}
+              onChange={(value) => onTimeChange(index, 'start', value)}
             />
 
             <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px' }}>to</div>
 
-            <input
-              type="time"
+            <TimePicker
               value={range.end}
-              onChange={(e) => onTimeChange(index, 'end', e.target.value)}
-              style={{
-                padding: '6px 8px',
-                borderRadius: '4px',
-                border: '1px solid #e2e8f0',
-                fontSize: '12px',
-                width: '100%'
-              }}
+              onChange={(value) => onTimeChange(index, 'end', value)}
             />
           </div>
         ))}
@@ -523,7 +592,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
               cursor: 'pointer',
               fontSize: '11px',
               fontWeight: 500,
-              marginTop: '4px'
+              fontFamily: 'Gilroy',
+              marginTop: '4px',
+              width: '100%'
             }}
           >
             + Add Range
@@ -535,18 +606,20 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
           <button
             onClick={onAdd}
             style={{
-              padding: '12px',
+              padding: '8px 12px',
               background: 'white',
               border: '1px dashed #cbd5e1',
               borderRadius: '6px',
               color: '#3b82f6',
               cursor: 'pointer',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 500,
-              marginTop: '20px'
+              fontFamily: 'Gilroy',
+              marginTop: '4px',
+              width: '100%'
             }}
           >
-            + Add Time Range
+            + Add Range
           </button>
         )}
 
@@ -555,6 +628,7 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
             Max 3 ranges
           </p>
         )}
+        </div>
       </div>
     </div>
   )
