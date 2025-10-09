@@ -28,6 +28,7 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     if (pathname?.startsWith('/feedback')) return 'Feedback';
     if (pathname?.startsWith('/faqs')) return 'FAQs';
     if (pathname?.startsWith('/coxing')) return 'Coxing';
+    if (pathname?.startsWith('/availability')) return 'Availability';
     return 'SABC';
   };
 

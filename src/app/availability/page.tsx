@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useMembers } from '@/hooks/useMembers'
 import { useRowerAvailability, getEmptyAvailability } from '@/hooks/useRowerAvailability'
 import { useUpdateRowerAvailability } from '@/hooks/useUpdateRowerAvailability'
@@ -43,9 +43,26 @@ export default function RowerAvailabilityPage() {
   const { updateAvailability, updating, error: updateError } = useUpdateRowerAvailability()
   const [isHover, setIsHover] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [currentDayIndex, setCurrentDayIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const minSwipeDistance = 50;
 
   const [localAvailability, setLocalAvailability] = useState<RowerWeeklyAvailability | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Hover tracking for member dropdown
   useEffect(() => {
@@ -73,6 +90,40 @@ export default function RowerAvailabilityPage() {
   const handleMemberChange = (option: OptionItem | null) => {
     setSelectedMember(option?.member || null)
     setSaveSuccess(false)
+  }
+
+  // Carousel navigation functions
+  const goToNextDay = useCallback(() => {
+    setCurrentDayIndex(prev => Math.min(prev + 1, 6))
+  }, [])
+
+  const goToPreviousDay = useCallback(() => {
+    setCurrentDayIndex(prev => Math.max(prev - 1, 0))
+  }, [])
+
+  // Touch handlers for swipe gestures
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe && currentDayIndex < 6) {
+      goToNextDay()
+    }
+    if (isRightSwipe && currentDayIndex > 0) {
+      goToPreviousDay()
+    }
   }
 
   const handleAddTimeRange = (day: DayOfWeek) => {
@@ -145,13 +196,16 @@ export default function RowerAvailabilityPage() {
 
   return (
     <main
+      className={isMobile ? 'mobile-availability-page' : ''}
       style={{
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
         gap: '32px',
         boxSizing: 'border-box',
-        overflow: 'hidden',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        height: '100%',
+        width: '100%',
       }}
     >
       <h1 className="sr-only">Availability</h1>
@@ -166,27 +220,28 @@ export default function RowerAvailabilityPage() {
         }}
       >
         {/* Header Section - matching schedule/tests layout */}
-        <div className="flex flex-col items-start w-full" style={{ gap: '40px' }}>
-          {/* Title */}
-          <h2 className="font-bold" style={{ fontSize: '32px' }}>Availability</h2>
+        <div className={isMobile ? 'mobile-calendar-header' : ''}>
+          <div className="flex flex-col items-start w-full" style={{ gap: '40px' }}>
+            {/* Title */}
+            <h1 className="font-bold" style={{ fontSize: '32px' }}>Availability</h1>
 
-          {/* Member Selection Row - matching schedule header layout */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              alignSelf: 'stretch',
-              width: '100%'
-            }}
-          >
-            {/* Left: description text */}
-            <div className="text-muted-foreground" style={{ fontSize: '14px' }}>
-              Set your recurring weekly unavailability times
-            </div>
+            {/* Member Selection Row - matching schedule header layout */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                alignSelf: 'stretch',
+                width: '100%'
+              }}
+            >
+              {/* Left: description text */}
+              <div className="text-muted-foreground" style={{ fontSize: '14px' }}>
+                Set the times that you are unavailable each week. Ensure to update your availability when it changes.
+              </div>
 
-            {/* Right: Member dropdown aligned with calendar */}
-            <div ref={wrapperRef} style={{ width: '250px' }}>
+              {/* Right: Member dropdown aligned with calendar */}
+              <div ref={wrapperRef} style={{ width: '250px' }}>
               <Select
                 components={{ DropdownIndicator }}
                 classNamePrefix="rs"
@@ -331,6 +386,7 @@ export default function RowerAvailabilityPage() {
               />
             </div>
           </div>
+          </div>
         </div>
 
         {/* Loading State */}
@@ -356,34 +412,135 @@ export default function RowerAvailabilityPage() {
         {/* Horizontal Calendar Grid - Availability Form */}
         {selectedMember && localAvailability && !loading && (
           <div
+            onTouchStart={isMobile ? onTouchStart : undefined}
+            onTouchMove={isMobile ? onTouchMove : undefined}
+            onTouchEnd={isMobile ? onTouchEnd : undefined}
             style={{
               display: 'flex',
-              padding: '32px',
+              padding: isMobile ? '32px 32px 72px 32px' : '32px',
               alignItems: 'flex-start',
+              justifyContent: 'center',
               gap: '24px',
               borderRadius: '10px',
               background: 'rgba(246, 247, 249, 0.60)',
               minHeight: '400px',
-              width: '100%'
+              width: '100%',
+              position: 'relative'
             }}
           >
-            {DAYS_OF_WEEK.map(day => (
+            {isMobile ? (
+              // Mobile: show only current day
               <DayColumn
-                key={day}
-                day={day}
-                ranges={localAvailability[day]}
-                onAdd={() => handleAddTimeRange(day)}
-                onRemove={(index) => handleRemoveTimeRange(day, index)}
-                onTimeChange={(index, field, value) => handleTimeChange(day, index, field, value)}
-                onMarkWholeDay={() => handleMarkWholeDay(day)}
+                key={DAYS_OF_WEEK[currentDayIndex]}
+                day={DAYS_OF_WEEK[currentDayIndex]}
+                ranges={localAvailability[DAYS_OF_WEEK[currentDayIndex]]}
+                onAdd={() => handleAddTimeRange(DAYS_OF_WEEK[currentDayIndex])}
+                onRemove={(index) => handleRemoveTimeRange(DAYS_OF_WEEK[currentDayIndex], index)}
+                onTimeChange={(index, field, value) => handleTimeChange(DAYS_OF_WEEK[currentDayIndex], index, field, value)}
+                onMarkWholeDay={() => handleMarkWholeDay(DAYS_OF_WEEK[currentDayIndex])}
+                isMobile={true}
               />
-            ))}
+            ) : (
+              // Desktop: show all days
+              DAYS_OF_WEEK.map(day => (
+                <DayColumn
+                  key={day}
+                  day={day}
+                  ranges={localAvailability[day]}
+                  onAdd={() => handleAddTimeRange(day)}
+                  onRemove={(index) => handleRemoveTimeRange(day, index)}
+                  onTimeChange={(index, field, value) => handleTimeChange(day, index, field, value)}
+                  onMarkWholeDay={() => handleMarkWholeDay(day)}
+                  isMobile={false}
+                />
+              ))
+            )}
+
+            {/* Mobile carousel arrows */}
+            {isMobile && (
+              <>
+                {/* Left arrow */}
+                <button
+                  onClick={goToPreviousDay}
+                  disabled={currentDayIndex === 0}
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    bottom: '16px',
+                    transform: 'translateX(calc(-50% - 22px))',
+                    width: '36px',
+                    height: '36px',
+                    padding: 0,
+                    borderRadius: '10px',
+                    background: 'rgba(246,247,249,0.60)',
+                    border: '0',
+                    cursor: currentDayIndex === 0 ? 'not-allowed' : 'pointer',
+                    opacity: currentDayIndex === 0 ? 0.5 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  aria-label="Previous day"
+                  onMouseEnter={(e) => {
+                    if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentDayIndex !== 0) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 16L6 10L12 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
+                {/* Right arrow */}
+                <button
+                  onClick={goToNextDay}
+                  disabled={currentDayIndex === 6}
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    bottom: '16px',
+                    transform: 'translateX(calc(-50% + 22px))',
+                    width: '36px',
+                    height: '36px',
+                    padding: 0,
+                    borderRadius: '10px',
+                    background: 'rgba(246,247,249,0.60)',
+                    border: '0',
+                    cursor: currentDayIndex === 6 ? 'not-allowed' : 'pointer',
+                    opacity: currentDayIndex === 6 ? 0.5 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  aria-label="Next day"
+                  onMouseEnter={(e) => {
+                    if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(125,141,166,0.20)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentDayIndex !== 6) e.currentTarget.style.background = 'rgba(246,247,249,0.60)'
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 16L14 10L8 4" stroke="#425466" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </>
+            )}
           </div>
         )}
 
         {/* Save Button Row */}
         {selectedMember && localAvailability && !loading && (
-          <div style={{ marginTop: '20px', display: 'flex', gap: '16px', alignItems: 'center', width: '100%' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            gap: '16px',
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'center',
+            width: '100%'
+          }}>
             <button
               onClick={handleSave}
               disabled={updating}
@@ -407,7 +564,8 @@ export default function RowerAvailabilityPage() {
                 cursor: updating ? 'not-allowed' : 'pointer',
                 transition: 'background-color 0.2s',
                 boxShadow: 'none',
-                textDecoration: 'none'
+                textDecoration: 'none',
+                width: isMobile ? '100%' : 'auto'
               }}
               onMouseEnter={(e) => {
                 if (!updating) e.currentTarget.style.backgroundColor = '#0166E0'
@@ -416,7 +574,7 @@ export default function RowerAvailabilityPage() {
                 if (!updating) e.currentTarget.style.backgroundColor = '#0177FB'
               }}
             >
-              {updating ? 'Saving...' : 'Save Changes'}
+              {updating ? 'Saving...' : 'Set Availability'}
             </button>
 
             {saveSuccess && (
@@ -458,9 +616,10 @@ interface DayColumnProps {
   onRemove: (index: number) => void
   onTimeChange: (index: number, field: 'start' | 'end', value: string) => void
   onMarkWholeDay: () => void
+  isMobile: boolean
 }
 
-function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay }: DayColumnProps) {
+function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay, isMobile }: DayColumnProps) {
   const canAddMore = ranges.length < 3
   const isWholeDay = ranges.length === 1 && ranges[0].start === '00:00' && ranges[0].end === '23:59'
 
@@ -468,11 +627,11 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
     <div
       style={{
         display: 'flex',
-        width: '110px',
+        width: isMobile ? '100%' : '110px',
         flexDirection: 'column',
         alignItems: 'center',
         gap: '24px',
-        flex: 1
+        flexShrink: 0
       }}
     >
       {/* Day Header - matching CalendarDay */}
@@ -492,13 +651,8 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
 
       {/* Content Container */}
       <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          width: '100%',
-          alignItems: 'center'
-        }}
+        className="flex flex-col items-center"
+        style={{ gap: '12px' }}
       >
         {/* Mark Whole Day Button */}
         <button
@@ -516,7 +670,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
             fontFamily: 'Gilroy',
             transition: 'all 0.2s',
             whiteSpace: 'nowrap',
-            width: '100%'
+            width: isMobile ? '100%' : '110px',
+            minWidth: isMobile ? 'auto' : '110px',
+            maxWidth: isMobile ? 'none' : '110px'
           }}
           onMouseEnter={(e) => {
             if (!isWholeDay) e.currentTarget.style.backgroundColor = '#f0f9ff'
@@ -544,7 +700,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
             background: 'white',
             padding: '12px',
             borderRadius: '6px',
-            boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)'
+            boxShadow: '0 9px 44px 0 rgba(174, 174, 174, 0.20)',
+            minWidth: '110px',
+            maxWidth: '110px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Range {index + 1}</span>
@@ -594,7 +752,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
               fontWeight: 500,
               fontFamily: 'Gilroy',
               marginTop: '4px',
-              width: '100%'
+              width: isMobile ? '100%' : '110px',
+              minWidth: isMobile ? 'auto' : '110px',
+              maxWidth: isMobile ? 'none' : '110px'
             }}
           >
             + Add Range
@@ -616,7 +776,9 @@ function DayColumn({ day, ranges, onAdd, onRemove, onTimeChange, onMarkWholeDay 
               fontWeight: 500,
               fontFamily: 'Gilroy',
               marginTop: '4px',
-              width: '100%'
+              width: isMobile ? '100%' : '110px',
+              minWidth: isMobile ? 'auto' : '110px',
+              maxWidth: isMobile ? 'none' : '110px'
             }}
           >
             + Add Range

@@ -205,6 +205,11 @@ select:focus-visible {
     padding-top: 60px !important;
   }
 
+  /* Mobile availability page */
+  .mobile-availability-page {
+    padding-top: 60px !important;
+  }
+
   /* Mobile flag status page */
   .mobile-flag-status-page {
     padding-top: 60px !important;
