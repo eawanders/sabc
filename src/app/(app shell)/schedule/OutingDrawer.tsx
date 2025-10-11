@@ -169,9 +169,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
 }) => {
   const isMemberSelected = Boolean(selectedMember);
 
-  // Get the current outing type from window.__OUTING_TYPE (set in OutingDrawer render)
-  // Show seat number for Bank Rider always, and for all seats only when Water Outing
-  const showSeatNumber = seat === 'Coach/Bank Rider' || outingType === 'Water Outing';
+  // Show seat number only for Water Outings (including Bank Rider/Coach and all rower seats)
+  const showSeatNumber = outingType === 'Water Outing';
 
   return (
     <div style={{
@@ -1926,10 +1925,10 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
                 <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
                   <RowerRow
-                    key="Coach"
-                    seat="Coach"
-                    selectedMember={assignments["Coach"]}
-                    isSubmitting={submittingSeats.has("Coach")}
+                    key="Coach/Bank Rider"
+                    seat="Coach/Bank Rider"
+                    selectedMember={assignments["Coach/Bank Rider"]}
+                    isSubmitting={submittingSeats.has("Coach/Bank Rider")}
                     members={members}
                     membersLoading={membersLoading}
                     assignments={assignments}
