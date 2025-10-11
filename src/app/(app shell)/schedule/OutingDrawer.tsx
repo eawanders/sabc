@@ -1911,6 +1911,44 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               </>
             )}
 
+            {/* Coach Section - Above Attendees (only for non-Water Outings: Erg, Tank, Gym) */}
+            {outing?.properties?.Type?.select?.name !== 'Water Outing' && (
+              <>
+                <h4 style={{
+                  color: '#27272E',
+                  fontFamily: 'Gilroy',
+                  fontSize: '18px',
+                  fontStyle: 'normal',
+                  fontWeight: 800,
+                  lineHeight: 'normal',
+                  margin: '0 0 16px 0'
+                }}>Coach</h4>
+
+                <div className="bg-white rounded-lg p-4 shadow-sm" style={{ marginBottom: '24px' }}>
+                  <RowerRow
+                    key="Coach"
+                    seat="Coach"
+                    selectedMember={assignments["Coach"]}
+                    isSubmitting={submittingSeats.has("Coach")}
+                    members={members}
+                    membersLoading={membersLoading}
+                    assignments={assignments}
+                    onAssignmentChange={handleAssignmentChange}
+                    onAvailabilityUpdate={handleAvailabilityUpdate}
+                    isLoadingStatus={isLoadingStatus}
+                    outingType={outing?.properties?.Type?.select?.name}
+                    refreshMembers={refreshMembers}
+                    flagStatus={flagStatus?.status_text}
+                    outingDate={outingDate}
+                    outingTime={outingTime}
+                    outingEndTime={outingEndTime}
+                    rowerAvailabilityMap={rowerAvailabilityMap}
+                    onCreateMember={handleCreateMember}
+                  />
+                </div>
+              </>
+            )}
+
             {/* Rowers Section */}
             {/* Conditionally render 'Rowers' or 'Attendees' based on outing Type */}
             <h4 style={{
