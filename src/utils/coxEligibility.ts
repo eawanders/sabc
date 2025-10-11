@@ -51,10 +51,12 @@ export function getEligibleCoxesUnified(
   allMembers: Member[],
   flagStatus: FlagStatus,
   outingDate: string,
-  outingTime: string,
+  outingStartTime: string,
+  outingEndTime: string | undefined,
   availabilityMap: Map<string, Record<DayOfWeek, TimeRange[]>>
 ): Member[] {
-  const sessionTime = extractTime(outingTime);
+  const sessionStartTime = extractTime(outingStartTime);
+  const sessionEndTime = outingEndTime ? extractTime(outingEndTime) : undefined;
 
   // Filter members who are eligible
   const eligibleCoxes = allMembers.filter(member =>
@@ -71,7 +73,7 @@ export function getEligibleCoxesUnified(
       return true;
     }
 
-    // Check if they're available at the specific time
-    return isRowerAvailable(memberAvailability, outingDate, sessionTime);
+    // Check if they're available at the specific time (or time range if end time provided)
+    return isRowerAvailable(memberAvailability, outingDate, sessionStartTime, sessionEndTime);
   });
 }

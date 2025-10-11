@@ -143,6 +143,7 @@ interface RowerRowProps {
   flagStatus?: string;
   outingDate?: string;
   outingTime?: string;
+  outingEndTime?: string;
   rowerAvailabilityMap?: Map<string, Record<string, { start: string; end: string }[]>>;
   onCreateMember: (seat: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
 }
@@ -162,6 +163,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
   flagStatus,
   outingDate,
   outingTime,
+  outingEndTime,
   rowerAvailabilityMap,
   onCreateMember
 }) => {
@@ -245,6 +247,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     flagStatusNormalized,
                     outingDate,
                     outingTime,
+                    outingEndTime,
                     rowerAvailabilityMap
                   );
                 }
@@ -266,8 +269,9 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   if (seat !== 'Cox' && outingDate && outingTime && rowerAvailabilityMap) {
                     const memberAvailability = rowerAvailabilityMap.get(member.id);
                     if (memberAvailability) {
-                      const sessionTime = extractTime(outingTime);
-                      isAvailable = isRowerAvailable(memberAvailability, outingDate, sessionTime);
+                      const sessionStartTime = extractTime(outingTime);
+                      const sessionEndTime = outingEndTime ? extractTime(outingEndTime) : undefined;
+                      isAvailable = isRowerAvailable(memberAvailability, outingDate, sessionStartTime, sessionEndTime);
                     }
                   }
 
@@ -634,6 +638,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     if (!outing?.properties?.StartDateTime) return undefined;
     const startDateObj = outing.properties.StartDateTime as NotionDate;
     return startDateObj?.date?.start || undefined;
+  }, [outing]);
+
+  const outingEndTime = React.useMemo(() => {
+    if (!outing?.properties?.EndDateTime) return undefined;
+    const endDateObj = outing.properties.EndDateTime as NotionDate;
+    // EndDateTime can have either date.start or date.end
+    return endDateObj?.date?.start || endDateObj?.date?.end || undefined;
   }, [outing]);
 
   const outingStartDateTime = React.useMemo(() => {
@@ -1892,6 +1903,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     flagStatus={flagStatus?.status_text}
                     outingDate={outingDate}
                     outingTime={outingTime}
+                    outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
@@ -1939,6 +1951,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       flagStatus={flagStatus?.status_text}
                       outingDate={outingDate}
                       outingTime={outingTime}
+                      outingEndTime={outingEndTime}
                       rowerAvailabilityMap={rowerAvailabilityMap}
                       onCreateMember={handleCreateMember}
                     />
@@ -1977,6 +1990,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     flagStatus={flagStatus?.status_text}
                     outingDate={outingDate}
                     outingTime={outingTime}
+                    outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
                   />
