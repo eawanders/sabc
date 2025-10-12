@@ -20,11 +20,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { outingId, seat, memberId } = body
 
-    console.log('📥 Received seat assignment data:', {
+    const isSub = seat && typeof seat === 'string' && seat.startsWith('Sub');
+
+    console.log(`📥 Received seat assignment data ${isSub ? '(SUB SEAT)' : '(regular seat)'}:`, {
       outingId,
       seat,
       memberId,
-      bodyKeys: Object.keys(body)
+      isSub,
+      bodyKeys: Object.keys(body),
+      fullBody: body
     })
 
     // Validate required fields
@@ -73,10 +77,23 @@ export async function POST(req: NextRequest) {
 
     // Map seat names to actual database field names
     const seatToFieldMapping: Record<string, string> = {
-      'Coach/Bank Rider': 'Coach/Bank Rider' // This maps to the actual Notion property name
+      'Coach/Bank Rider': 'Coach/Bank Rider', // This maps to the actual Notion property name
+      'Sub1': 'Sub 1', // Map Sub1 to "Sub 1" (with space)
+      'Sub2': 'Sub 2', // Map Sub2 to "Sub 2" (with space)
+      'Sub3': 'Sub 3', // Map Sub3 to "Sub 3" (with space)
+      'Sub4': 'Sub 4'  // Map Sub4 to "Sub 4" (with space)
     }
 
     const actualSeatField = seatToFieldMapping[seat] || seat;
+
+    if (isSub) {
+      console.log(`🔍 Processing SUB seat assignment:`, {
+        originalSeat: seat,
+        actualSeatField,
+        isMapped: seat !== actualSeatField,
+        memberId: memberId || 'clearing'
+      });
+    }
 
     const updatePayload = {
       [actualSeatField]: {
@@ -84,21 +101,85 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log('🔄 Updating Notion page with payload:', {
+    console.log(`🔄 Updating Notion page ${isSub ? '(SUB SEAT)' : ''}with payload:`, {
       pageId: outingId,
-      properties: updatePayload
-    })
-
-    const response = await notion.pages.update({
-      page_id: outingId,
       properties: updatePayload,
+      isSub,
+      seat,
+      actualSeatField
     })
 
-    console.log('✅ Seat assignment successful:', {
+    console.log(`📝 [assign-seat] About to call Notion API:`, {
+      page_id: outingId,
+      properties: JSON.stringify(updatePayload, null, 2),
+      seatField: actualSeatField,
+      relationValue: memberId ? [{ id: memberId }] : [],
+      isSub
+    });
+
+    let response;
+    try {
+      response = await notion.pages.update({
+        page_id: outingId,
+        properties: updatePayload,
+      })
+      console.log(`✅ [assign-seat] Notion API call succeeded for ${actualSeatField}`);
+    } catch (notionError) {
+      console.error(`❌ [assign-seat] Notion API call failed for ${actualSeatField}:`, notionError);
+      console.error(`❌ [assign-seat] Notion error details:`, {
+        name: notionError instanceof Error ? notionError.name : 'Unknown',
+        message: notionError instanceof Error ? notionError.message : String(notionError),
+        stack: notionError instanceof Error ? notionError.stack : 'No stack',
+        outingId,
+        actualSeatField,
+        memberId,
+        payloadUsed: JSON.stringify(updatePayload, null, 2)
+      });
+      throw notionError;
+    }
+
+    console.log(`✅ Seat assignment successful ${isSub ? '(SUB SEAT)' : ''}:`, {
       pageId: response.id,
       seat,
-      memberId: memberId || 'cleared'
+      actualSeatField,
+      memberId: memberId || 'cleared',
+      isSub
     })
+
+    // Verify the update by reading back the property
+    console.log(`🔍 [assign-seat] Verifying property update by reading back from Notion...`);
+    try {
+      const verifyResponse = await notion.pages.retrieve({ page_id: outingId });
+      const properties = (verifyResponse as any).properties;
+      const updatedProperty = properties[actualSeatField];
+
+      console.log(`✅ [assign-seat] Property verification for ${actualSeatField}:`, {
+        propertyExists: !!updatedProperty,
+        propertyType: updatedProperty?.type,
+        propertyValue: updatedProperty?.relation,
+        expectedMemberId: memberId || 'none (clearing)',
+        actualMemberIds: updatedProperty?.relation?.map((r: any) => r.id) || []
+      });
+
+      // Check if the value actually matches what we tried to set
+      const actualRelationIds = updatedProperty?.relation?.map((r: any) => r.id) || [];
+      const expectedRelationIds = memberId ? [memberId] : [];
+      const valuesMatch = JSON.stringify(actualRelationIds.sort()) === JSON.stringify(expectedRelationIds.sort());
+
+      if (!valuesMatch) {
+        console.warn(`⚠️ [assign-seat] MISMATCH DETECTED for ${actualSeatField}:`, {
+          expected: expectedRelationIds,
+          actual: actualRelationIds,
+          seat,
+          actualSeatField,
+          isSub
+        });
+      } else {
+        console.log(`✅ [assign-seat] Values match! ${actualSeatField} was updated correctly.`);
+      }
+    } catch (verifyError) {
+      console.error(`❌ [assign-seat] Failed to verify property update:`, verifyError);
+    }
 
     return NextResponse.json({
       success: true,

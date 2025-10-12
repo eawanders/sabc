@@ -144,6 +144,20 @@ export async function GET(
       },
     };
 
+    // Log sub properties for debugging
+    console.log(`🔍 [get-outing] Sub properties from Notion for outing ${id}:`, {
+      'Sub 1': page.properties['Sub 1'],
+      'Sub 2': page.properties['Sub 2'],
+      'Sub 3': page.properties['Sub 3'],
+      'Sub 4': page.properties['Sub 4'],
+    });
+    console.log(`🔍 [get-outing] Mapped sub properties:`, {
+      Sub1: outing.properties.Sub1,
+      Sub2: outing.properties.Sub2,
+      Sub3: outing.properties.Sub3,
+      Sub4: outing.properties.Sub4,
+    });
+
     const outingResponse = NextResponse.json({ outing })
     outingResponse.headers.set('Server-Timing', createServerTiming(start))
     return outingResponse
