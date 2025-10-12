@@ -1691,7 +1691,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         return 'Outing Details';
       })()}</span>}
     >
-      <div>
       {loading && !isLoadingStatus && !hasLoadedOnce && (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1701,13 +1700,14 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
       {outing && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
-          {/* 4. Outing Details Section - Sticky */}
+          {/* Metadata Section */}
           <div style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
+            position: isMobile ? 'sticky' : 'static',
+            top: isMobile ? 0 : 'auto',
+            zIndex: isMobile ? 1 : 'auto',
             backgroundColor: '#FFFFFF',
-            paddingBottom: '40px'
+            paddingBottom: isMobile ? '40px' : '24px',
+            flexShrink: 0
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Outing Details Card */}
@@ -1941,21 +1941,22 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               );
             })()}
             </div>
+
+            {/* Show loading indicator below outing details if updating rower/availability */}
+            {isLoadingStatus && (
+              <div className="flex items-center justify-center py-4" style={{ marginBottom: '16px' }}>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
+              </div>
+            )}
           </div>
 
-          {/* Show loading indicator below outing details if updating rower/availability */}
-          {isLoadingStatus && (
-            <div className="flex items-center justify-center py-4" style={{ marginBottom: '16px' }}>
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
-            </div>
-          )}
-
-          {/* 5. Crew Assignments Section - Scrollable */}
+          {/* Mobile: Wrap metadata in sticky container */}
+          {/* Rows Section - Shared by both desktop and mobile */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
-            paddingBottom: isMobile ? '80px' : '0' // Add padding for fixed button on mobile
+            paddingBottom: isMobile ? '80px' : '0'
           }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Bank Rider Section - Above Attendees (only for Water Outing) */}
@@ -2194,11 +2195,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               )}
             </div>
           </div>
-
-          {/* Report Drawer is now managed outside the Sheet component */}
         </div>
       )}
-      </div>
     </Sheet>
 
     {/* Report Drawer - Overlaid on top (only for Water Outing) */}
