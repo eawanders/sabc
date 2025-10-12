@@ -313,9 +313,20 @@ const RowerRow: React.FC<RowerRowProps> = ({
               })()}
               onChange={(option) => {
                 // Fix: Handle MultiValue type from react-select
+                console.log(`🔍 [RowerRow] Member selection onChange triggered for seat: ${seat}`, {
+                  option,
+                  isSub: seat.startsWith('Sub'),
+                  hasOption: !!option,
+                  isArray: Array.isArray(option),
+                  hasMember: option && !Array.isArray(option) && 'member' in option,
+                  memberName: option && !Array.isArray(option) && 'member' in option ? option.member?.name : 'N/A'
+                });
+
                 if (option && !Array.isArray(option) && 'member' in option && option.member) {
+                  console.log(`✅ [RowerRow] Calling onAssignmentChange for ${seat} with member: ${option.member.name}`);
                   onAssignmentChange(seat, option.member.name);
                 } else {
+                  console.log(`❌ [RowerRow] Calling onAssignmentChange for ${seat} with empty string (clearing member)`);
                   onAssignmentChange(seat, "");
                 }
               }}
@@ -700,11 +711,27 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const getOutingProperty = React.useCallback((propertyName: string): unknown => {
     // Map seat names to actual database property names
     const seatToPropertyMapping: Record<string, string> = {
-      'Coach/Bank Rider': 'CoachBankRider'
+      'Coach/Bank Rider': 'CoachBankRider',
+      // Note: Sub1-Sub4 are already correctly mapped in the API response,
+      // so we don't need to remap them here
     };
 
     const actualPropertyName = seatToPropertyMapping[propertyName] || propertyName;
-    return outing?.properties?.[actualPropertyName as keyof typeof outing.properties];
+    const property = outing?.properties?.[actualPropertyName as keyof typeof outing.properties];
+
+    // Add debug logging specifically for Sub seats
+    if (propertyName.startsWith('Sub')) {
+      console.log(`🔍 [getOutingProperty] Getting property for SUB seat:`, {
+        propertyName,
+        actualPropertyName,
+        isMapped: propertyName !== actualPropertyName,
+        hasProperty: !!property,
+        propertyValue: property,
+        availableProperties: outing?.properties ? Object.keys(outing.properties) : []
+      });
+    }
+
+    return property;
   }, [outing]);
 
   // Helper function to map seat names to status field names
@@ -720,6 +747,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '3 Seat': '3 SeatStatus',
       '2 Seat': '2 SeatStatus',
       'Coach/Bank Rider': 'BankRiderStatus',
+      // Note: API maps 'Sub 1 Status' → 'Sub1Status', so we use the mapped names
       'Sub1': 'Sub1Status',
       'Sub2': 'Sub2Status',
       'Sub3': 'Sub3Status',
@@ -742,10 +770,11 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       '3 SeatStatus': '3 Seat Status',
       '2 SeatStatus': '2 Seat Status',
       'BankRiderStatus': 'Bank Rider Status',
-      'Sub1Status': 'Sub1Status',
-      'Sub2Status': 'Sub2Status',
-      'Sub3Status': 'Sub3Status',
-      'Sub4Status': 'Sub4Status'
+      // Map back to Notion field names with spaces
+      'Sub1Status': 'Sub 1 Status',
+      'Sub2Status': 'Sub 2 Status',
+      'Sub3Status': 'Sub 3 Status',
+      'Sub4Status': 'Sub 4 Status'
     };
 
     return notionFieldMapping[statusField] || statusField;
@@ -1058,7 +1087,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Get fresh assignments from backend
     seatLabels.forEach((seat) => {
       const seatProp = getOutingProperty(seat);
-      console.log(`🔍 Fresh data for seat ${seat}:`, seatProp);
+      const isSub = seat.startsWith('Sub');
+
+      if (isSub) {
+        console.log(`🔍 [SUBS] Fresh data for SUB seat ${seat}:`, {
+          seat,
+          seatProp,
+          hasRelation: seatProp && typeof seatProp === 'object' && 'relation' in seatProp,
+          propType: typeof seatProp
+        });
+      } else {
+        console.log(`🔍 Fresh data for seat ${seat}:`, seatProp);
+      }
 
       // The API returns {relation: [{id: "..."}], has_more: false} structure
       if (seatProp && typeof seatProp === 'object' && 'relation' in seatProp) {
@@ -1068,9 +1108,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           const matchedMember = members.find((m) => m.id === relatedId);
           if (matchedMember) {
             freshAssignments[seat] = matchedMember.name;
-            console.log(`🔄 Fresh assignment for ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
+            if (isSub) {
+              console.log(`✅ [SUBS] Fresh assignment for SUB ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
+            } else {
+              console.log(`🔄 Fresh assignment for ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
+            }
+          } else if (isSub) {
+            console.warn(`⚠️ [SUBS] No member found for SUB ${seat} with ID: ${relatedId}`);
           }
+        } else if (isSub) {
+          console.log(`ℹ️ [SUBS] Empty relation array for SUB ${seat}`);
         }
+      } else if (isSub) {
+        console.log(`ℹ️ [SUBS] No relation property for SUB ${seat}`);
       }
 
       // Get fresh status data
@@ -1228,27 +1278,38 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     const prevMemberName = assignments[seat] || "";
     const member = members.find((m) => m.name === memberName) || null;
 
-    console.log('� [OutingDrawer] Assignment change:', { seat, from: prevMemberName, to: memberName, memberId: member?.id, outingId: outing.id });
+    const isSub = seat.startsWith('Sub');
+    console.log(`🔍 [OutingDrawer] Assignment change for ${isSub ? 'SUB SEAT' : 'regular seat'}:`, {
+      seat,
+      from: prevMemberName,
+      to: memberName,
+      memberId: member?.id,
+      outingId: outing.id,
+      isSub,
+      memberObject: member ? { id: member.id, name: member.name } : null
+    });
 
     // Update local state optimistically but handle rollback on error
     const previousAssignments = { ...assignments };
 
     // Track if we're removing a member
     const isRemovingMember = prevMemberName !== "" && memberName === "";
-    console.log('📝 [OutingDrawer] isRemovingMember:', isRemovingMember);
+    console.log(`📝 [OutingDrawer] isRemovingMember: ${isRemovingMember}, isSub: ${isSub}`);
 
     // Mark this seat as having a pending optimistic update
     setPendingOptimisticUpdates(prev => new Set([...prev, seat]));
 
     setIsLoadingStatus(true); // Start loading state for Notion update
 
-    console.log('📝 [OutingDrawer] Updating local state optimistically');
+    console.log(`📝 [OutingDrawer] Updating local state optimistically for ${seat}`);
     setAssignments((prev) => {
       const updated = { ...prev };
       if (memberName === "") {
         delete updated[seat];
+        console.log(`🗑️ [OutingDrawer] Removed ${seat} from local state`);
       } else {
         updated[seat] = memberName;
+        console.log(`✏️ [OutingDrawer] Set ${seat} = "${memberName}" in local state`);
       }
       return updated;
     });
@@ -1259,7 +1320,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         seat,
         memberId: member ? member.id : null,
       };
-      console.log('📝 [OutingDrawer] Assign seat request body:', assignBody);
+      console.log(`� [OutingDrawer] Sending assign-seat request for ${isSub ? 'SUB' : 'regular'} seat:`, assignBody);
 
       const res = await fetch("/api/assign-seat", {
         method: "POST",
@@ -1267,28 +1328,53 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         body: JSON.stringify(assignBody),
       });
 
-      console.log('📝 [OutingDrawer] Assign seat response:', { status: res.status, ok: res.ok });
+      console.log(`🔍 [OutingDrawer] Request sent - details:`, {
+        url: '/api/assign-seat',
+        method: 'POST',
+        bodyString: JSON.stringify(assignBody),
+        isSub,
+        seat,
+        memberName,
+        memberId: member?.id,
+        outingId: outing.id
+      });
+
+      console.log(`� [OutingDrawer] Assign seat response for ${seat}:`, { status: res.status, ok: res.ok });
 
       if (!res.ok) {
         const errorText = await res.text().catch((e) => {
-          console.error('📝 [OutingDrawer] Failed to read error response:', e);
+          console.error(`📝 [OutingDrawer] Failed to read error response for ${seat}:`, e);
           return 'Unknown error';
         });
-        console.error('📝 [OutingDrawer] Assignment failed:', errorText);
+        console.error(`❌ [OutingDrawer] Assignment failed for ${seat}:`, errorText);
+        console.error(`❌ [OutingDrawer] Failed request details:`, {
+          assignBody,
+          responseStatus: res.status,
+          responseStatusText: res.statusText,
+          errorText,
+          isSub,
+          seat,
+          memberName,
+          outingId: outing.id
+        });
         // Rollback on error
         setAssignments(previousAssignments);
         setIsLoadingStatus(false); // End loading state on error
         throw new Error("Failed to update Notion");
       }
 
-      console.log(
-        member
-          ? `✅ [OutingDrawer] Seat ${seat} updated with ${memberName}`
-          : `✅ [OutingDrawer] Seat ${seat} cleared`
-      );
+      const responseData = await res.json();
+      console.log(`✅ [OutingDrawer] Seat ${seat} ${isSub ? '(SUB)' : ''} ${member ? `updated with ${memberName}` : 'cleared'}. Response:`, responseData);
+      console.log(`✅ [OutingDrawer] Full response details:`, {
+        responseData: JSON.stringify(responseData, null, 2),
+        isSub,
+        seat,
+        memberName,
+        memberId: member?.id
+      });
 
       // Clear loading state immediately after successful seat assignment
-      console.log('📝 [OutingDrawer] Clearing loading state after seat assignment');
+      console.log(`📝 [OutingDrawer] Clearing loading state after seat assignment for ${seat}`);
       setIsLoadingStatus(false);
 
       // Handle status update for both adding/changing a member OR removing a member
