@@ -223,7 +223,7 @@ export default function UpcomingTestsCard() {
             fontSize: '14px',
           }}
         >
-          Sign up for an OURC swim or capsize test.
+          Sign up for OURC swim or capsize tests.
         </p>
       </div>
 
