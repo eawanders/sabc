@@ -1896,19 +1896,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       marginTop: '12px'
                     }}>
                       {/* Shell - Pill Component */}
-                      <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={isMobile}>
+                      <Pill type="shell" value={(outing.properties.Shell as NotionSelect)?.select?.name || null} shouldStretch={true}>
                         {(outing.properties.Shell as NotionSelect)?.select?.name || 'N/A'}
                       </Pill>
 
                       {/* Flag Status - Pill Component */}
                       {flagStatus?.status_text && (
-                        <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={isMobile}>
+                        <Pill type="flag" value={flagStatus.status_text || null} shouldStretch={true}>
                           {flagStatus.status_text?.includes('Flag') ? flagStatus.status_text : `${flagStatus.status_text} Flag`}
                         </Pill>
                       )}
 
                       {/* Outing Status - Pill Component */}
-                      <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={isMobile}>
+                      <Pill type="status" value={assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || null} shouldStretch={true}>
                         {assignments.OutingStatus || (outing.properties.OutingStatus as NotionStatus)?.status?.name || 'Provisional'}
                       </Pill>
                     </div>

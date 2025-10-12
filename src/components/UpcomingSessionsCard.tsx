@@ -223,7 +223,7 @@ export default function UpcomingSessionsCard() {
           Upcoming Sessions
         </h2>
         <p className="font-light" style={{ fontSize: '14px' }}>
-          Upcoming water, erg, gym, and erg sessions.
+          Water, erg, gym, and tank sessions.
         </p>
       </div>
 
@@ -233,7 +233,7 @@ export default function UpcomingSessionsCard() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
-          gap: '20px',
+          gap: '12px',
           alignSelf: 'stretch',
           flex: 1,
           justifyContent: 'center',
