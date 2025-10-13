@@ -4,6 +4,7 @@ import { Client } from '@notionhq/client';
 import { verifyRequest } from '../_utils/hmac';
 import logger, { logSecurityEvent } from '../_utils/logger';
 import { getClientIp, handleApiError } from '../_utils/response';
+import { getDataSourceId } from '@/server/notion/datasource';
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -65,21 +66,8 @@ export async function POST(req: Request) {
     const newOutingStatus = flagToOutingStatus[flagStatus];
     logger.info({ route, newOutingStatus }, 'Updating outings');
 
-    // 2. Get the database to find data sources
-    const databaseResponse = await notion.request({
-      method: 'get',
-      path: `databases/${OUTINGS_DB_ID}`,
-    }) as { data_sources?: { id: string }[] }
-
-    if (!databaseResponse.data_sources || databaseResponse.data_sources.length === 0) {
-      logger.error({ route }, 'No data sources found for outings database');
-      return NextResponse.json(
-        { error: 'No data sources found for outings database' },
-        { status: 500 }
-      )
-    }
-
-    const dataSourceId = databaseResponse.data_sources[0].id
+    // 2. Get the data source ID (with fallback to database ID)
+    const dataSourceId = await getDataSourceId(OUTINGS_DB_ID);
     logger.info({ route, dataSourceId }, 'Using data source');
 
     // Query the data source for upcoming water outings
