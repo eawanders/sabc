@@ -38,7 +38,8 @@ export async function getDataSourceId(identifier: string) {
         console.warn(`[notion] Falling back to direct database ID for: ${identifier}`);
       }
     }
-    dataSourceCache.set(identifier, identifier);
-    return identifier;
+    // Use the sanitized ID (without hyphens) for the fallback
+    dataSourceCache.set(identifier, sanitized);
+    return sanitized;
   }
 }
