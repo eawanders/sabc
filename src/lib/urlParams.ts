@@ -6,6 +6,7 @@ import { getWeekStart } from '@/lib/date';
 export interface ScheduleUrlState {
   date: Date;           // Week start date
   filter: FilterType;   // Outing type filter
+  memberId?: string;    // Optional member filter
   drawer?: DrawerState; // Optional drawer state
 }
 
@@ -32,8 +33,9 @@ export type TestFilterType = 'all' | 'swim-test' | 'capsize-drill';
  * /schedule/2025-01-15/water → { date: ..., filter: 'water' }
  * /schedule/2025-01-15/water/session/abc123 → { date: ..., filter: 'water', drawer: {type: 'session', id: 'abc123'} }
  * /schedule/2025-01-15/water/report/abc123 → { date: ..., filter: 'water', drawer: {type: 'report', id: 'abc123'} }
+ * /schedule/2025-01-15?member=abc123 → { date: ..., filter: 'all', memberId: 'abc123' }
  */
-export function parseScheduleUrl(pathname: string): ScheduleUrlState {
+export function parseScheduleUrl(pathname: string, searchParams?: string): ScheduleUrlState {
   // Remove leading slash and split by '/'
   const segments = pathname.replace(/^\//, '').split('/').filter(Boolean);
 
@@ -46,6 +48,15 @@ export function parseScheduleUrl(pathname: string): ScheduleUrlState {
   // Handle base case: /schedule
   if (segments.length === 0 || segments[0] !== 'schedule') {
     return defaultState;
+  }
+
+  // Parse query parameters for memberId
+  if (searchParams) {
+    const params = new URLSearchParams(searchParams);
+    const memberParam = params.get('member');
+    if (memberParam) {
+      defaultState.memberId = memberParam;
+    }
   }
 
   // Parse date segment (index 1)
@@ -197,7 +208,14 @@ export function buildScheduleUrl(state: ScheduleUrlState): string {
     segments.push(state.drawer.type, state.drawer.id);
   }
 
-  return '/' + segments.join('/');
+  let url = '/' + segments.join('/');
+
+  // Add memberId as query parameter if present
+  if (state.memberId) {
+    url += `?member=${encodeURIComponent(state.memberId)}`;
+  }
+
+  return url;
 }
 
 /**

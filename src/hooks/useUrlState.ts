@@ -1,6 +1,6 @@
 // src/hooks/useUrlState.ts
 
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import {
   parseScheduleUrl,
@@ -19,16 +19,26 @@ import {
 export function useScheduleUrlState() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // Parse current URL state
-  const urlState = useMemo(() => parseScheduleUrl(pathname), [pathname]);
+  const urlState = useMemo(() => {
+    // Convert searchParams to string
+    const searchString = searchParams?.toString() ? `?${searchParams.toString()}` : '';
+    console.log('🔄 useScheduleUrlState: pathname:', pathname);
+    console.log('🔄 useScheduleUrlState: searchString:', searchString);
+    const state = parseScheduleUrl(pathname, searchString);
+    console.log('🔄 useScheduleUrlState: parsed state:', state);
+    return state;
+  }, [pathname, searchParams]);
 
   // Function to update URL with new state
   const updateUrl = useCallback((newState: Partial<ScheduleUrlState>) => {
     console.log('🎯 updateUrl: Called with newState:', newState);
     console.log('🎯 updateUrl: Current pathname:', pathname);
 
-    const currentState = parseScheduleUrl(pathname);
+    const searchString = searchParams?.toString() ? `?${searchParams.toString()}` : '';
+    const currentState = parseScheduleUrl(pathname, searchString);
     console.log('🎯 updateUrl: Current parsed state:', currentState);
 
     const mergedState: ScheduleUrlState = { ...currentState, ...newState };
@@ -36,17 +46,19 @@ export function useScheduleUrlState() {
 
     const newUrl = buildScheduleUrl(mergedState);
     console.log('🎯 updateUrl: Built new URL:', newUrl);
-    console.log('🎯 updateUrl: Current pathname:', pathname);
-    console.log('🎯 updateUrl: URLs are different?', newUrl !== pathname);
 
-    if (newUrl !== pathname) {
+    const currentFullUrl = pathname + searchString;
+    console.log('🎯 updateUrl: Current full URL:', currentFullUrl);
+    console.log('🎯 updateUrl: URLs are different?', newUrl !== currentFullUrl);
+
+    if (newUrl !== currentFullUrl) {
       console.log('🎯 updateUrl: Calling router.push with:', newUrl);
       router.push(newUrl, { scroll: false });
       console.log('🎯 updateUrl: router.push called');
     } else {
       console.log('🎯 updateUrl: URLs are the same, no navigation needed');
     }
-  }, [pathname, router]);
+  }, [pathname, searchParams, router]);
 
   // Convenience methods for common updates
   const setDate = useCallback((date: Date) => {
@@ -62,6 +74,10 @@ export function useScheduleUrlState() {
 
   const setFilter = useCallback((filter: FilterType) => {
     updateUrl({ filter });
+  }, [updateUrl]);
+
+  const setMember = useCallback((memberId?: string) => {
+    updateUrl({ memberId });
   }, [updateUrl]);
 
   const setDrawer = useCallback((drawer?: { type: 'session' | 'report' | 'test'; id: string }) => {
@@ -85,6 +101,7 @@ export function useScheduleUrlState() {
     updateUrl,
     setDate,
     setFilter,
+    setMember,
     setDrawer,
     closeDrawer,
     openSessionDrawer,

@@ -222,3 +222,103 @@ export function filterEventsByType(
   }
   return events.filter(event => event.type === filterType);
 }
+
+/**
+ * Filters outings by member ID
+ * Checks if the member appears in any seat property
+ */
+export function filterOutingsByMember(
+  outings: Outing[],
+  memberId?: string
+): Outing[] {
+  console.log('🔍 filterOutingsByMember: memberId:', memberId);
+  console.log('🔍 filterOutingsByMember: total outings:', outings.length);
+
+  if (!memberId) {
+    console.log('🔍 filterOutingsByMember: No memberId, returning all outings');
+    return outings;
+  }
+
+  const filtered = outings.filter((outing, index) => {
+    const seatProperties = [
+      'Cox',
+      'Stroke',
+      'Bow',
+      '2 Seat',
+      '3 Seat',
+      '4 Seat',
+      '5 Seat',
+      '6 Seat',
+      '7 Seat',
+      'CoachBankRider',
+      'Sub1',
+      'Sub2',
+      'Sub3',
+      'Sub4',
+    ];
+
+    // Log first outing's structure for debugging
+    if (index === 0) {
+      console.log('🔍 Sample outing properties:', Object.keys(outing.properties));
+      console.log('🔍 Looking for memberId:', memberId);
+      seatProperties.forEach(seatProp => {
+        const relationProp = outing.properties[seatProp as keyof typeof outing.properties];
+        console.log(`🔍 Checking ${seatProp}:`, relationProp);
+        console.log(`🔍 ${seatProp} type:`, typeof relationProp);
+        console.log(`🔍 ${seatProp} is array:`, Array.isArray(relationProp));
+        if (relationProp && 'relation' in relationProp) {
+          console.log(`🔍 ${seatProp} has relation property with length:`, relationProp.relation.length);
+          if (relationProp.relation.length > 0) {
+            console.log(`🔍 ${seatProp} relation IDs:`, relationProp.relation.map(r => r.id));
+          }
+        } else if (Array.isArray(relationProp) && relationProp.length > 0) {
+          console.log(`🔍 ${seatProp} is ARRAY with IDs:`, relationProp.map((r: any) => r.id));
+        } else {
+          console.log(`🔍 ${seatProp} structure unknown`);
+        }
+      });
+    }
+
+    // Check if memberId appears in any seat relation
+    const hasMatch = seatProperties.some(seatProp => {
+      const relationProp = outing.properties[seatProp as keyof typeof outing.properties];
+
+      // Handle direct array structure (e.g., [{id: '...'}, ...])
+      if (Array.isArray(relationProp)) {
+        const matches = relationProp.some((rel: any) => {
+          const relId = rel.id;
+          const isMatch = relId === memberId;
+          if (isMatch) {
+            console.log(`✅ Match found in ${seatProp}: ${relId} === ${memberId}`);
+          }
+          return isMatch;
+        });
+        return matches;
+      }
+
+      // Handle object with relation property (fallback for different data structure)
+      if (relationProp && typeof relationProp === 'object' && 'relation' in relationProp) {
+        const matches = relationProp.relation.some((rel: any) => {
+          const relId = rel.id;
+          const isMatch = relId === memberId;
+          if (isMatch) {
+            console.log(`✅ Match found in ${seatProp}: ${relId} === ${memberId}`);
+          }
+          return isMatch;
+        });
+        return matches;
+      }
+
+      return false;
+    });
+
+    if (hasMatch) {
+      console.log(`✅ Outing ${outing.id} includes member ${memberId}`);
+    }
+
+    return hasMatch;
+  });
+
+  console.log('🔍 filterOutingsByMember: filtered outings:', filtered.length);
+  return filtered;
+}

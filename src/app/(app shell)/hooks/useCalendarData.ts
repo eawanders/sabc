@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { CalendarEvent, WeekRange, CalendarDay, EventType } from '@/types/calendar';
-import { mapOutingsToEvents, filterEventsByDateRange, filterEventsByType, groupEventsByDate, sortEventsByTime } from '../mappers/mapOutingsToEvents';
+import { mapOutingsToEvents, filterEventsByDateRange, filterEventsByType, filterOutingsByMember, groupEventsByDate, sortEventsByTime } from '../mappers/mapOutingsToEvents';
 import { getWeekDays, getDayNameShort, isToday, isSameDay } from '@/lib/date';
 import { useOutingsResource } from '@/hooks/useOutingsResource';
 
@@ -10,17 +10,36 @@ import { useOutingsResource } from '@/hooks/useOutingsResource';
  * Hook for fetching and managing calendar data
  * Provides events for the current week with loading and error states
  */
-export function useCalendarData(currentWeek: WeekRange, filterType: EventType | 'All' = 'All') {
+export function useCalendarData(
+  currentWeek: WeekRange,
+  filterType: EventType | 'All' = 'All',
+  memberId?: string
+) {
   const { outings, loading, error, refresh } = useOutingsResource();
 
   // Transform outings to calendar events and filter by current week
   const weekEvents: CalendarEvent[] = useMemo(() => {
+    console.log('📅 useCalendarData: memberId:', memberId);
+    console.log('📅 useCalendarData: filterType:', filterType);
+    console.log('📅 useCalendarData: total outings:', outings.length);
+
     if (!outings.length) return [];
 
-    const allEvents = mapOutingsToEvents(outings);
+    // Filter outings by member first (before mapping to events)
+    const memberFilteredOutings = filterOutingsByMember(outings, memberId);
+    console.log('📅 useCalendarData: member-filtered outings:', memberFilteredOutings.length);
+
+    const allEvents = mapOutingsToEvents(memberFilteredOutings);
+    console.log('📅 useCalendarData: mapped events:', allEvents.length);
+
     const dateFilteredEvents = filterEventsByDateRange(allEvents, currentWeek.start, currentWeek.end);
-    return filterEventsByType(dateFilteredEvents, filterType);
-  }, [outings, currentWeek, filterType]);
+    console.log('📅 useCalendarData: date-filtered events:', dateFilteredEvents.length);
+
+    const finalEvents = filterEventsByType(dateFilteredEvents, filterType);
+    console.log('📅 useCalendarData: final events:', finalEvents.length);
+
+    return finalEvents;
+  }, [outings, currentWeek, filterType, memberId]);
 
   // Group events by date and create calendar days
   const calendarDays: CalendarDay[] = useMemo(() => {
