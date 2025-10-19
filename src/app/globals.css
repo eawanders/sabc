@@ -265,6 +265,33 @@ select:focus-visible {
     gap: 20px !important;
   }
 
+  /* Rearrange filters on mobile: member filter below session filter */
+  .mobile-calendar-header .calendar-filters {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+
+  .mobile-calendar-header .member-filter-wrapper,
+  .mobile-calendar-header .session-filter-wrapper {
+    width: 100% !important;
+  }
+
+  .mobile-calendar-header .member-filter-wrapper > div,
+  .mobile-calendar-header .session-filter-wrapper > div {
+    width: 100% !important;
+  }
+
+  /* Session filter appears first on mobile */
+  .mobile-calendar-header .session-filter-wrapper {
+    order: 1 !important;
+  }
+
+  /* Member filter appears second on mobile */
+  .mobile-calendar-header .member-filter-wrapper {
+    order: 2 !important;
+  }
+
   .mobile-calendar-header > div > div:last-child {
     flex-direction: column !important;
     align-items: stretch !important;

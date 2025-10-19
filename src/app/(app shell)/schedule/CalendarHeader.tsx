@@ -6,6 +6,7 @@ import { WeekRange } from '@/types/calendar';
 import { LeftArrow } from '@/components/icons/LeftArrow';
 import { RightArrow } from '@/components/icons/RightArrow';
 import Select, { components, DropdownIndicatorProps, GroupBase, OptionProps } from 'react-select';
+import MemberFilter from './MemberFilter';
 
 // Custom DropdownIndicator for react-select with thinner arrow
 const DropdownIndicator = (
@@ -45,6 +46,8 @@ interface CalendarHeaderProps {
   onNextWeek: () => void;
   filterType: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym';
   onFilterChange: (type: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym') => void;
+  memberId?: string;
+  onMemberChange: (memberId?: string) => void;
   showFilter?: boolean;
 }
 
@@ -54,6 +57,8 @@ export default function CalendarHeader({
   onNextWeek,
   filterType,
   onFilterChange,
+  memberId,
+  onMemberChange,
   showFilter = true,
 }: CalendarHeaderProps) {
   const [isHover, setIsHover] = useState(false);
@@ -137,19 +142,29 @@ export default function CalendarHeader({
           </div>
         </div>
 
-        {/* Right: filter dropdown aligned with calendar (hidden when showFilter is false) */}
+        {/* Right: filter dropdowns aligned with calendar (hidden when showFilter is false) */}
         {showFilter && (
-          <div ref={wrapperRef} style={{ width: '200px' }}>
-            <Select
-              components={{ DropdownIndicator }}
-              classNamePrefix="rs"
-              instanceId="calendar-filter"
-              isSearchable={false}
-              isClearable={false}
-              options={filterOptions}
-              value={filterOptions.find(option => option.value === filterType)}
-              onChange={(option) => option && onFilterChange(option.value as 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym')}
-              styles={{
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }} className="calendar-filters">
+            {/* Member Filter - Desktop: shows on left, Mobile: shows below session filter */}
+            <div className="member-filter-wrapper">
+              <MemberFilter
+                memberId={memberId}
+                onMemberChange={onMemberChange}
+              />
+            </div>
+
+            {/* Session Type Filter */}
+            <div ref={wrapperRef} style={{ width: '200px' }} className="session-filter-wrapper">
+              <Select
+                components={{ DropdownIndicator }}
+                classNamePrefix="rs"
+                instanceId="calendar-filter"
+                isSearchable={false}
+                isClearable={false}
+                options={filterOptions}
+                value={filterOptions.find(option => option.value === filterType)}
+                onChange={(option) => option && onFilterChange(option.value as 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym')}
+                styles={{
                 control: (base) => ({
                   ...base,
                   display: 'flex',
@@ -282,6 +297,7 @@ export default function CalendarHeader({
               menuPortalTarget={typeof window !== 'undefined' ? document.body : undefined}
               placeholder="All Sessions"
             />
+            </div>
           </div>
         )}
       </div>

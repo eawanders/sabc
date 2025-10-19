@@ -11,6 +11,8 @@ interface CalendarHeaderResponsiveProps {
   onNextWeek: () => void;
   filterType: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym';
   onFilterChange: (type: 'All' | 'Erg' | 'Water' | 'Tank' | 'Gym') => void;
+  memberId?: string;
+  onMemberChange: (memberId?: string) => void;
   showFilter?: boolean;
 }
 

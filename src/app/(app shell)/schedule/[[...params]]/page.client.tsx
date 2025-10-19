@@ -34,7 +34,7 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
   const pathname = usePathname();
 
   // URL state management
-  const { urlState, setDate, setFilter, openSessionDrawer, closeDrawer } = useScheduleUrlState();
+  const { urlState, setDate, setFilter, setMember, openSessionDrawer, closeDrawer } = useScheduleUrlState();
 
   // Redirect bare /schedule to /schedule/current
   useEffect(() => {
@@ -121,13 +121,13 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
     return filterMap[urlState.filter];
   }, [urlState.filter]);
 
-  // Calendar data with URL filter
+  // Calendar data with URL filter and member filter
   const {
     calendarDays,
     loading,
     error,
     stats,
-  } = useCalendarData(currentWeek, calendarFilter);
+  } = useCalendarData(currentWeek, calendarFilter, urlState.memberId);
 
   // Handle drawer state from URL
   useEffect(() => {
@@ -176,6 +176,20 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
     setFilter(filterMap[type]);
   };
 
+  const handleMemberChange = (memberId?: string) => {
+    console.log('🎯 handleMemberChange called with:', memberId);
+    setMember(memberId);
+  };
+
+  // Debug logging for URL state
+  useEffect(() => {
+    console.log('🔄 URL State updated:', {
+      memberId: urlState.memberId,
+      filter: urlState.filter,
+      date: urlState.date,
+    });
+  }, [urlState]);
+
 
 
   // Use the same filter conversion for component props
@@ -223,6 +237,8 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
             onNextWeek={goToNextWeek}
             filterType={componentFilterType}
             onFilterChange={handleFilterChange}
+            memberId={urlState.memberId}
+            onMemberChange={handleMemberChange}
           />
 
           {/* Loading message */}
