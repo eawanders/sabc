@@ -51,6 +51,15 @@ export function handleApiError(error: unknown, context: ErrorContext): NextRespo
     const code = (error as any).code;
 
     switch (code) {
+      case 'GATEWAY_TIMEOUT':
+        return NextResponse.json(
+          {
+            error: 'Upstream service timed out',
+            details: error.message,
+          },
+          { status: 504 }
+        );
+
       case 'UNAUTHENTICATED':
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
