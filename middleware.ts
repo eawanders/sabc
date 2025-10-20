@@ -9,8 +9,9 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico (favicon file)
      * - public files (images, fonts, etc.)
+     * - api routes (don't need CSP headers)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2)).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico|css|js|woff2)).*)',
   ],
 };
 
@@ -45,7 +46,8 @@ export function middleware(request: NextRequest) {
   }
 
   // Content Security Policy
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  // Generate nonce using Web Crypto API (compatible with Edge Runtime)
+  const nonce = Buffer.from(globalThis.crypto.randomUUID()).toString('base64');
   const cspHeader = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${
@@ -54,7 +56,7 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'", // Next.js requires unsafe-inline for styles
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.notion.com",
+    "connect-src 'self' https://api.notion.com https://ourcs.co.uk",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
