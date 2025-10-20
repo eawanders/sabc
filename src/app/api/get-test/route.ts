@@ -6,6 +6,8 @@ import { Test } from '@/types/test'
 import { Member } from '@/types/members'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 
+export const dynamic = 'force-dynamic'
+
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
   notionVersion: '2025-09-03',

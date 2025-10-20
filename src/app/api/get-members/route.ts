@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getMembers } from '@/server/notion/members'
 import { startTiming, createServerTiming } from '@/server/timing'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 export async function GET(request: Request) {

@@ -5,6 +5,7 @@ import { RowerWeeklyAvailability, parseTimeRanges } from '@/types/rowerAvailabil
 import { notionRequest } from '@/server/notion/client'
 import { startTiming, createServerTiming } from '@/server/timing'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 30
 
 export async function GET(request: Request) {
