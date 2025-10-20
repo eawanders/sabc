@@ -5,6 +5,11 @@ import ResponsiveLayout from "@/components/ResponsiveLayout";
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
+// Force all pages to be dynamically rendered at request time
+// This prevents Next.js from trying to statically generate pages at build time,
+// which was causing 504 GATEWAY_TIMEOUT errors when trying to fetch from Notion
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: {
     default: 'SABC',

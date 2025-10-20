@@ -1,3 +1,12 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "next build",
+  "functions": {
+    "app/**/*.tsx": {
+      "maxDuration": 60
+    },
+    "app/api/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
 }

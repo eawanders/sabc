@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   // Remove X-Powered-By header
   poweredByHeader: false,
 
+  // Optimize output file tracing to reduce bundle size and build time
+  outputFileTracingIncludes: {
+    '/api/**/*': [],
+  },
+
   // Configure allowed origins for Server Actions
   experimental: {
     serverActions: {
