@@ -314,41 +314,58 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 const seatStatus = assignments[`${seat}_status`];
                 const isReservedSeat = !selectedMember && seatStatus === 'Reserved';
 
-                console.log(`🔍 [RowerRow] Checking value for seat ${seat}:`, {
+                console.log(`🔍 [RowerRow] 🎯 Calculating value for seat ${seat}:`, {
                   selectedMember,
                   seatStatus,
-                  isReserved: isReservedSeat
+                  isReserved: isReservedSeat,
+                  timestamp: new Date().toISOString()
                 });
 
                 if (isReservedSeat) {
-                  console.log(`✅ [RowerRow] Seat ${seat} is RESERVED, showing "Reserved - Don't Change"`);
+                  console.log(`✅ [RowerRow] 🔒 Seat ${seat} is RESERVED, returning RESERVED option`);
                   return { value: 'RESERVED', label: 'Reserved - Don\'t Change', member: null, isReserved: true };
                 }
 
-                if (!selectedMember) return { value: '', label: 'Select Member', member: null };
+                if (!selectedMember) {
+                  console.log(`ℹ️ [RowerRow] 📭 Seat ${seat} is empty, returning Select Member option`);
+                  return { value: '', label: 'Select Member', member: null };
+                }
 
                 // First try to find the selected member in the full members list
                 const selectedMemberObj = members.find(m => m.name === selectedMember);
                 if (selectedMemberObj) {
+                  console.log(`✅ [RowerRow] 👤 Seat ${seat} has member ${selectedMemberObj.name}`);
                   return { value: selectedMemberObj.id, label: selectedMemberObj.name, member: selectedMemberObj };
                 }
 
+                console.log(`⚠️ [RowerRow] ❓ Seat ${seat} fallback to Select Member`);
                 return { value: '', label: 'Select Member', member: null };
               })()}
               onChange={(option) => {
                 // Fix: Handle MultiValue type from react-select
-                console.log(`🔍 [RowerRow] Member selection onChange triggered for seat: ${seat}`, {
+                const wasReserved = isReserved; // Capture current reserved state
+                const currentStatus = assignments[`${seat}_status`];
+
+                console.log(`\n� [RowerRow] ========== onChange FIRED for ${seat} ==========`);
+                console.log(`🔍 [RowerRow] Detailed onChange data:`, {
+                  seat,
                   option,
+                  optionValue: option && !Array.isArray(option) && 'value' in option ? option.value : 'N/A',
+                  optionLabel: option && !Array.isArray(option) && 'label' in option ? option.label : 'N/A',
                   isSub: seat.startsWith('Sub'),
                   hasOption: !!option,
                   isArray: Array.isArray(option),
                   hasMember: option && !Array.isArray(option) && 'member' in option,
-                  memberName: option && !Array.isArray(option) && 'member' in option ? option.member?.name : 'N/A'
+                  memberName: option && !Array.isArray(option) && 'member' in option ? option.member?.name : 'N/A',
+                  wasReserved,
+                  currentStatus,
+                  currentMember: selectedMember,
+                  timestamp: new Date().toISOString()
                 });
 
                 // Check if the "Reserved - DO NOT CHANGE" option was selected
                 if (option && !Array.isArray(option) && 'value' in option && option.value === 'RESERVED') {
-                  console.log(`🔒 [RowerRow] Reserved option selected for ${seat}`);
+                  console.log(`🔒 [RowerRow] ✅ BRANCH 1: Reserved option selected for ${seat}`);
                   console.log(`🔒 [RowerRow] Step 1: Clearing member assignment for ${seat}`);
                   // Clear the member assignment and set status to "Reserved"
                   onAssignmentChange(seat, "");
@@ -358,12 +375,53 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     onAvailabilityUpdate(seat, "Reserved");
                   }, 100);
                 } else if (option && !Array.isArray(option) && 'member' in option && option.member) {
-                  console.log(`✅ [RowerRow] Calling onAssignmentChange for ${seat} with member: ${option.member.name}`);
+                  console.log(`✅ [RowerRow] ✅ BRANCH 2: Member selected for ${seat} - ${option.member.name}`);
+                  // If we're coming from Reserved state, first clear the Reserved status
+                  if (wasReserved) {
+                    console.log(`🔄 [RowerRow] Transitioning from Reserved to member for ${seat}`);
+                  }
                   onAssignmentChange(seat, option.member.name);
+                } else if (!option || (option && !Array.isArray(option) && 'value' in option && option.value === '')) {
+                  console.log(`✅ [RowerRow] ✅ BRANCH 3: Clearing/Select Member for ${seat}`);
+                  // User selected "Select Member" or cleared the selection (including null from clearing)
+                  console.log(`❌ [RowerRow] Clearing/resetting selection details:`, {
+                    wasReserved,
+                    currentStatus,
+                    hasOption: !!option,
+                    optionValue: option && !Array.isArray(option) && 'value' in option ? option.value : 'null/undefined',
+                    willClearReserved: wasReserved || currentStatus === 'Reserved'
+                  });
+
+                  // If we're clearing from Reserved state, we need to clear the status
+                  if (wasReserved || currentStatus === 'Reserved') {
+                    console.log(`🔄 [RowerRow] ⚡⚡⚡ CLEARING RESERVED STATE for ${seat} ⚡⚡⚡`);
+                    console.log(`🔄 [RowerRow] Step 1: Clearing member (should be empty already)`);
+
+                    // First, ensure member is cleared (it should already be empty for Reserved state)
+                    onAssignmentChange(seat, "");
+
+                    // Then reset the Reserved status back to Awaiting Approval
+                    console.log(`🔄 [RowerRow] Step 2: Scheduling status reset to Awaiting Approval in 150ms`);
+                    setTimeout(() => {
+                      console.log(`🔄 [RowerRow] ⚡ NOW Executing status reset for ${seat} to "Awaiting Approval"`);
+                      // Reset the status to "Awaiting Approval" (API doesn't accept empty string)
+                      onAvailabilityUpdate(seat, "Awaiting Approval");
+                    }, 150);
+                  } else {
+                    console.log(`🔄 [RowerRow] ✅ BRANCH 3b: Normal clear (not Reserved) for ${seat}`);
+                    // Normal clear - just clear the member assignment
+                    onAssignmentChange(seat, "");
+                  }
                 } else {
-                  console.log(`❌ [RowerRow] Calling onAssignmentChange for ${seat} with empty string (clearing member)`);
-                  onAssignmentChange(seat, "");
+                  console.log(`⚠️ [RowerRow] ❌ BRANCH 4: No matching condition for ${seat}!`, {
+                    option,
+                    hasOption: !!option,
+                    isArray: Array.isArray(option),
+                    hasValue: option && !Array.isArray(option) && 'value' in option,
+                    value: option && !Array.isArray(option) && 'value' in option ? option.value : 'N/A'
+                  });
                 }
+                console.log(`🚀 [RowerRow] ========== onChange END for ${seat} ==========\n`);
               }}
               onCreateOption={async (inputValue) => {
                 return await onCreateMember(seat, inputValue);
@@ -1534,12 +1592,23 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Availability update handler using the proven pattern
   const handleAvailabilityUpdate = async (seat: string, status: string) => {
-    // Special case: Allow "Reserved" status to be set even without a member
+    // Special cases where we allow status updates without a member:
+    // 1. Setting "Reserved" status on an empty seat
+    // 2. Clearing "Reserved" status by setting to "Awaiting Approval"
     const isReservingEmptySeat = status === 'Reserved' && !assignments[seat];
+    const isClearingReservedStatus = status === 'Awaiting Approval' && assignments[`${seat}_status`] === 'Reserved';
 
-    // Prevent availability update when no member is selected (except for Reserved status)
-    if (!isReservingEmptySeat && (!assignments[seat] || !outing)) {
-      console.warn('⚠️ [OutingDrawer] Cannot set availability - no member selected or no outing data:', { seat, hasMember: !!assignments[seat], hasOuting: !!outing });
+    // Prevent availability update when no member is selected (except for special cases)
+    if (!isReservingEmptySeat && !isClearingReservedStatus && (!assignments[seat] || !outing)) {
+      console.warn('⚠️ [OutingDrawer] Cannot set availability - no member selected or no outing data:', {
+        seat,
+        hasMember: !!assignments[seat],
+        hasOuting: !!outing,
+        status,
+        currentStatus: assignments[`${seat}_status`],
+        isReservingEmptySeat,
+        isClearingReservedStatus
+      });
       return;
     }
 
@@ -1548,9 +1617,14 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       return;
     }
 
-    console.log(`🔒 [OutingDrawer] handleAvailabilityUpdate called:`, { seat, status, isReservingEmptySeat, currentMember: assignments[seat] });
-
-    setIsLoadingStatus(true);
+    console.log(`🔒 [OutingDrawer] handleAvailabilityUpdate called:`, {
+      seat,
+      status,
+      isReservingEmptySeat,
+      isClearingReservedStatus,
+      currentMember: assignments[seat],
+      currentStatus: assignments[`${seat}_status`]
+    });    setIsLoadingStatus(true);
     const statusField = getStatusField(seat);
     const notionStatusField = getNotionStatusField(statusField);
 
