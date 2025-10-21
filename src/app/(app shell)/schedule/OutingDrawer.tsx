@@ -234,7 +234,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
         }}>
           {/* Searchable member select using react-select */}
           <div style={{ flex: '1 0 0' }}>
-            <CreatableSelect
+            <CreatableSelect<MemberOptionType>
               components={{ DropdownIndicator, Option: CustomOption }}
               classNamePrefix="rs"
               options={(() => {
@@ -412,7 +412,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   ...base,
                   color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
                   fontWeight: isMemberSelected ? 700 : 300,
-                  fontStyle: state.data.isReserved ? 'italic' : 'normal',
+                  fontStyle: (state.data as MemberOptionType).isReserved ? 'italic' : 'normal',
                 }),
                 placeholder: (base) => ({
                   ...base,
