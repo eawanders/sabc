@@ -6,17 +6,20 @@ type MemberOptionType = {
   label: string;
   member: Member | null;
   isUnavailable?: boolean;
+  isReserved?: boolean;
+  isDisabled?: boolean;
 };
 
 // Custom Option component to style unavailable members
 const CustomOption = (props: OptionProps<MemberOptionType, false, GroupBase<MemberOptionType>>) => {
   const isUnavailable = props.data.isUnavailable;
+  const isReserved = props.data.isReserved;
 
   return (
     <components.Option {...props}>
       <div style={{
         color: isUnavailable ? '#94a3b8' : 'inherit',
-        fontStyle: isUnavailable ? 'italic' : 'normal'
+        fontStyle: isUnavailable || isReserved ? 'italic' : 'normal'
       }}>
         {props.children}
       </div>
@@ -167,7 +170,10 @@ const RowerRow: React.FC<RowerRowProps> = ({
   rowerAvailabilityMap,
   onCreateMember
 }) => {
-  const isMemberSelected = Boolean(selectedMember);
+  // Check if this seat is reserved (no member but status is "Reserved")
+  const isReserved = !selectedMember && assignments[`${seat}_status`] === 'Reserved';
+  // Treat reserved seats the same as empty (not selected) for styling purposes
+  const isMemberSelected = Boolean(selectedMember) && !isReserved;
 
   // Show seat number only for Water Outings (including Bank Rider/Coach and all rower seats)
   const showSeatNumber = outingType === 'Water Outing';
@@ -228,12 +234,15 @@ const RowerRow: React.FC<RowerRowProps> = ({
         }}>
           {/* Searchable member select using react-select */}
           <div style={{ flex: '1 0 0' }}>
-            <CreatableSelect
+            <CreatableSelect<MemberOptionType>
               components={{ DropdownIndicator, Option: CustomOption }}
               classNamePrefix="rs"
               options={(() => {
-                // Base options with "Select Member"
-                const baseOptions = [{ value: '', label: 'Select Member', member: null }];
+                // Base options with "Select Member" and "Reserved - DO NOT CHANGE"
+                const baseOptions: MemberOptionType[] = [
+                  { value: '', label: 'Select Member', member: null },
+                  { value: 'RESERVED', label: 'Reserved - Don\'t Change', member: null, isReserved: true }
+                ];
 
                 // Filter members based on seat type and eligibility
                 let availableMembers = members;
@@ -261,7 +270,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 );
 
                 // For rower seats (not Cox), check rower availability
-                const memberOptionsWithAvailability = filteredMembers.map((member) => {
+                const memberOptionsWithAvailability: MemberOptionType[] = filteredMembers.map((member) => {
                   let isAvailable = true;
 
                   // Check rower availability for non-Cox seats
@@ -291,7 +300,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 if (seat === 'Cox' && memberOptionsWithAvailability.length === 0) {
                   return [
                     ...baseOptions,
-                    { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true }
+                    { value: 'no-coxes', label: 'No eligible or available coxes', member: null, isDisabled: true } as MemberOptionType
                   ];
                 }
 
@@ -301,6 +310,21 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 ];
               })()}
               value={(() => {
+                // Check if this seat has "Reserved" status (no member assigned but status is "Reserved")
+                const seatStatus = assignments[`${seat}_status`];
+                const isReservedSeat = !selectedMember && seatStatus === 'Reserved';
+
+                console.log(`🔍 [RowerRow] Checking value for seat ${seat}:`, {
+                  selectedMember,
+                  seatStatus,
+                  isReserved: isReservedSeat
+                });
+
+                if (isReservedSeat) {
+                  console.log(`✅ [RowerRow] Seat ${seat} is RESERVED, showing "Reserved - Don't Change"`);
+                  return { value: 'RESERVED', label: 'Reserved - Don\'t Change', member: null, isReserved: true };
+                }
+
                 if (!selectedMember) return { value: '', label: 'Select Member', member: null };
 
                 // First try to find the selected member in the full members list
@@ -322,7 +346,18 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   memberName: option && !Array.isArray(option) && 'member' in option ? option.member?.name : 'N/A'
                 });
 
-                if (option && !Array.isArray(option) && 'member' in option && option.member) {
+                // Check if the "Reserved - DO NOT CHANGE" option was selected
+                if (option && !Array.isArray(option) && 'value' in option && option.value === 'RESERVED') {
+                  console.log(`🔒 [RowerRow] Reserved option selected for ${seat}`);
+                  console.log(`🔒 [RowerRow] Step 1: Clearing member assignment for ${seat}`);
+                  // Clear the member assignment and set status to "Reserved"
+                  onAssignmentChange(seat, "");
+                  // Set the status to "Reserved" after a brief delay to ensure the assignment is cleared first
+                  setTimeout(() => {
+                    console.log(`🔒 [RowerRow] Step 2: Setting status to "Reserved" for ${seat}`);
+                    onAvailabilityUpdate(seat, "Reserved");
+                  }, 100);
+                } else if (option && !Array.isArray(option) && 'member' in option && option.member) {
                   console.log(`✅ [RowerRow] Calling onAssignmentChange for ${seat} with member: ${option.member.name}`);
                   onAssignmentChange(seat, option.member.name);
                 } else {
@@ -373,10 +408,11 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }),
-                singleValue: (base) => ({
+                singleValue: (base, state) => ({
                   ...base,
                   color: isMemberSelected ? '#4C6FFF' : '#7D8DA6',
                   fontWeight: isMemberSelected ? 700 : 300,
+                  fontStyle: (state.data as MemberOptionType).isReserved ? 'italic' : 'normal',
                 }),
                 placeholder: (base) => ({
                   ...base,
@@ -1498,11 +1534,21 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Availability update handler using the proven pattern
   const handleAvailabilityUpdate = async (seat: string, status: string) => {
-    // Prevent availability update when no member is selected
-    if (!assignments[seat] || !outing) {
+    // Special case: Allow "Reserved" status to be set even without a member
+    const isReservingEmptySeat = status === 'Reserved' && !assignments[seat];
+
+    // Prevent availability update when no member is selected (except for Reserved status)
+    if (!isReservingEmptySeat && (!assignments[seat] || !outing)) {
       console.warn('⚠️ [OutingDrawer] Cannot set availability - no member selected or no outing data:', { seat, hasMember: !!assignments[seat], hasOuting: !!outing });
       return;
     }
+
+    if (!outing) {
+      console.warn('⚠️ [OutingDrawer] Cannot set availability - no outing data');
+      return;
+    }
+
+    console.log(`🔒 [OutingDrawer] handleAvailabilityUpdate called:`, { seat, status, isReservingEmptySeat, currentMember: assignments[seat] });
 
     setIsLoadingStatus(true);
     const statusField = getStatusField(seat);
@@ -1518,18 +1564,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     console.log('✅ [OutingDrawer] Member for seat:', { seat, memberName: memberForSeat });
 
     try {
-      // Only update status if a member is assigned
-      if (memberForSeat) {
-        // Optimistically update the UI immediately
-        console.log('✅ [OutingDrawer] Updating local state optimistically');
-        setAssignments((prev) => ({
-          ...prev,
-          [`${seat}_status`]: status,
-        }));
-      } else {
-        console.warn('⚠️ [OutingDrawer] Tried to update status but no member is assigned:', { seat });
-        return;
-      }
+      // Update status even if no member is assigned (for Reserved status)
+      // Optimistically update the UI immediately
+      console.log('✅ [OutingDrawer] Updating local state optimistically');
+      setAssignments((prev) => ({
+        ...prev,
+        [`${seat}_status`]: status,
+      }));
 
       const requestBody = {
         outingId: outing.id,

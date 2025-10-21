@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     });
 
     // Validate status value
-    const validStatuses = ['Available', 'Maybe Available', 'Not Available', 'Awaiting Approval', 'Provisional', 'Confirmed', 'Cancelled'];
+    const validStatuses = ['Available', 'Maybe Available', 'Not Available', 'Awaiting Approval', 'Provisional', 'Confirmed', 'Cancelled', 'Reserved'];
     if (!validStatuses.includes(status)) {
       console.error('❌ Invalid status value:', status);
       return new Response(
