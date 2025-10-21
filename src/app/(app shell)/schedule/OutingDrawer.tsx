@@ -800,11 +800,31 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     flagStatus: string | null,
     coxExperience: string | undefined
   ): boolean => {
-    // Only apply to Water Outings
+    // For non-water outings (Erg, Tank, Gym), check if all assigned members are available
     if (outingType !== 'Water Outing') {
-      return false;
+      // Get all assigned seats (excluding subs)
+      const assignedSeats = Object.keys(currentAssignments)
+        .filter(key => !key.endsWith('_status')) // Only get seat names, not status fields
+        .filter(seat => !seat.startsWith('Sub')) // Exclude subs
+        .filter(seat => seat !== 'OutingStatus') // Exclude outing status field
+        .filter(seat => currentAssignments[seat]); // Only seats with assigned members
+
+      // If there are no assigned seats, don't auto-confirm
+      if (assignedSeats.length === 0) {
+        return false;
+      }
+
+      // Check if all assigned members are "Available"
+      for (const seat of assignedSeats) {
+        if (currentAssignments[`${seat}_status`] !== 'Available') {
+          return false;
+        }
+      }
+
+      return true;
     }
 
+    // For Water Outings - keep existing logic
     // Define the 8 main rowing seats (excluding subs and bank rider)
     const mainSeats = [
       'Cox', 'Stroke', '7 Seat', '6 Seat', '5 Seat',
@@ -1601,8 +1621,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           console.error('❌ Error auto-confirming outing:', confirmErr);
         }
       }
-      // Handle de-confirmation when requirements are no longer met
-      else if (status !== 'Available' && !shouldConfirm) {
+      // Handle de-confirmation when requirements are no longer met (ONLY for Water Outings)
+      else if (status !== 'Available' && !shouldConfirm && outing?.properties?.Type?.select?.name === 'Water Outing') {
         // Check if outing was previously confirmed and should now be provisional
         const currentOutingStatus = outing?.properties?.OutingStatus?.status?.name;
         if (currentOutingStatus === 'Confirmed') {
