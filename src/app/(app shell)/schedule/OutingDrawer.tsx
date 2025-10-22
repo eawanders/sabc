@@ -315,31 +315,20 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 const seatStatus = assignments[`${seat}_status`];
                 const isReservedSeat = !selectedMember && seatStatus === 'Reserved';
 
-                console.log(`🔍 [RowerRow] 🎯 Calculating value for seat ${seat}:`, {
-                  selectedMember,
-                  seatStatus,
-                  isReserved: isReservedSeat,
-                  timestamp: new Date().toISOString()
-                });
-
                 if (isReservedSeat) {
-                  console.log(`✅ [RowerRow] 🔒 Seat ${seat} is RESERVED, returning RESERVED option`);
                   return { value: 'RESERVED', label: 'Reserved - Don\'t Change', member: null, isReserved: true };
                 }
 
                 if (!selectedMember) {
-                  console.log(`ℹ️ [RowerRow] 📭 Seat ${seat} is empty, returning Select Member option`);
                   return { value: '', label: 'Select Member', member: null };
                 }
 
                 // First try to find the selected member in the full members list
                 const selectedMemberObj = members.find(m => m.name === selectedMember);
                 if (selectedMemberObj) {
-                  console.log(`✅ [RowerRow] 👤 Seat ${seat} has member ${selectedMemberObj.name}`);
                   return { value: selectedMemberObj.id, label: selectedMemberObj.name, member: selectedMemberObj };
                 }
 
-                console.log(`⚠️ [RowerRow] ❓ Seat ${seat} fallback to Select Member`);
                 return { value: '', label: 'Select Member', member: null };
               })()}
               onChange={(option) => {
@@ -347,82 +336,35 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 const wasReserved = isReserved; // Capture current reserved state
                 const currentStatus = assignments[`${seat}_status`];
 
-                console.log(`\n� [RowerRow] ========== onChange FIRED for ${seat} ==========`);
-                console.log(`🔍 [RowerRow] Detailed onChange data:`, {
-                  seat,
-                  option,
-                  optionValue: option && !Array.isArray(option) && 'value' in option ? option.value : 'N/A',
-                  optionLabel: option && !Array.isArray(option) && 'label' in option ? option.label : 'N/A',
-                  isSub: seat.startsWith('Sub'),
-                  hasOption: !!option,
-                  isArray: Array.isArray(option),
-                  hasMember: option && !Array.isArray(option) && 'member' in option,
-                  memberName: option && !Array.isArray(option) && 'member' in option ? option.member?.name : 'N/A',
-                  wasReserved,
-                  currentStatus,
-                  currentMember: selectedMember,
-                  timestamp: new Date().toISOString()
-                });
-
                 // Check if the "Reserved - DO NOT CHANGE" option was selected
                 if (option && !Array.isArray(option) && 'value' in option && option.value === 'RESERVED') {
-                  console.log(`🔒 [RowerRow] ✅ BRANCH 1: Reserved option selected for ${seat}`);
-                  console.log(`🔒 [RowerRow] Step 1: Clearing member assignment for ${seat}`);
                   // Clear the member assignment and set status to "Reserved"
                   onAssignmentChange(seat, "");
                   // Set the status to "Reserved" after a brief delay to ensure the assignment is cleared first
                   setTimeout(() => {
-                    console.log(`🔒 [RowerRow] Step 2: Setting status to "Reserved" for ${seat}`);
                     onAvailabilityUpdate(seat, "Reserved");
                   }, 100);
                 } else if (option && !Array.isArray(option) && 'member' in option && option.member) {
-                  console.log(`✅ [RowerRow] ✅ BRANCH 2: Member selected for ${seat} - ${option.member.name}`);
                   // If we're coming from Reserved state, first clear the Reserved status
-                  if (wasReserved) {
-                    console.log(`🔄 [RowerRow] Transitioning from Reserved to member for ${seat}`);
-                  }
                   onAssignmentChange(seat, option.member.name);
                 } else if (!option || (option && !Array.isArray(option) && 'value' in option && option.value === '')) {
-                  console.log(`✅ [RowerRow] ✅ BRANCH 3: Clearing/Select Member for ${seat}`);
                   // User selected "Select Member" or cleared the selection (including null from clearing)
-                  console.log(`❌ [RowerRow] Clearing/resetting selection details:`, {
-                    wasReserved,
-                    currentStatus,
-                    hasOption: !!option,
-                    optionValue: option && !Array.isArray(option) && 'value' in option ? option.value : 'null/undefined',
-                    willClearReserved: wasReserved || currentStatus === 'Reserved'
-                  });
 
                   // If we're clearing from Reserved state, we need to clear the status
                   if (wasReserved || currentStatus === 'Reserved') {
-                    console.log(`🔄 [RowerRow] ⚡⚡⚡ CLEARING RESERVED STATE for ${seat} ⚡⚡⚡`);
-                    console.log(`🔄 [RowerRow] Step 1: Clearing member (should be empty already)`);
-
                     // First, ensure member is cleared (it should already be empty for Reserved state)
                     onAssignmentChange(seat, "");
 
                     // Then reset the Reserved status back to Awaiting Approval
-                    console.log(`🔄 [RowerRow] Step 2: Scheduling status reset to Awaiting Approval in 150ms`);
                     setTimeout(() => {
-                      console.log(`🔄 [RowerRow] ⚡ NOW Executing status reset for ${seat} to "Awaiting Approval"`);
                       // Reset the status to "Awaiting Approval" (API doesn't accept empty string)
                       onAvailabilityUpdate(seat, "Awaiting Approval");
                     }, 150);
                   } else {
-                    console.log(`🔄 [RowerRow] ✅ BRANCH 3b: Normal clear (not Reserved) for ${seat}`);
                     // Normal clear - just clear the member assignment
                     onAssignmentChange(seat, "");
                   }
-                } else {
-                  console.log(`⚠️ [RowerRow] ❌ BRANCH 4: No matching condition for ${seat}!`, {
-                    option,
-                    hasOption: !!option,
-                    isArray: Array.isArray(option),
-                    hasValue: option && !Array.isArray(option) && 'value' in option,
-                    value: option && !Array.isArray(option) && 'value' in option ? option.value : 'N/A'
-                  });
                 }
-                console.log(`🚀 [RowerRow] ========== onChange END for ${seat} ==========\n`);
               }}
               onCreateOption={async (inputValue) => {
                 return await onCreateMember(seat, inputValue);
@@ -2098,26 +2040,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     <span style={{ fontWeight: 600 }}>Date:</span> {(() => {
                       const startDateObj = outing.properties.StartDateTime as NotionDate;
                       const endDateObj = outing.properties.EndDateTime as NotionDate;
-                      console.log('[OutingDrawer] Outing properties:', outing.properties);
-                      console.log('[OutingDrawer] StartDateTime object:', startDateObj);
-                      console.log('[OutingDrawer] EndDateTime object:', endDateObj);
                       const startDate = startDateObj?.date?.start;
                       // Use EndDateTime.date.start as the end time
                       const endDate = endDateObj?.date?.start;
-                      console.log('[OutingDrawer] StartDateTime:', startDate);
-                      console.log('[OutingDrawer] EndDateTime:', endDate);
                       if (startDate) {
                         const start = new Date(startDate);
                         const dayName = start.toLocaleDateString('en-GB', { weekday: 'long' });
                         if (endDate) {
                           const end = new Date(endDate);
-                          console.log('[OutingDrawer] Rendering time range:', start, end);
                           return `${dayName} ${formatTimeRange(start, end)}`;
                         }
-                        console.log('[OutingDrawer] Only start time available:', start);
                         return `${dayName} ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
                       }
-                      console.log('[OutingDrawer] No start date available');
                       return 'Date not set';
                     })()}
                   </div>
@@ -2399,24 +2333,14 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
               {(() => {
                 // Calculate button state based on status fields
-                console.log('🔘 [SwapButton] Calculating button state:', {
-                  assignments: Object.keys(assignments).filter(k => !k.endsWith('_status')),
-                  allStatuses: Object.keys(assignments)
-                    .filter(k => k.endsWith('_status'))
-                    .reduce((acc, k) => ({ ...acc, [k]: assignments[k] }), {})
-                });
-
                 const rowerSeats = ['Stroke', '7 Seat', '6 Seat', '5 Seat', '4 Seat', '3 Seat', '2 Seat', 'Bow'];
                 const subSeats = ['Sub1', 'Sub2', 'Sub3', 'Sub4'];
 
                 // Check for unavailable rowers based on STATUS field
-                const unavailableRowersList: string[] = [];
                 let hasUnavailableRowers = false;
                 for (const seat of rowerSeats) {
                   const memberName = assignments[seat];
                   const seatStatus = assignments[`${seat}_status`];
-
-                  console.log(`🔘 [SwapButton] Checking rower ${seat}:`, { memberName, seatStatus });
 
                   // Skip if no member assigned or if seat is reserved
                   if (!memberName || seatStatus === 'Reserved') continue;
@@ -2424,21 +2348,15 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   // Check if status is "Not Available"
                   if (seatStatus === 'Not Available') {
                     hasUnavailableRowers = true;
-                    unavailableRowersList.push(`${memberName} (${seat})`);
-                    console.log(`🔘 [SwapButton] Found UNAVAILABLE rower: ${memberName} in ${seat}`);
+                    break;
                   }
                 }
 
-                console.log('🔘 [SwapButton] Unavailable rowers:', { hasUnavailableRowers, list: unavailableRowersList });
-
                 // Check for available subs based on STATUS field
-                const availableSubsList: string[] = [];
                 let hasAvailableSubs = false;
                 for (const seat of subSeats) {
                   const memberName = assignments[seat];
                   const seatStatus = assignments[`${seat}_status`];
-
-                  console.log(`🔘 [SwapButton] Checking sub ${seat}:`, { memberName, seatStatus });
 
                   // Skip if no member assigned or if seat is reserved
                   if (!memberName || seatStatus === 'Reserved') continue;
@@ -2446,22 +2364,11 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   // Check if status is "Available"
                   if (seatStatus === 'Available') {
                     hasAvailableSubs = true;
-                    availableSubsList.push(`${memberName} (${seat})`);
-                    console.log(`🔘 [SwapButton] Found AVAILABLE sub: ${memberName} in ${seat}`);
+                    break;
                   }
                 }
 
-                console.log('🔘 [SwapButton] Available subs:', { hasAvailableSubs, list: availableSubsList });
-
                 const isEnabled = hasUnavailableRowers && hasAvailableSubs;
-
-                console.log('🔘 [SwapButton] Final state:', {
-                  isEnabled,
-                  hasUnavailableRowers,
-                  hasAvailableSubs,
-                  unavailableRowers: unavailableRowersList,
-                  availableSubs: availableSubsList
-                });
 
                 return (
                   <button
