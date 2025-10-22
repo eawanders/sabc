@@ -248,12 +248,14 @@ export default function RowerAvailabilityPage() {
                 components={{ DropdownIndicator }}
                 classNamePrefix="rs"
                 instanceId="rower-availability-member-filter"
-                isSearchable={false}
+                isSearchable={true}
                 isClearable={false}
                 value={selectedOption}
                 onChange={handleMemberChange}
                 options={memberOptions}
                 placeholder="Select member..."
+                blurInputOnSelect={true}
+                controlShouldRenderValue={true}
                 styles={{
                   control: (base) => ({
                     ...base,
@@ -280,7 +282,8 @@ export default function RowerAvailabilityPage() {
                     display: 'flex',
                     justifyContent: 'flex-start',
                     alignItems: 'center',
-                    width: '100%'
+                    width: '100%',
+                    textAlign: 'left',
                   }),
                   input: (base) => ({
                     ...base,
@@ -291,6 +294,7 @@ export default function RowerAvailabilityPage() {
                     lineHeight: '28px',
                     boxShadow: 'none',
                     outline: 'none',
+                    textAlign: 'left',
                   }),
                   indicatorsContainer: (base) => ({
                     ...base,
@@ -309,12 +313,13 @@ export default function RowerAvailabilityPage() {
                     lineHeight: '28px',
                     fontWeight: 300,
                     fontFamily: 'Gilroy',
-                    textAlign: 'center',
+                    textAlign: 'left',
                   }),
                   placeholder: (base) => ({
                     ...base,
                     color: '#7D8DA6',
                     fontWeight: 300,
+                    textAlign: 'left',
                   }),
                   indicatorSeparator: (base) => ({
                     ...base,
@@ -352,6 +357,7 @@ export default function RowerAvailabilityPage() {
                     boxShadow: 'none',
                     borderRadius: '10px',
                     padding: 0,
+                    maxHeight: '300px',
                   }),
                   menuPortal: (base) => ({
                     ...base,
