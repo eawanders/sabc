@@ -2175,7 +2175,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
             {/* Show loading indicator below outing details if updating rower/availability */}
             {isLoadingStatus && (
-              <div className="flex items-center justify-center py-4" style={{ marginBottom: '16px' }}>
+              <div className="flex items-center justify-center" style={{ marginTop: '16px', marginBottom: '0px' }}>
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
               </div>
