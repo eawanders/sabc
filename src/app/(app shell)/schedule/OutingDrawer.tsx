@@ -55,6 +55,7 @@ import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
 import { buildGoogleCalendarLink, extractPlainTextFromRichText, buildICalendarFile, downloadICalendarFile } from '@/utils/calendarLinks';
 import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
+import { SwapIcon } from '@/components/icons/SwapIcon';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -1805,6 +1806,167 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     }
   };
 
+  // Function to swap unavailable rowers with available subs
+  const handleSwapInSubs = async () => {
+    console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS INITIATED ==========');
+    console.log('🔄 [SwapInSubs] Outing ID:', outing?.id);
+    console.log('🔄 [SwapInSubs] Initial checks:', {
+      isInitialized,
+      hasOuting: !!outing
+    });
+
+    if (!isInitialized || !outing) {
+      console.warn('⚠️ [SwapInSubs] Cannot swap - missing required data:', {
+        isInitialized,
+        hasOuting: !!outing
+      });
+      return;
+    }
+
+    // Define rower seats (excluding Cox and Coach/Bank Rider)
+    const rowerSeats = ['Stroke', '7 Seat', '6 Seat', '5 Seat', '4 Seat', '3 Seat', '2 Seat', 'Bow'];
+    const subSeats = ['Sub1', 'Sub2', 'Sub3', 'Sub4'];
+
+    // Find unavailable rowers (based on status field = "Not Available")
+    const unavailableRowers: { seat: string; memberName: string }[] = [];
+
+    console.log('🔄 [SwapInSubs] Scanning rower seats for unavailable members...');
+    for (const seat of rowerSeats) {
+      const memberName = assignments[seat];
+      const seatStatus = assignments[`${seat}_status`];
+
+      console.log(`🔄 [SwapInSubs] Checking ${seat}:`, {
+        memberName,
+        seatStatus,
+        hasAssignment: !!memberName,
+        isReserved: seatStatus === 'Reserved',
+        isUnavailable: seatStatus === 'Not Available'
+      });
+
+      // Skip if no member assigned or if seat is reserved
+      if (!memberName || seatStatus === 'Reserved') {
+        console.log(`🔄 [SwapInSubs] Skipping ${seat} - ${!memberName ? 'no member assigned' : 'seat is reserved'}`);
+        continue;
+      }
+
+      // Check if status is "Not Available"
+      if (seatStatus === 'Not Available') {
+        unavailableRowers.push({ seat, memberName });
+        console.log(`❌ [SwapInSubs] Found UNAVAILABLE rower: ${memberName} in ${seat}`);
+      }
+    }
+
+    // Find available subs (based on status field = "Available")
+    const availableSubs: { seat: string; memberName: string }[] = [];
+
+    console.log('🔄 [SwapInSubs] Scanning sub seats for available members...');
+    for (const seat of subSeats) {
+      const memberName = assignments[seat];
+      const seatStatus = assignments[`${seat}_status`];
+
+      console.log(`🔄 [SwapInSubs] Checking ${seat}:`, {
+        memberName,
+        seatStatus,
+        hasAssignment: !!memberName,
+        isReserved: seatStatus === 'Reserved',
+        isAvailable: seatStatus === 'Available'
+      });
+
+      // Skip if no member assigned or if seat is reserved
+      if (!memberName || seatStatus === 'Reserved') {
+        console.log(`🔄 [SwapInSubs] Skipping ${seat} - ${!memberName ? 'no member assigned' : 'seat is reserved'}`);
+        continue;
+      }
+
+      // Check if status is "Available"
+      if (seatStatus === 'Available') {
+        availableSubs.push({ seat, memberName });
+        console.log(`✅ [SwapInSubs] Found AVAILABLE sub: ${memberName} in ${seat}`);
+      }
+    }
+
+    console.log('🔄 [SwapInSubs] Summary:', {
+      unavailableRowers: unavailableRowers.map(r => `${r.memberName} (${r.seat})`),
+      availableSubs: availableSubs.map(s => `${s.memberName} (${s.seat})`),
+      unavailableCount: unavailableRowers.length,
+      availableSubsCount: availableSubs.length
+    });
+
+    // Perform swaps (limited by the minimum of unavailable rowers and available subs)
+    const swapsToMake = Math.min(unavailableRowers.length, availableSubs.length);
+
+    if (swapsToMake === 0) {
+      console.log('ℹ️ [SwapInSubs] No swaps needed - either no unavailable rowers or no available subs');
+      console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED (NO SWAPS) ==========');
+      return;
+    }
+
+    console.log(`🔄 [SwapInSubs] Performing ${swapsToMake} swap(s)`);
+
+    // Perform all swaps
+    for (let i = 0; i < swapsToMake; i++) {
+      const rower = unavailableRowers[i];
+      const sub = availableSubs[i];
+
+      // Get the current statuses before swapping
+      const rowerStatus = assignments[`${rower.seat}_status`]; // Should be "Not Available"
+      const subStatus = assignments[`${sub.seat}_status`]; // Should be "Available"
+
+      console.log(`🔄 [SwapInSubs] ========== SWAP ${i + 1}/${swapsToMake} ==========`);
+      console.log(`🔄 [SwapInSubs] Swapping ${rower.memberName} (${rower.seat}) ↔ ${sub.memberName} (${sub.seat})`);
+      console.log(`🔄 [SwapInSubs] Swap details:`, {
+        swap: i + 1,
+        total: swapsToMake,
+        rower: {
+          name: rower.memberName,
+          seat: rower.seat,
+          status: rowerStatus
+        },
+        sub: {
+          name: sub.memberName,
+          seat: sub.seat,
+          status: subStatus
+        }
+      });
+
+      try {
+        // Step 1: Assign sub member to rower seat
+        console.log(`🔄 [SwapInSubs] Step 1: Assigning ${sub.memberName} to ${rower.seat}`);
+        await handleAssignmentChange(rower.seat, sub.memberName);
+        console.log(`✅ [SwapInSubs] Step 1 complete: ${sub.memberName} → ${rower.seat}`);
+
+        // Step 2: Assign rower member to sub seat
+        console.log(`🔄 [SwapInSubs] Step 2: Assigning ${rower.memberName} to ${sub.seat}`);
+        await handleAssignmentChange(sub.seat, rower.memberName);
+        console.log(`✅ [SwapInSubs] Step 2 complete: ${rower.memberName} → ${sub.seat}`);
+
+        // Step 3: Update status for rower seat (sub's status - should be "Available")
+        console.log(`🔄 [SwapInSubs] Step 3: Setting ${rower.seat} status to "${subStatus}"`);
+        await handleAvailabilityUpdate(rower.seat, subStatus);
+        console.log(`✅ [SwapInSubs] Step 3 complete: ${rower.seat} status → ${subStatus}`);
+
+        // Step 4: Update status for sub seat (rower's status - should be "Not Available")
+        console.log(`🔄 [SwapInSubs] Step 4: Setting ${sub.seat} status to "${rowerStatus}"`);
+        await handleAvailabilityUpdate(sub.seat, rowerStatus);
+        console.log(`✅ [SwapInSubs] Step 4 complete: ${sub.seat} status → ${rowerStatus}`);
+
+        console.log(`✅ [SwapInSubs] Successfully completed swap ${i + 1}/${swapsToMake}: ${rower.seat} ↔ ${sub.seat} (including statuses)`);
+      } catch (error) {
+        console.error(`❌ [SwapInSubs] Error during swap ${i + 1}/${swapsToMake}:`, {
+          swap: i + 1,
+          total: swapsToMake,
+          rowerSeat: rower.seat,
+          subSeat: sub.seat,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined
+        });
+      }
+    }
+
+    console.log('✅ [SwapInSubs] All swaps completed successfully');
+    console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED ==========');
+  };
+
 
   useEffect(() => {
     if (!loading && outing) {
@@ -2219,15 +2381,114 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             </div>
 
             {/* Subs Section */}
-            <h4 style={{
-              color: '#27272E',
-              fontFamily: 'Gilroy',
-              fontSize: '18px',
-              fontStyle: 'normal',
-              fontWeight: 800,
-              lineHeight: 'normal',
-              margin: '0 0 16px 0'
-            }}>Subs</h4>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px'
+            }}>
+              <h4 style={{
+                color: '#27272E',
+                fontFamily: 'Gilroy',
+                fontSize: '18px',
+                fontStyle: 'normal',
+                fontWeight: 800,
+                lineHeight: 'normal',
+                margin: '0'
+              }}>Subs</h4>
+
+              {(() => {
+                // Calculate button state based on status fields
+                console.log('🔘 [SwapButton] Calculating button state:', {
+                  assignments: Object.keys(assignments).filter(k => !k.endsWith('_status')),
+                  allStatuses: Object.keys(assignments)
+                    .filter(k => k.endsWith('_status'))
+                    .reduce((acc, k) => ({ ...acc, [k]: assignments[k] }), {})
+                });
+
+                const rowerSeats = ['Stroke', '7 Seat', '6 Seat', '5 Seat', '4 Seat', '3 Seat', '2 Seat', 'Bow'];
+                const subSeats = ['Sub1', 'Sub2', 'Sub3', 'Sub4'];
+
+                // Check for unavailable rowers based on STATUS field
+                const unavailableRowersList: string[] = [];
+                let hasUnavailableRowers = false;
+                for (const seat of rowerSeats) {
+                  const memberName = assignments[seat];
+                  const seatStatus = assignments[`${seat}_status`];
+
+                  console.log(`🔘 [SwapButton] Checking rower ${seat}:`, { memberName, seatStatus });
+
+                  // Skip if no member assigned or if seat is reserved
+                  if (!memberName || seatStatus === 'Reserved') continue;
+
+                  // Check if status is "Not Available"
+                  if (seatStatus === 'Not Available') {
+                    hasUnavailableRowers = true;
+                    unavailableRowersList.push(`${memberName} (${seat})`);
+                    console.log(`🔘 [SwapButton] Found UNAVAILABLE rower: ${memberName} in ${seat}`);
+                  }
+                }
+
+                console.log('🔘 [SwapButton] Unavailable rowers:', { hasUnavailableRowers, list: unavailableRowersList });
+
+                // Check for available subs based on STATUS field
+                const availableSubsList: string[] = [];
+                let hasAvailableSubs = false;
+                for (const seat of subSeats) {
+                  const memberName = assignments[seat];
+                  const seatStatus = assignments[`${seat}_status`];
+
+                  console.log(`🔘 [SwapButton] Checking sub ${seat}:`, { memberName, seatStatus });
+
+                  // Skip if no member assigned or if seat is reserved
+                  if (!memberName || seatStatus === 'Reserved') continue;
+
+                  // Check if status is "Available"
+                  if (seatStatus === 'Available') {
+                    hasAvailableSubs = true;
+                    availableSubsList.push(`${memberName} (${seat})`);
+                    console.log(`🔘 [SwapButton] Found AVAILABLE sub: ${memberName} in ${seat}`);
+                  }
+                }
+
+                console.log('🔘 [SwapButton] Available subs:', { hasAvailableSubs, list: availableSubsList });
+
+                const isEnabled = hasUnavailableRowers && hasAvailableSubs;
+
+                console.log('🔘 [SwapButton] Final state:', {
+                  isEnabled,
+                  hasUnavailableRowers,
+                  hasAvailableSubs,
+                  unavailableRowers: unavailableRowersList,
+                  availableSubs: availableSubsList
+                });
+
+                return (
+                  <button
+                    onClick={handleSwapInSubs}
+                    disabled={!isEnabled}
+                    style={{
+                      display: 'flex',
+                      padding: '8px',
+                      alignItems: 'center',
+                      gap: '8px',
+                      borderRadius: '6px',
+                      border: isEnabled ? '1px solid #6F00FF' : '1px solid #E5E7EB',
+                      background: isEnabled ? '#F3F1FE' : '#F9FAFB',
+                      cursor: isEnabled ? 'pointer' : 'not-allowed',
+                      color: isEnabled ? '#6F00FF' : '#9CA3AF',
+                      fontFamily: 'Gilroy',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <SwapIcon />
+                    <span>Swap In Subs</span>
+                  </button>
+                );
+              })()}
+            </div>
 
             {/* Subs Assignments Container */}
             <div className="bg-white rounded-lg p-4 shadow-sm">
