@@ -2376,22 +2376,27 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     disabled={!isEnabled}
                     style={{
                       display: 'flex',
-                      padding: '8px',
+                      height: '32px',
+                      justifyContent: 'center',
                       alignItems: 'center',
                       gap: '8px',
                       borderRadius: '6px',
-                      border: isEnabled ? '1px solid #6F00FF' : '1px solid #E5E7EB',
-                      background: isEnabled ? '#F3F1FE' : '#F9FAFB',
+                      background: isEnabled ? 'rgb(243, 241, 254)' : '#F9FAFB',
+                      border: 'none',
                       cursor: isEnabled ? 'pointer' : 'not-allowed',
-                      color: isEnabled ? '#6F00FF' : '#9CA3AF',
+                      padding: '8px 12px',
+                      opacity: isEnabled ? 1 : 0.5,
+                      flexShrink: 0,
+                      color: isEnabled ? 'var(--Theme-Primary-Default, #4C6FFF)' : '#9CA3AF',
                       fontFamily: 'Gilroy',
-                      fontSize: '14px',
+                      fontSize: '12px',
                       fontWeight: 600,
                       transition: 'all 0.2s ease',
                     }}
+                    aria-label="Swap in available subs"
                   >
                     <SwapIcon />
-                    <span>Swap In Subs</span>
+                    <span>Swap Subs</span>
                   </button>
                 );
               })()}
@@ -2458,7 +2463,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                   alignItems: 'center',
                   gap: '8px',
                   borderRadius: '6px',
-                  background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                  background: 'rgb(243, 241, 254)',
                   border: 'none',
                   cursor: isCalendarButtonDisabled ? 'not-allowed' : 'pointer',
                   padding: outing?.properties?.Type?.select?.name === 'Water Outing' ? '0' : '12px 8px',
@@ -2487,7 +2492,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     gap: '10px',
                     alignSelf: 'stretch',
                     borderRadius: '6px',
-                    background: 'var(--Theme-Primary-Soft, #E1E8FF)',
+                    background: 'rgb(243, 241, 254)',
                     color: 'var(--Theme-Primary-Default, #4C6FFF)',
                     fontWeight: 600,
                     flex: '1 1 auto',
