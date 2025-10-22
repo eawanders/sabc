@@ -8,12 +8,14 @@ type MemberOptionType = {
   isUnavailable?: boolean;
   isReserved?: boolean;
   isDisabled?: boolean;
+  alreadyAssignedToday?: boolean;
 };
 
 // Custom Option component to style unavailable members
 const CustomOption = (props: OptionProps<MemberOptionType, false, GroupBase<MemberOptionType>>) => {
   const isUnavailable = props.data.isUnavailable;
   const isReserved = props.data.isReserved;
+  const alreadyAssignedToday = props.data.alreadyAssignedToday;
 
   return (
     <components.Option {...props}>
@@ -22,6 +24,7 @@ const CustomOption = (props: OptionProps<MemberOptionType, false, GroupBase<Memb
         fontStyle: isUnavailable || isReserved ? 'italic' : 'normal'
       }}>
         {props.children}
+        {alreadyAssignedToday && ' ⚠️'}
       </div>
     </components.Option>
   );
@@ -56,6 +59,8 @@ import { useScheduleUrlState } from '@/hooks/useUrlState';
 import { buildGoogleCalendarLink, extractPlainTextFromRichText, buildICalendarFile, downloadICalendarFile } from '@/utils/calendarLinks';
 import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
 import { SwapIcon } from '@/components/icons/SwapIcon';
+import { useOutingsResource } from '@/hooks/useOutingsResource';
+import type { Outing } from '@/types/outing';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -131,7 +136,91 @@ const getSeatDisplayName = (seat: string): string => {
   }
 };
 
-// RowerRow component for individual seat assignments
+/**
+ * Helper function to check if a member is already assigned to a non-sub seat on the same day
+ * @param memberId - The member's ID to check
+ * @param currentOutingId - The ID of the current outing (to exclude from check)
+ * @param currentOutingDate - The date of the current outing (YYYY-MM-DD format)
+ * @param allOutings - All outings to check against
+ * @returns true if member is assigned to a non-sub seat on the same day in a different outing
+ */
+const isMemberAlreadyAssignedToday = (
+  memberId: string,
+  currentOutingId: string,
+  currentOutingDate: string | undefined,
+  allOutings: Outing[]
+): boolean => {
+  if (!currentOutingDate || !memberId) {
+    return false;
+  }
+
+  // Non-sub seat properties to check
+  const nonSubSeats = [
+    'Cox',
+    'Stroke',
+    'Bow',
+    '2 Seat',
+    '3 Seat',
+    '4 Seat',
+    '5 Seat',
+    '6 Seat',
+    '7 Seat',
+    'CoachBankRider'
+  ];
+
+  const currentDate = currentOutingDate.split('T')[0];
+
+  // Check all outings
+  for (const outing of allOutings) {
+    // Skip the current outing
+    if (outing.id === currentOutingId) {
+      continue;
+    }
+
+    // Check if this outing is on the same date
+    const outingStartDate = outing.properties.StartDateTime?.date?.start;
+    if (!outingStartDate) continue;
+
+    // Extract just the date part (YYYY-MM-DD) for comparison
+    const outingDate = outingStartDate.split('T')[0];
+
+    if (outingDate !== currentDate) continue;
+
+    // Check if member is assigned to any non-sub seat in this outing
+    for (const seatKey of nonSubSeats) {
+      const seatProperty = outing.properties[seatKey as keyof typeof outing.properties];
+
+      if (!seatProperty) continue;
+
+      let relationsToCheck: any[] = [];
+
+      // Handle two possible structures:
+      // 1. Direct array of relation objects: [{id: "..."}]
+      // 2. RelationProperty structure: { relation: [{id: "..."}], has_more: boolean }
+
+      if (Array.isArray(seatProperty)) {
+        // Case 1: Direct array
+        relationsToCheck = seatProperty;
+      } else if (typeof seatProperty === 'object' && 'relation' in seatProperty) {
+        // Case 2: RelationProperty object
+        const relationProp = (seatProperty as any).relation;
+        if (Array.isArray(relationProp)) {
+          relationsToCheck = relationProp;
+        }
+      }
+
+      // Check if member is in the relations
+      if (relationsToCheck.length > 0) {
+        const isAssigned = relationsToCheck.some((rel: any) => rel?.id === memberId);
+        if (isAssigned) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+};// RowerRow component for individual seat assignments
 interface RowerRowProps {
   seat: string;
   selectedMember: string;
@@ -150,6 +239,8 @@ interface RowerRowProps {
   outingEndTime?: string;
   rowerAvailabilityMap?: Map<string, Record<string, { start: string; end: string }[]>>;
   onCreateMember: (seat: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
+  allOutings: Outing[];
+  currentOutingId: string;
 }
 
 const RowerRow: React.FC<RowerRowProps> = ({
@@ -169,6 +260,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
   outingTime,
   outingEndTime,
   rowerAvailabilityMap,
+  allOutings,
+  currentOutingId,
   onCreateMember
 }) => {
   // Check if this seat is reserved (no member but status is "Reserved")
@@ -284,6 +377,14 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     }
                   }
 
+                  // Check if member is already assigned to a non-sub seat on the same day
+                  const alreadyAssignedToday = isMemberAlreadyAssignedToday(
+                    member.id,
+                    currentOutingId,
+                    outingDate,
+                    allOutings
+                  );
+
                   // Format label with availability indicator
                   const label = isAvailable
                     ? member.name
@@ -293,7 +394,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     value: member.id,
                     label,
                     member,
-                    isUnavailable: !isAvailable
+                    isUnavailable: !isAvailable,
+                    alreadyAssignedToday
                   };
                 });
 
@@ -645,6 +747,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
   const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading } = useAllRowerAvailability(members);
+  const { outings: allOutings } = useOutingsResource();
 
   // State management from the proven OutingCard pattern
   const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -2223,6 +2326,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
+                    allOutings={allOutings}
+                    currentOutingId={outingId}
                   />
                 </div>
               </>
@@ -2261,6 +2366,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
+                    allOutings={allOutings}
+                    currentOutingId={outingId}
                   />
                 </div>
               </>
@@ -2309,6 +2416,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       outingEndTime={outingEndTime}
                       rowerAvailabilityMap={rowerAvailabilityMap}
                       onCreateMember={handleCreateMember}
+                      allOutings={allOutings}
+                      currentOutingId={outingId}
                     />
                   ))}
               </div>
@@ -2425,6 +2534,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
                     onCreateMember={handleCreateMember}
+                    allOutings={allOutings}
+                    currentOutingId={outingId}
                   />
                 ))}
               </div>
