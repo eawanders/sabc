@@ -31,7 +31,6 @@ export async function GET(
 ) {
   const start = startTiming();
   try {
-    console.log('🎯 Fetching outing report data...');
 
     const { id } = await params;
 
@@ -52,7 +51,6 @@ export async function GET(
       );
     }
 
-    console.log('🔍 Fetching report data for outing:', id);
 
     // Fetch the outing page from Notion
     const response = await notionRequest<NotionPageResponse>({
@@ -93,7 +91,6 @@ export async function GET(
       coachFeedback: extractRichText(page.properties['Coach Feedback'])
     };
 
-    console.log(`✅ Successfully fetched report data for ${id}:`, reportData);
 
     const outingResponse = NextResponse.json({
       success: true,

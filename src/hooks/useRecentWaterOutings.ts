@@ -21,7 +21,6 @@ export function useRecentWaterOutings(limit: number = 3): UseRecentWaterOutingsR
       setError(null)
 
       try {
-        console.log('🔄 Fetching recent water outings...')
         const response = await fetch('/api/get-outings')
 
         if (!response.ok) {
@@ -30,8 +29,6 @@ export function useRecentWaterOutings(limit: number = 3): UseRecentWaterOutingsR
 
         const data = await response.json()
         const allOutings: Outing[] = data.outings || []
-
-        console.log('📊 Fetched outings:', allOutings.length)
 
         // Map outings to calendar events
         const allEvents = mapOutingsToEvents(allOutings)
@@ -62,7 +59,6 @@ export function useRecentWaterOutings(limit: number = 3): UseRecentWaterOutingsR
           .sort((a, b) => b.endTime.getTime() - a.endTime.getTime()) // Sort by endTime descending (most recent first)
           .slice(0, limit) // Take only the first N outings
 
-        console.log('✅ Recent water outings:', recentWaterOutings.length)
         setOutings(recentWaterOutings)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load recent water outings'

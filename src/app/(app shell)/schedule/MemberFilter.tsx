@@ -40,13 +40,9 @@ export default function MemberFilter({ memberId, onMemberChange }: MemberFilterP
 
   // Debug logging
   useEffect(() => {
-  console.log('🎯 MemberFilter: memberId prop:', memberId);
-  console.log('🎯 MemberFilter: members loaded:', members?.length);
-  console.log('🎯 MemberFilter: loading:', loading);
 
   // Log first few member IDs for comparison
   if (members && members.length > 0) {
-    console.log('🎯 Sample member IDs:', members.slice(0, 3).map(m => ({ id: m.id, name: m.name })));
   }
   }, [memberId, members, loading]);
 
@@ -77,8 +73,6 @@ export default function MemberFilter({ memberId, onMemberChange }: MemberFilterP
     ? memberOptions.find(option => option.value === memberId)
     : memberOptions[0]; // Default to "Select member" option
 
-  console.log('🎯 MemberFilter: selectedOption:', selectedOption);
-  console.log('🎯 MemberFilter: memberOptions count:', memberOptions.length);
 
   return (
     <div ref={wrapperRef} style={{ width: '200px' }}>

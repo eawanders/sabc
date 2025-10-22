@@ -6,12 +6,10 @@ import { Outing, RawOuting, DetailedOuting, SeatType, AvailabilityStatus, SeatAs
  */
 export async function getOutingById(id: string): Promise<RawOuting | null> {
   try {
-    console.log('🔍 getOutingById: Fetching outing with ID:', id);
 
     // Use relative URL to work in all environments (localhost, staging, production)
     const response = await fetch(`/api/get-outing/${id}`);
 
-    console.log('🔍 getOutingById: Response status:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -20,7 +18,6 @@ export async function getOutingById(id: string): Promise<RawOuting | null> {
     }
 
     const data = await response.json();
-    console.log('✅ getOutingById: Successfully received data:', data);
 
     return data.outing as RawOuting;
   } catch (error) {
@@ -66,16 +63,13 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
  */
 export async function getOutingWithMembers(id: string): Promise<DetailedOuting | null> {
   try {
-    console.log(`📖 [getOutingWithMembers] Fetching outing with ID: ${id}`);
 
     // Fetch the basic outing data
     const outing = await getOutingById(id);
     if (!outing) {
-      console.warn(`⚠️ [getOutingWithMembers] No outing found for ID: ${id}`);
       return null;
     }
 
-    console.log(`✅ [getOutingWithMembers] Outing found, checking seat fields...`);
 
     // Extract all member IDs from relations
     const memberIds = new Set<string>();
@@ -85,17 +79,14 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
       'Sub1', 'Sub2', 'Sub3', 'Sub4'
     ];
 
-    console.log(`🔍 [getOutingWithMembers] Checking seat fields for member relations...`);
 
     seatFields.forEach(field => {
       const relation = outing.properties[field] as { relation: { id: string }[] } | undefined;
       if (relation?.relation) {
-        console.log(`📍 [getOutingWithMembers] Field "${field}" has ${relation.relation.length} member(s):`, relation.relation.map(r => r.id));
         relation.relation.forEach(rel => memberIds.add(rel.id));
       } else {
         const isSub = field.startsWith('Sub');
         if (isSub) {
-          console.log(`⚠️ [getOutingWithMembers] SUB field "${field}" has no relation data. Full property:`, outing.properties[field]);
         }
       }
     });

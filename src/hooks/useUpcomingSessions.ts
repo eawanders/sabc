@@ -21,7 +21,6 @@ export function useUpcomingSessions(limit: number = 3): UseUpcomingSessionsResul
       setError(null)
 
       try {
-        console.log('🔄 Fetching upcoming sessions...')
         const response = await fetch('/api/get-outings')
 
         if (!response.ok) {
@@ -30,8 +29,6 @@ export function useUpcomingSessions(limit: number = 3): UseUpcomingSessionsResul
 
         const data = await response.json()
         const outings: Outing[] = data.outings || []
-
-        console.log('📊 Fetched outings:', outings.length)
 
         // Map outings to calendar events
         const allEvents = mapOutingsToEvents(outings)
@@ -46,7 +43,6 @@ export function useUpcomingSessions(limit: number = 3): UseUpcomingSessionsResul
           .sort((a, b) => a.startTime.getTime() - b.startTime.getTime()) // Sort by start time ascending
           .slice(0, limit) // Take only the first N sessions
 
-        console.log('✅ Upcoming sessions:', upcomingSessions.length)
         setSessions(upcomingSessions)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load upcoming sessions'

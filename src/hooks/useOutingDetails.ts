@@ -27,12 +27,10 @@ export function useOutingDetails(outingId: string | null): UseOutingDetailsResul
     setError(null);
 
     try {
-      console.log('🔍 Fetching outing details for ID:', outingId);
       const detailedOuting = await getOutingWithMembers(outingId);
 
       if (detailedOuting) {
         setOuting(detailedOuting);
-        console.log('✅ Successfully loaded outing details:', detailedOuting.properties.Name);
       } else {
         setError('Outing not found');
         setOuting(null);

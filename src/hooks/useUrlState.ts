@@ -25,48 +25,32 @@ export function useScheduleUrlState() {
   const urlState = useMemo(() => {
     // Convert searchParams to string
     const searchString = searchParams?.toString() ? `?${searchParams.toString()}` : '';
-    console.log('🔄 useScheduleUrlState: pathname:', pathname);
-    console.log('🔄 useScheduleUrlState: searchString:', searchString);
     const state = parseScheduleUrl(pathname, searchString);
-    console.log('🔄 useScheduleUrlState: parsed state:', state);
     return state;
   }, [pathname, searchParams]);
 
   // Function to update URL with new state
   const updateUrl = useCallback((newState: Partial<ScheduleUrlState>) => {
-    console.log('🎯 updateUrl: Called with newState:', newState);
-    console.log('🎯 updateUrl: Current pathname:', pathname);
 
     const searchString = searchParams?.toString() ? `?${searchParams.toString()}` : '';
     const currentState = parseScheduleUrl(pathname, searchString);
-    console.log('🎯 updateUrl: Current parsed state:', currentState);
 
     const mergedState: ScheduleUrlState = { ...currentState, ...newState };
-    console.log('🎯 updateUrl: Merged state:', mergedState);
 
     const newUrl = buildScheduleUrl(mergedState);
-    console.log('🎯 updateUrl: Built new URL:', newUrl);
 
     const currentFullUrl = pathname + searchString;
-    console.log('🎯 updateUrl: Current full URL:', currentFullUrl);
-    console.log('🎯 updateUrl: URLs are different?', newUrl !== currentFullUrl);
 
     if (newUrl !== currentFullUrl) {
-      console.log('🎯 updateUrl: Calling router.push with:', newUrl);
       router.push(newUrl, { scroll: false });
-      console.log('🎯 updateUrl: router.push called');
     } else {
-      console.log('🎯 updateUrl: URLs are the same, no navigation needed');
     }
   }, [pathname, searchParams, router]);
 
   // Convenience methods for common updates
   const setDate = useCallback((date: Date) => {
-    console.log('🎯 useUrlState.setDate: Called with date:', date);
-    console.log('🎯 useUrlState.setDate: updateUrl function:', updateUrl);
     try {
       updateUrl({ date });
-      console.log('🎯 useUrlState.setDate: updateUrl called successfully');
     } catch (error) {
       console.error('🎯 useUrlState.setDate: Error in updateUrl:', error);
     }

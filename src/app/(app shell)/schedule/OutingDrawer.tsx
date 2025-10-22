@@ -756,18 +756,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     const actualPropertyName = seatToPropertyMapping[propertyName] || propertyName;
     const property = outing?.properties?.[actualPropertyName as keyof typeof outing.properties];
 
-    // Add debug logging specifically for Sub seats
-    if (propertyName.startsWith('Sub')) {
-      console.log(`🔍 [getOutingProperty] Getting property for SUB seat:`, {
-        propertyName,
-        actualPropertyName,
-        isMapped: propertyName !== actualPropertyName,
-        hasProperty: !!property,
-        propertyValue: property,
-        availableProperties: outing?.properties ? Object.keys(outing.properties) : []
-      });
-    }
-
     return property;
   }, [outing]);
 
@@ -1012,14 +1000,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     }
 
     setIsLoadingStatus(true);
-    console.log(`🔧 Initializing assignments for NEW outing ${outing.id}`);
 
     const initialAssignments: Record<string, string> = {};
 
     // First pass: Get all member assignments
     seatLabels.forEach((seat) => {
       const seatProp = getOutingProperty(seat);
-      console.log(`🔍 Checking seat ${seat} property:`, seatProp);
 
       // The API returns {relation: [{id: "..."}], has_more: false} structure
       if (seatProp && typeof seatProp === 'object' && 'relation' in seatProp) {
@@ -1029,9 +1015,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           const matchedMember = members.find((m) => m.id === relatedId);
           if (matchedMember) {
             initialAssignments[seat] = matchedMember.name;
-            console.log(`🎯 Pre-filled ${seat} with ${matchedMember.name} (ID: ${relatedId})`);
-          } else {
-            console.log(`⚠️ No member found for ID ${relatedId} in seat ${seat}`);
           }
         }
       }
@@ -1081,27 +1064,19 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       // Set the status if we found one
       if (statusValue) {
         initialAssignments[`${seat}_status`] = statusValue;
-        console.log(`🔹 Pre-filled ${seat} status with "${statusValue}" (source: ${sourceName})`);
       } else {
-        console.log(`ℹ️ No status found for ${seat} under any variation`);
-
         // If we have a member assigned but no status, default to "Awaiting Approval"
         if (initialAssignments[seat]) {
           initialAssignments[`${seat}_status`] = "Awaiting Approval";
-          console.log(`ℹ️ Default status set to "Awaiting Approval" for ${seat}`);
         }
       }
     });
-
-    // Debug all Notion properties
-    console.log("📊 All Notion properties:", Object.keys(outing?.properties || {}));
 
     // Set assignments without merging to avoid stale state
     setAssignments(initialAssignments);
 
     setIsInitialized(true);
     setIsLoadingStatus(false);
-    console.log(`✅ Assignments initialized for outing ${outing.id}:`, initialAssignments);
   }, [outing?.id, members.length, getOutingProperty]);
 
   // Fetch flag status for water outings
@@ -1132,11 +1107,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
     // If we have pending optimistic updates, don't overwrite them
     if (pendingOptimisticUpdates.size > 0) {
-      console.log(`🔄 Skipping data update due to ${pendingOptimisticUpdates.size} pending optimistic updates`);
       return;
     }
-
-    console.log(`🔄 Updating assignments from fresh outing data (no pending optimistic updates)`);
 
     // Update assignments from fresh outing data
     const freshAssignments: Record<string, string> = {};
@@ -1146,17 +1118,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       const seatProp = getOutingProperty(seat);
       const isSub = seat.startsWith('Sub');
 
-      if (isSub) {
-        console.log(`🔍 [SUBS] Fresh data for SUB seat ${seat}:`, {
-          seat,
-          seatProp,
-          hasRelation: seatProp && typeof seatProp === 'object' && 'relation' in seatProp,
-          propType: typeof seatProp
-        });
-      } else {
-        console.log(`🔍 Fresh data for seat ${seat}:`, seatProp);
-      }
-
       // The API returns {relation: [{id: "..."}], has_more: false} structure
       if (seatProp && typeof seatProp === 'object' && 'relation' in seatProp) {
         const relationArray = (seatProp as { relation: { id: string }[] }).relation;
@@ -1165,19 +1126,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           const matchedMember = members.find((m) => m.id === relatedId);
           if (matchedMember) {
             freshAssignments[seat] = matchedMember.name;
-            if (isSub) {
-              console.log(`✅ [SUBS] Fresh assignment for SUB ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
-            } else {
-              console.log(`🔄 Fresh assignment for ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
-            }
-          } else if (isSub) {
-            console.warn(`⚠️ [SUBS] No member found for SUB ${seat} with ID: ${relatedId}`);
           }
-        } else if (isSub) {
-          console.log(`ℹ️ [SUBS] Empty relation array for SUB ${seat}`);
         }
-      } else if (isSub) {
-        console.log(`ℹ️ [SUBS] No relation property for SUB ${seat}`);
       }
 
       // Get fresh status data
@@ -1208,20 +1158,17 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
     // Update assignments with fresh data
     setAssignments(freshAssignments);
-    console.log(`✅ Updated assignments from fresh data:`, freshAssignments);
   }, [outing, isInitialized, currentOutingIdRef.current, pendingOptimisticUpdates.size, getOutingProperty, members, seatLabels]);
 
   // Member creation handler
   const handleCreateMember = async (seat: string, inputValue: string): Promise<{ value: string; label: string; member: Member } | null> => {
     try {
-      console.log('🆕 [OutingDrawer] Creating new member:', { seat, inputValue, outingId: outing?.id });
       setIsLoadingStatus(true);
 
       const requestBody = {
         name: inputValue.trim(),
         role: 'non-member'
       };
-      console.log('🆕 [OutingDrawer] Request body:', requestBody);
 
       const response = await fetch('/api/add-member', {
         method: 'POST',
@@ -1231,7 +1178,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         body: JSON.stringify(requestBody),
       });
 
-      console.log('🆕 [OutingDrawer] Add member response:', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
         const errorData = await response.json().catch((e) => {
@@ -1243,7 +1189,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       const data = await response.json();
-      console.log('🆕 [OutingDrawer] Member created successfully:', data);
 
       if (!outing) {
         console.error('🆕 [OutingDrawer] No outing data available');
@@ -1251,14 +1196,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       // Immediately assign the new member to the seat using their ID
-      console.log('🆕 [OutingDrawer] Assigning new member to seat:', { seat, memberId: data.member.id, outingId: outing.id });
 
       const assignBody = {
         outingId: outing.id,
         seat,
         memberId: data.member.id
       };
-      console.log('🆕 [OutingDrawer] Assign request body:', assignBody);
 
       const assignResponse = await fetch('/api/assign-seat', {
         method: 'POST',
@@ -1266,7 +1209,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         body: JSON.stringify(assignBody),
       });
 
-      console.log('🆕 [OutingDrawer] Assign response:', { status: assignResponse.status, ok: assignResponse.ok });
 
       if (!assignResponse.ok) {
         const assignError = await assignResponse.json().catch((e) => {
@@ -1277,10 +1219,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         throw new Error(assignError.error || 'Failed to assign newly created member');
       }
 
-      console.log('🆕 [OutingDrawer] Member assigned successfully');
 
       // Update local state immediately (optimistic update)
-      console.log('🆕 [OutingDrawer] Updating local state optimistically:', { seat, memberName: data.member.name });
       setAssignments(prev => ({
         ...prev,
         [seat]: data.member.name,
@@ -1289,7 +1229,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
       // Set status to "Awaiting Approval" (best effort, don't block UI)
       const statusField = getStatusField(seat);
-      console.log('🆕 [OutingDrawer] Setting status to Awaiting Approval:', { outingId: outing.id, statusField });
       fetch('/api/update-availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1299,22 +1238,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       });
 
       // Clear loading state immediately
-      console.log('🆕 [OutingDrawer] Clearing loading state');
       setIsLoadingStatus(false);
 
       // Refresh members list and outing data in background
-      console.log('🆕 [OutingDrawer] Starting background refresh');
       Promise.all([
         refreshMembers(),
         throttledRefresh(true)
       ]).then(() => {
-        console.log('🆕 [OutingDrawer] Background refresh completed successfully');
       }).catch(err => {
         console.error('🆕 [OutingDrawer] Error refreshing data:', err);
       });
 
       // Return the new option for CreatableSelect
-      console.log('🆕 [OutingDrawer] Member creation flow completed successfully');
       return { value: data.member.id, label: data.member.name, member: data.member };
     } catch (error) {
       console.error('🆕 [OutingDrawer] Error in handleCreateMember:', error);
@@ -1328,7 +1263,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   // Assignment change handler using the proven pattern
   const handleAssignmentChange = async (seat: string, memberName: string) => {
     if (!isInitialized || !outing) {
-      console.warn('⚠️ [OutingDrawer] Attempted to change assignment before initialization complete or no outing data');
       return;
     }
 
@@ -1336,37 +1270,24 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     const member = members.find((m) => m.name === memberName) || null;
 
     const isSub = seat.startsWith('Sub');
-    console.log(`🔍 [OutingDrawer] Assignment change for ${isSub ? 'SUB SEAT' : 'regular seat'}:`, {
-      seat,
-      from: prevMemberName,
-      to: memberName,
-      memberId: member?.id,
-      outingId: outing.id,
-      isSub,
-      memberObject: member ? { id: member.id, name: member.name } : null
-    });
 
     // Update local state optimistically but handle rollback on error
     const previousAssignments = { ...assignments };
 
     // Track if we're removing a member
     const isRemovingMember = prevMemberName !== "" && memberName === "";
-    console.log(`📝 [OutingDrawer] isRemovingMember: ${isRemovingMember}, isSub: ${isSub}`);
 
     // Mark this seat as having a pending optimistic update
     setPendingOptimisticUpdates(prev => new Set([...prev, seat]));
 
     setIsLoadingStatus(true); // Start loading state for Notion update
 
-    console.log(`📝 [OutingDrawer] Updating local state optimistically for ${seat}`);
     setAssignments((prev) => {
       const updated = { ...prev };
       if (memberName === "") {
         delete updated[seat];
-        console.log(`🗑️ [OutingDrawer] Removed ${seat} from local state`);
       } else {
         updated[seat] = memberName;
-        console.log(`✏️ [OutingDrawer] Set ${seat} = "${memberName}" in local state`);
       }
       return updated;
     });
@@ -1385,16 +1306,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         body: JSON.stringify(assignBody),
       });
 
-      console.log(`🔍 [OutingDrawer] Request sent - details:`, {
-        url: '/api/assign-seat',
-        method: 'POST',
-        bodyString: JSON.stringify(assignBody),
-        isSub,
-        seat,
-        memberName,
-        memberId: member?.id,
-        outingId: outing.id
-      });
 
       console.log(`� [OutingDrawer] Assign seat response for ${seat}:`, { status: res.status, ok: res.ok });
 
@@ -1421,17 +1332,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       const responseData = await res.json();
-      console.log(`✅ [OutingDrawer] Seat ${seat} ${isSub ? '(SUB)' : ''} ${member ? `updated with ${memberName}` : 'cleared'}. Response:`, responseData);
-      console.log(`✅ [OutingDrawer] Full response details:`, {
-        responseData: JSON.stringify(responseData, null, 2),
-        isSub,
-        seat,
-        memberName,
-        memberId: member?.id
-      });
 
       // Clear loading state immediately after successful seat assignment
-      console.log(`📝 [OutingDrawer] Clearing loading state after seat assignment for ${seat}`);
       setIsLoadingStatus(false);
 
       // Handle status update for both adding/changing a member OR removing a member
@@ -1462,7 +1364,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             statusField,
             status: "Awaiting Approval",
           };
-          console.log('📝 [OutingDrawer] Update status request body:', statusBody);
 
           const res = await fetch("/api/update-availability", {
             method: "POST",
@@ -1470,7 +1371,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             body: JSON.stringify(statusBody),
           });
 
-          console.log('📝 [OutingDrawer] Update status response:', { status: res.status, ok: res.ok });
 
           if (!res.ok) {
             const errorText = await res.text().catch((e) => {
@@ -1481,7 +1381,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             throw new Error(`Failed to reset availability: ${errorText}`);
           }
 
-          console.log(`✅ [OutingDrawer] ${statusField} reset to "Awaiting Approval"`);
         } catch (err) {
           console.error(`❌ [OutingDrawer] Error resetting ${statusField}:`, err);
           console.error('❌ [OutingDrawer] Error stack:', err instanceof Error ? err.stack : 'No stack');
@@ -1502,9 +1401,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       // Refresh the data immediately to get updated backend state
-      console.log('📝 [OutingDrawer] Starting data refresh after assignment');
       await throttledRefresh(true);
-      console.log('📝 [OutingDrawer] Data refresh completed');
 
       // Clear the optimistic update flag after a longer delay to ensure backend consistency
       setTimeout(() => {
@@ -1516,7 +1413,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         });
       }, 1500); // Longer delay to ensure backend consistency
 
-      console.log('📝 [OutingDrawer] Assignment change flow completed');
     } catch (err) {
       console.error(`❌ [OutingDrawer] Error updating seat ${seat}:`, err);
       console.error('❌ [OutingDrawer] Error stack:', err instanceof Error ? err.stack : 'No stack');
@@ -1543,47 +1439,26 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
     // Prevent availability update when no member is selected (except for special cases)
     if (!isReservingEmptySeat && !isClearingReservedStatus && (!assignments[seat] || !outing)) {
-      console.warn('⚠️ [OutingDrawer] Cannot set availability - no member selected or no outing data:', {
-        seat,
-        hasMember: !!assignments[seat],
-        hasOuting: !!outing,
-        status,
-        currentStatus: assignments[`${seat}_status`],
-        isReservingEmptySeat,
-        isClearingReservedStatus
-      });
       return;
     }
 
     if (!outing) {
-      console.warn('⚠️ [OutingDrawer] Cannot set availability - no outing data');
       return;
     }
 
-    console.log(`🔒 [OutingDrawer] handleAvailabilityUpdate called:`, {
-      seat,
-      status,
-      isReservingEmptySeat,
-      isClearingReservedStatus,
-      currentMember: assignments[seat],
-      currentStatus: assignments[`${seat}_status`]
-    });    setIsLoadingStatus(true);
     const statusField = getStatusField(seat);
     const notionStatusField = getNotionStatusField(statusField);
 
-    console.log('✅ [OutingDrawer] Updating availability:', { seat, statusField, notionStatusField, status, outingId: outing.id });
 
     // Store previous status in case we need to roll back
     const previousStatus = assignments[`${seat}_status`];
 
     // Log the member assigned to this seat for debugging
     const memberForSeat = assignments[seat];
-    console.log('✅ [OutingDrawer] Member for seat:', { seat, memberName: memberForSeat });
 
     try {
       // Update status even if no member is assigned (for Reserved status)
       // Optimistically update the UI immediately
-      console.log('✅ [OutingDrawer] Updating local state optimistically');
       setAssignments((prev) => ({
         ...prev,
         [`${seat}_status`]: status,
@@ -1594,7 +1469,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         statusField,
         status,
       };
-      console.log('✅ [OutingDrawer] Update availability request body:', requestBody);
 
       const res = await fetch("/api/update-availability", {
         method: "POST",
@@ -1602,7 +1476,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         body: JSON.stringify(requestBody),
       });
 
-      console.log('✅ [OutingDrawer] Update availability response:', { status: res.status, ok: res.ok });
 
       if (!res.ok) {
         const errorText = await res.text().catch((e) => {
@@ -1614,7 +1487,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       const responseData = await res.json();
-      console.log('✅ [OutingDrawer] Availability updated successfully:', { statusField, status, responseData });
 
       // Clear loading state immediately after successful availability update
       setIsLoadingStatus(false);
@@ -1638,7 +1510,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
       // Handle auto-confirmation when all requirements are met
       if (status === 'Available' && shouldConfirm) {
-        console.log('🎯 All required participants are available - auto-confirming outing');
 
         try {
           const payload = {
@@ -1648,7 +1519,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             status: 'Confirmed',
           };
 
-          console.log('🔁 Auto-confirm request payload:', payload);
 
           const confirmRes = await fetch("/api/update-availability", {
             method: "POST",
@@ -1660,7 +1530,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
           const respText = await confirmRes.text();
 
           if (confirmRes.ok) {
-            console.log('✅ Outing automatically confirmed', { status: confirmRes.status, body: respText });
             // Update local state immediately for instant UI feedback
             console.debug('[OutingDrawer] setting OutingStatus local to Confirmed for', outing.id);
             const updatedForConfirm = { ...assignments, OutingStatus: 'Confirmed' };
@@ -1684,7 +1553,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         // Check if outing was previously confirmed and should now be provisional
         const currentOutingStatus = outing?.properties?.OutingStatus?.status?.name;
         if (currentOutingStatus === 'Confirmed') {
-          console.log('⚠️ Requirements no longer met - changing status back to Provisional');
 
           try {
             const deconfirmRes = await fetch("/api/update-availability", {
@@ -1700,7 +1568,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
             const deconfirmText = await deconfirmRes.text();
             if (deconfirmRes.ok) {
-              console.log('✅ Outing status changed back to Provisional', { status: deconfirmRes.status, body: deconfirmText });
               // Update local state immediately for instant UI feedback
               console.debug('[OutingDrawer] setting OutingStatus local to Provisional for', outing.id);
               const updatedForProvisional = { ...assignments, OutingStatus: 'Provisional' };
@@ -1721,9 +1588,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       // Notify parent of state change to refresh data
-      console.log('✅ [OutingDrawer] Starting data refresh after availability update');
       throttledRefresh(true);
-      console.log('✅ [OutingDrawer] Availability update flow completed');
     } catch (err) {
       console.error('❌ [OutingDrawer] Error in handleAvailabilityUpdate:', err);
       console.error('❌ [OutingDrawer] Error stack:', err instanceof Error ? err.stack : 'No stack');
@@ -1734,7 +1599,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
 
       // Revert the optimistic update on failure - restore previous status if it existed
-      console.log('❌ [OutingDrawer] Reverting to previous status:', { seat, previousStatus });
       setAssignments((prev) => {
         const updated = { ...prev };
         if (previousStatus) {
@@ -1750,18 +1614,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Function to swap unavailable rowers with available subs
   const handleSwapInSubs = async () => {
-    console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS INITIATED ==========');
-    console.log('🔄 [SwapInSubs] Outing ID:', outing?.id);
-    console.log('🔄 [SwapInSubs] Initial checks:', {
-      isInitialized,
-      hasOuting: !!outing
-    });
 
     if (!isInitialized || !outing) {
-      console.warn('⚠️ [SwapInSubs] Cannot swap - missing required data:', {
-        isInitialized,
-        hasOuting: !!outing
-      });
       return;
     }
 
@@ -1772,78 +1626,49 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Find unavailable rowers (based on status field = "Not Available")
     const unavailableRowers: { seat: string; memberName: string }[] = [];
 
-    console.log('🔄 [SwapInSubs] Scanning rower seats for unavailable members...');
     for (const seat of rowerSeats) {
       const memberName = assignments[seat];
       const seatStatus = assignments[`${seat}_status`];
 
-      console.log(`🔄 [SwapInSubs] Checking ${seat}:`, {
-        memberName,
-        seatStatus,
-        hasAssignment: !!memberName,
-        isReserved: seatStatus === 'Reserved',
-        isUnavailable: seatStatus === 'Not Available'
-      });
 
       // Skip if no member assigned or if seat is reserved
       if (!memberName || seatStatus === 'Reserved') {
-        console.log(`🔄 [SwapInSubs] Skipping ${seat} - ${!memberName ? 'no member assigned' : 'seat is reserved'}`);
         continue;
       }
 
       // Check if status is "Not Available"
       if (seatStatus === 'Not Available') {
         unavailableRowers.push({ seat, memberName });
-        console.log(`❌ [SwapInSubs] Found UNAVAILABLE rower: ${memberName} in ${seat}`);
       }
     }
 
     // Find available subs (based on status field = "Available")
     const availableSubs: { seat: string; memberName: string }[] = [];
 
-    console.log('🔄 [SwapInSubs] Scanning sub seats for available members...');
     for (const seat of subSeats) {
       const memberName = assignments[seat];
       const seatStatus = assignments[`${seat}_status`];
 
-      console.log(`🔄 [SwapInSubs] Checking ${seat}:`, {
-        memberName,
-        seatStatus,
-        hasAssignment: !!memberName,
-        isReserved: seatStatus === 'Reserved',
-        isAvailable: seatStatus === 'Available'
-      });
 
       // Skip if no member assigned or if seat is reserved
       if (!memberName || seatStatus === 'Reserved') {
-        console.log(`🔄 [SwapInSubs] Skipping ${seat} - ${!memberName ? 'no member assigned' : 'seat is reserved'}`);
         continue;
       }
 
       // Check if status is "Available"
       if (seatStatus === 'Available') {
         availableSubs.push({ seat, memberName });
-        console.log(`✅ [SwapInSubs] Found AVAILABLE sub: ${memberName} in ${seat}`);
       }
     }
 
-    console.log('🔄 [SwapInSubs] Summary:', {
-      unavailableRowers: unavailableRowers.map(r => `${r.memberName} (${r.seat})`),
-      availableSubs: availableSubs.map(s => `${s.memberName} (${s.seat})`),
-      unavailableCount: unavailableRowers.length,
-      availableSubsCount: availableSubs.length
-    });
 
     // Perform swaps (limited by the minimum of unavailable rowers and available subs)
     const swapsToMake = Math.min(unavailableRowers.length, availableSubs.length);
 
     if (swapsToMake === 0) {
-      console.log('ℹ️ [SwapInSubs] No swaps needed - either no unavailable rowers or no available subs');
-      console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED (NO SWAPS) ==========');
       return;
     }
 
-    console.log(`🔄 [SwapInSubs] Performing ${swapsToMake} swap(s)`);
 
     // Perform all swaps
     for (let i = 0; i < swapsToMake; i++) {
@@ -1854,45 +1679,20 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       const rowerStatus = assignments[`${rower.seat}_status`]; // Should be "Not Available"
       const subStatus = assignments[`${sub.seat}_status`]; // Should be "Available"
 
-      console.log(`🔄 [SwapInSubs] ========== SWAP ${i + 1}/${swapsToMake} ==========`);
-      console.log(`🔄 [SwapInSubs] Swapping ${rower.memberName} (${rower.seat}) ↔ ${sub.memberName} (${sub.seat})`);
-      console.log(`🔄 [SwapInSubs] Swap details:`, {
-        swap: i + 1,
-        total: swapsToMake,
-        rower: {
-          name: rower.memberName,
-          seat: rower.seat,
-          status: rowerStatus
-        },
-        sub: {
-          name: sub.memberName,
-          seat: sub.seat,
-          status: subStatus
-        }
-      });
 
       try {
         // Step 1: Assign sub member to rower seat
-        console.log(`🔄 [SwapInSubs] Step 1: Assigning ${sub.memberName} to ${rower.seat}`);
         await handleAssignmentChange(rower.seat, sub.memberName);
-        console.log(`✅ [SwapInSubs] Step 1 complete: ${sub.memberName} → ${rower.seat}`);
 
         // Step 2: Assign rower member to sub seat
-        console.log(`🔄 [SwapInSubs] Step 2: Assigning ${rower.memberName} to ${sub.seat}`);
         await handleAssignmentChange(sub.seat, rower.memberName);
-        console.log(`✅ [SwapInSubs] Step 2 complete: ${rower.memberName} → ${sub.seat}`);
 
         // Step 3: Update status for rower seat (sub's status - should be "Available")
-        console.log(`🔄 [SwapInSubs] Step 3: Setting ${rower.seat} status to "${subStatus}"`);
         await handleAvailabilityUpdate(rower.seat, subStatus);
-        console.log(`✅ [SwapInSubs] Step 3 complete: ${rower.seat} status → ${subStatus}`);
 
         // Step 4: Update status for sub seat (rower's status - should be "Not Available")
-        console.log(`🔄 [SwapInSubs] Step 4: Setting ${sub.seat} status to "${rowerStatus}"`);
         await handleAvailabilityUpdate(sub.seat, rowerStatus);
-        console.log(`✅ [SwapInSubs] Step 4 complete: ${sub.seat} status → ${rowerStatus}`);
 
-        console.log(`✅ [SwapInSubs] Successfully completed swap ${i + 1}/${swapsToMake}: ${rower.seat} ↔ ${sub.seat} (including statuses)`);
       } catch (error) {
         console.error(`❌ [SwapInSubs] Error during swap ${i + 1}/${swapsToMake}:`, {
           swap: i + 1,
@@ -1905,8 +1705,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       }
     }
 
-    console.log('✅ [SwapInSubs] All swaps completed successfully');
-    console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED ==========');
   };
 
 

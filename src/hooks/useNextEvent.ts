@@ -19,7 +19,6 @@ export function useNextEvent(): UseNextEventResult {
       setError(null)
 
       try {
-        console.log('🔄 Fetching next event...')
         const response = await fetch('/api/get-events')
 
         if (!response.ok) {
@@ -33,7 +32,6 @@ export function useNextEvent(): UseNextEventResult {
         }
 
         const events: Event[] = data.events || []
-        console.log('📊 Fetched events:', events.length)
 
         // Get current date/time
         const now = new Date()
@@ -54,7 +52,6 @@ export function useNextEvent(): UseNextEventResult {
         // Get the next event (first in sorted array)
         const nextEvent = upcomingEvents.length > 0 ? upcomingEvents[0] : null
 
-        console.log('✅ Next event:', nextEvent?.title || 'None')
         setEvent(nextEvent)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load next event'

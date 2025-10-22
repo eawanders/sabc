@@ -24,7 +24,6 @@ export function useFlagStatus(): UseFlagStatusResult {
       setError(null)
 
       try {
-        console.log('🔄 Fetching flag status...')
         const response = await fetch('/api/flag-status', {
           cache: 'no-store',
         })
@@ -34,7 +33,6 @@ export function useFlagStatus(): UseFlagStatusResult {
         }
 
         const data: FlagStatusData = await response.json()
-        console.log('📊 Fetched flag status:', data)
 
         setFlagStatus(data.status_text || null)
       } catch (err) {

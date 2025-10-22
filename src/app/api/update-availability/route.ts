@@ -4,22 +4,6 @@ const notion = new Client({ auth: process.env.NOTION_TOKEN });
 
 export async function POST(req: Request) {
   try {
-    console.log('🎯 Starting availability update request...')
-
-    // Validate environment variables
-    if (!process.env.NOTION_TOKEN) {
-      console.error('❌ NOTION_TOKEN is not set')
-      return new Response(
-        JSON.stringify({
-          error: 'Missing Notion token configuration',
-          success: false
-        }),
-        { status: 500 }
-      )
-    }
-
-    const body = await req.json();
-    console.log("📥 Received availability update request:", body);
 
     const { outingId, statusField, status } = body;
 
@@ -97,12 +81,6 @@ export async function POST(req: Request) {
                             statusFieldMapping[normalizedField] ||
                             statusField;
 
-    console.log(`🔄 Mapping status field:`, {
-      original: statusField,
-      normalized: normalizedField,
-      mapped: actualPropertyName,
-      targetStatus: status
-    });
 
     // Validate status value
     const validStatuses = ['Available', 'Maybe Available', 'Not Available', 'Awaiting Approval', 'Provisional', 'Confirmed', 'Cancelled', 'Reserved'];
@@ -123,21 +101,12 @@ export async function POST(req: Request) {
       }
     };
 
-    console.log('🔄 Updating Notion page with availability payload:', {
-      pageId: outingId,
-      properties: updatePayload
-    });
 
     const response = await notion.pages.update({
       page_id: outingId,
       properties: updatePayload
     });
 
-    console.log(`✅ Availability update successful:`, {
-      pageId: response.id,
-      property: actualPropertyName,
-      status: status
-    });
 
     return new Response(JSON.stringify({
       success: true,

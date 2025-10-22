@@ -7,20 +7,12 @@ import { isSameDay, parseISO } from '@/lib/date';
  * Convert Test objects to TestCalendarEvent objects for calendar display
  */
 export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
-  console.log('🔄 [testMappers] mapTestsToEvents called with', tests.length, 'tests');
 
   return tests.map(test => {
     // Parse dates
     const startDate = parseISO(test.date.start);
     const endDate = test.date.end ? parseISO(test.date.end) : startDate;
 
-    console.log('📅 [testMappers] Parsing test date:', {
-      id: test.id,
-      rawStart: test.date.start,
-      rawEnd: test.date.end,
-      parsedStart: startDate.toISOString(),
-      parsedEnd: endDate.toISOString(),
-    });
 
     // Count booked slots
     const bookedSlots = countBookedSlots(test);
@@ -62,12 +54,6 @@ export function mapTestsToEvents(tests: Test[]): TestCalendarEvent[] {
       originalTest: test
     };
 
-    console.log('✅ [testMappers] Mapped test event:', {
-      id: event.id,
-      type: event.type,
-      startTime: event.startTime.toISOString(),
-      endTime: event.endTime.toISOString(),
-    });
 
     return event;
   });
@@ -81,27 +67,16 @@ export function filterTestEventsByDateRange(
   startDate: Date,
   endDate: Date
 ): TestCalendarEvent[] {
-  console.log('📅 [testMappers] filterTestEventsByDateRange:', {
-    totalEvents: events.length,
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-  });
 
   const filtered = events.filter(event => {
     const inRange = (event.startTime >= startDate && event.startTime <= endDate) ||
            (event.endTime >= startDate && event.endTime <= endDate) ||
            (event.startTime <= startDate && event.endTime >= endDate);
 
-    console.log(`  ${inRange ? '✅' : '❌'} Event ${event.id}:`, {
-      startTime: event.startTime.toISOString(),
-      endTime: event.endTime.toISOString(),
-      inRange,
-    });
 
     return inRange;
   });
 
-  console.log(`📊 [testMappers] Filtered ${filtered.length} events in date range`);
   return filtered;
 }
 
@@ -128,11 +103,6 @@ export function groupTestEventsByDate(events: TestCalendarEvent[]): Record<strin
     // Use toDateString() to match the format used in calendar days
     const dateKey = event.startTime.toDateString();
 
-    console.log('🔑 [testMappers] Grouping event with dateKey:', {
-      eventId: event.id,
-      dateKey,
-      startTime: event.startTime.toISOString(),
-    });
 
     if (!grouped[dateKey]) {
       grouped[dateKey] = [];

@@ -65,7 +65,6 @@ export function useMembers(): UseMembersResult {
   const [error, setError] = useState<string | null>(null)
 
   const fetchMembers = useCallback(async () => {
-    console.log('🔄 useMembers: Starting to fetch members...')
     setLoading(true)
     setError(null)
 
@@ -75,30 +74,17 @@ export function useMembers(): UseMembersResult {
       setError(null)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      console.error('❌ useMembers: Error fetching members:', err)
+      console.error('useMembers: error fetching members', err)
       setError(errorMessage)
-      setMembers([]) // Reset members on error
+      setMembers([])
     } finally {
       setLoading(false)
-      console.log('🏁 useMembers: Fetch complete')
     }
   }, [])
 
-  // Initial fetch
   useEffect(() => {
-    console.log('🚀 useMembers: Hook initialized, triggering initial fetch')
     fetchMembers()
   }, [fetchMembers])
-
-  // Debug logging for state changes
-  useEffect(() => {
-    console.log('📊 useMembers: State update -', {
-      membersCount: members.length,
-      loading,
-      error,
-      firstMember: members[0]?.name || 'None'
-    })
-  }, [members, loading, error])
 
   return {
     members,

@@ -10,7 +10,6 @@ const notion = new Client({
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🎯 Starting outing report submission...');
 
     // Validate environment variables
     if (!process.env.NOTION_TOKEN) {
@@ -22,7 +21,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    console.log('📥 Received outing report submission:', body);
 
     const { outingId, outingSummary, boatFeel, outingSuccesses, nextFocus, coachFeedback } = body;
 
@@ -113,20 +111,12 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    console.log('🔄 Updating Notion page with outing report payload:', {
-      pageId: outingId,
-      properties: updatePayload
-    });
 
     const response = await notion.pages.update({
       page_id: outingId,
       properties: updatePayload
     });
 
-    console.log(`✅ Outing report submission successful:`, {
-      pageId: response.id,
-      updatedProperties: Object.keys(updatePayload)
-    });
 
     return NextResponse.json({
       success: true,
