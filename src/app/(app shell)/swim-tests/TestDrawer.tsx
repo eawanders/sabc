@@ -314,7 +314,11 @@ const TestRow: React.FC<TestRowProps> = ({
           }}
           onClick={() => {
             if (isMemberSelected && !isLoadingStatus) {
-              onOutcomeUpdate(slot, "Passed");
+              // Toggle: if already "Passed", return to "Test Booked"
+              const newOutcome = assignments[`${slot}_outcome`] === "Passed"
+                ? "Test Booked"
+                : "Passed";
+              onOutcomeUpdate(slot, newOutcome);
             }
           }}
         >
@@ -351,7 +355,11 @@ const TestRow: React.FC<TestRowProps> = ({
           }}
           onClick={() => {
             if (isMemberSelected && !isLoadingStatus) {
-              onOutcomeUpdate(slot, "Failed");
+              // Toggle: if already "Failed", return to "Test Booked"
+              const newOutcome = assignments[`${slot}_outcome`] === "Failed"
+                ? "Test Booked"
+                : "Failed";
+              onOutcomeUpdate(slot, newOutcome);
             }
           }}
         >

@@ -623,7 +623,11 @@ const RowerRow: React.FC<RowerRowProps> = ({
           }}
           onClick={() => {
             if (isMemberSelected && !isLoadingStatus) {
-              onAvailabilityUpdate(seat, "Available");
+              // Toggle: if already "Available", return to "Awaiting Approval"
+              const newStatus = assignments[`${seat}_status`] === "Available"
+                ? "Awaiting Approval"
+                : "Available";
+              onAvailabilityUpdate(seat, newStatus);
             }
           }}
         >
@@ -660,7 +664,11 @@ const RowerRow: React.FC<RowerRowProps> = ({
           }}
           onClick={() => {
             if (isMemberSelected && !isLoadingStatus) {
-              onAvailabilityUpdate(seat, "Not Available");
+              // Toggle: if already "Not Available", return to "Awaiting Approval"
+              const newStatus = assignments[`${seat}_status`] === "Not Available"
+                ? "Awaiting Approval"
+                : "Not Available";
+              onAvailabilityUpdate(seat, newStatus);
             }
           }}
         >
