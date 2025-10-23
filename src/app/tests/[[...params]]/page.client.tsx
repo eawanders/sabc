@@ -84,14 +84,22 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
   // Week navigation handlers using URL state
   const goToNextWeek = useCallback(() => {
     const currentWeekStart = getWeekStart(urlState.date);
-    const nextWeek = new Date(currentWeekStart.getTime() + (7 * 24 * 60 * 60 * 1000));
-    setDate(nextWeek);
+    // Add 7 days by manipulating the date directly to avoid DST issues
+    const nextWeek = new Date(currentWeekStart);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    // Normalize to ensure we get the correct week start
+    const normalizedNextWeek = getWeekStart(nextWeek);
+    setDate(normalizedNextWeek);
   }, [urlState.date, setDate]);
 
   const goToPreviousWeek = useCallback(() => {
     const currentWeekStart = getWeekStart(urlState.date);
-    const prevWeek = new Date(currentWeekStart.getTime() - (7 * 24 * 60 * 60 * 1000));
-    setDate(prevWeek);
+    // Subtract 7 days by manipulating the date directly to avoid DST issues
+    const prevWeek = new Date(currentWeekStart);
+    prevWeek.setDate(prevWeek.getDate() - 7);
+    // Normalize to ensure we get the correct week start
+    const normalizedPrevWeek = getWeekStart(prevWeek);
+    setDate(normalizedPrevWeek);
   }, [urlState.date, setDate]);
 
   // Convert URL filter to component filter format
@@ -119,38 +127,13 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
 
   // Transform tests to calendar events and filter by current week
   const weekEvents = useMemo(() => {
-    console.log('🔄 [Tests Page] Processing tests:', {
-      totalTests: tests.length,
-      currentWeekStart: currentWeek.start.toISOString(),
-      currentWeekEnd: currentWeek.end.toISOString(),
-      filterType: componentFilterType,
-    });
-
     if (!tests.length) {
-      console.log('⚠️ [Tests Page] No tests available');
       return [];
     }
 
     const allEvents = mapTestsToEvents(tests);
-    console.log('📋 [Tests Page] All mapped events:', allEvents.length, allEvents.map(e => ({
-      id: e.id,
-      type: e.type,
-      startTime: e.startTime.toISOString(),
-      title: e.title,
-    })));
-
     const dateFilteredEvents = filterTestEventsByDateRange(allEvents, currentWeek.start, currentWeek.end);
-    console.log('📅 [Tests Page] After date filtering:', dateFilteredEvents.length, dateFilteredEvents.map(e => ({
-      id: e.id,
-      type: e.type,
-      startTime: e.startTime.toISOString(),
-    })));
-
     const typeFilteredEvents = filterTestEventsByType(dateFilteredEvents, componentFilterType);
-    console.log('🔍 [Tests Page] After type filtering:', typeFilteredEvents.length, typeFilteredEvents.map(e => ({
-      id: e.id,
-      type: e.type,
-    })));
 
     return typeFilteredEvents;
   }, [tests, currentWeek, componentFilterType]);
@@ -158,35 +141,14 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
   // Group events by date and create calendar days
   const calendarDays = useMemo(() => {
     const eventsByDate = groupTestEventsByDate(weekEvents);
-    console.log('🗓️ [Tests Page] Events grouped by date:', Object.keys(eventsByDate).length, 'days with events');
-    console.log('📊 [Tests Page] Events by date detail:', Object.entries(eventsByDate).map(([date, events]) => ({
-      date,
-      count: events.length,
-      events: events.map(e => ({ id: e.id, type: e.type, time: e.startTime.toISOString() })),
-    })));
-
     const weekDays = getWeekDays(currentWeek.start);
-    console.log('📆 [Tests Page] Week days:', weekDays.map(d => d.toDateString()));
 
     return weekDays.map((date) => {
       const dateKey = date.toDateString();
       const dayEvents = eventsByDate[dateKey] || [];
 
-      console.log(`📍 [Tests Page] Processing day ${dateKey}:`, {
-        hasEvents: dayEvents.length > 0,
-        eventCount: dayEvents.length,
-        events: dayEvents.map(e => ({ id: e.id, type: e.type })),
-      });
-
       // Map test events to calendar events for compatibility
       const compatibleEvents: CalendarEvent[] = dayEvents.map((event: TestCalendarEvent): CalendarEvent => {
-        console.log('🔄 [Tests Page] Converting test event to calendar event:', {
-          id: event.id,
-          type: event.type,
-          startTime: event.startTime.toISOString(),
-          originalTestId: event.originalTest?.id,
-        });
-
         return {
           id: event.id,
           title: event.title,
@@ -231,11 +193,6 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
 
   // Event handlers with URL updates
   const handleEventClick = (event: CalendarEvent) => {
-    console.log('=== Test Event Clicked ===');
-    console.log('Event data:', event);
-    console.log('originalOuting:', event.originalOuting);
-    console.log('id:', event.id);
-
     // For test events, get the test ID from the event
     let testId: string | undefined;
 
@@ -254,10 +211,7 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
     }
 
     if (testId) {
-      console.log('✅ Opening test drawer with ID:', testId);
       openTestDrawer(testId);
-    } else {
-      console.warn('❌ No valid test ID found in event');
     }
   };
 
@@ -273,17 +227,6 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
       'Capsize Drill': 'capsize-drill',
     };
     setFilter(testFilterMap[type]);
-  };
-
-  const handleWeekNavigation = (direction: 'next' | 'prev') => {
-    // Get the current week start, then add/subtract weeks properly
-    const currentWeekStart = new Date(urlState.date);
-    const daysToAdd = direction === 'next' ? 7 : -7;
-
-    const newDate = new Date(currentWeekStart.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
-
-    console.log(`📅 Tests: Navigating ${direction}: from ${urlState.date.toDateString()} to ${newDate.toDateString()}`);
-    setDate(newDate);
   };
 
   // Convert URL filter back to component format for header
@@ -333,8 +276,8 @@ export default function TestsPageWithParams({ params }: TestsPageWithParamsProps
         {/* Calendar Header */}
         <TestCalendarHeaderResponsive
           currentWeek={currentWeek}
-          onPreviousWeek={() => handleWeekNavigation('prev')}
-          onNextWeek={() => handleWeekNavigation('next')}
+          onPreviousWeek={goToPreviousWeek}
+          onNextWeek={goToNextWeek}
           filterType={headerFilterType}
           onFilterChange={handleFilterChange}
           filterOptions={testFilterOptions}
