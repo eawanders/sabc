@@ -78,35 +78,23 @@ export default function SchedulePageWithParams({ params }: SchedulePageWithParam
 
   // Week navigation handlers using URL state
   const goToNextWeek = useCallback(() => {
-    console.log('🚀 goToNextWeek: Function called');
-    console.log('🚀 goToNextWeek: Current urlState.date:', urlState.date);
-    console.log('🚀 goToNextWeek: setDate function:', setDate);
-
     const currentWeekStart = getWeekStart(urlState.date);
-    console.log('🚀 goToNextWeek: currentWeekStart:', currentWeekStart);
-
-    const nextWeek = new Date(currentWeekStart.getTime() + (7 * 24 * 60 * 60 * 1000));
-    console.log('🚀 goToNextWeek: nextWeek calculated:', nextWeek);
-
-    console.log('🚀 goToNextWeek: About to call setDate...');
-    setDate(nextWeek);
-    console.log('🚀 goToNextWeek: setDate called');
+    // Add 7 days by manipulating the date directly to avoid DST issues
+    const nextWeek = new Date(currentWeekStart);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    // Normalize to ensure we get the correct week start
+    const normalizedNextWeek = getWeekStart(nextWeek);
+    setDate(normalizedNextWeek);
   }, [urlState.date, setDate]);
 
   const goToPreviousWeek = useCallback(() => {
-    console.log('🚀 goToPreviousWeek: Function called');
-    console.log('🚀 goToPreviousWeek: Current urlState.date:', urlState.date);
-    console.log('🚀 goToPreviousWeek: setDate function:', setDate);
-
     const currentWeekStart = getWeekStart(urlState.date);
-    console.log('🚀 goToPreviousWeek: currentWeekStart:', currentWeekStart);
-
-    const prevWeek = new Date(currentWeekStart.getTime() - (7 * 24 * 60 * 60 * 1000));
-    console.log('🚀 goToPreviousWeek: prevWeek calculated:', prevWeek);
-
-    console.log('🚀 goToPreviousWeek: About to call setDate...');
-    setDate(prevWeek);
-    console.log('🚀 goToPreviousWeek: setDate called');
+    // Subtract 7 days by manipulating the date directly to avoid DST issues
+    const prevWeek = new Date(currentWeekStart);
+    prevWeek.setDate(prevWeek.getDate() - 7);
+    // Normalize to ensure we get the correct week start
+    const normalizedPrevWeek = getWeekStart(prevWeek);
+    setDate(normalizedPrevWeek);
   }, [urlState.date, setDate]);
 
   // Convert URL filter to calendar filter format
