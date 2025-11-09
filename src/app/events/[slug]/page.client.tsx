@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import type { Event } from '@/components/EventCard';
 
 export default function EventSignUpPageClient() {
@@ -72,12 +73,12 @@ export default function EventSignUpPageClient() {
               <p className="font-semibold">Error loading event</p>
               <p className="text-sm">{error}</p>
             </div>
-            <a
+            <Link
               href="/events"
               className="text-blue-600 hover:text-blue-800 underline"
             >
               Return to Events
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -92,13 +93,13 @@ export default function EventSignUpPageClient() {
         </h1>
         <div className="w-full flex items-center justify-center" style={{ minHeight: '400px' }}>
           <div className="text-center">
-            <p className="text-muted-foreground mb-4">The event you're looking for could not be found.</p>
-            <a
+            <p className="text-muted-foreground mb-4">The event you&apos;re looking for could not be found.</p>
+            <Link
               href="/events"
               className="text-blue-600 hover:text-blue-800 underline"
             >
               Return to Events
-            </a>
+            </Link>
           </div>
         </div>
       </div>
@@ -114,12 +115,12 @@ export default function EventSignUpPageClient() {
         <div className="w-full flex items-center justify-center" style={{ minHeight: '400px' }}>
           <div className="text-center">
             <p className="text-muted-foreground mb-4">This event does not have a sign-up form available.</p>
-            <a
+            <Link
               href="/events"
               className="text-blue-600 hover:text-blue-800 underline"
             >
               Return to Events
-            </a>
+            </Link>
           </div>
         </div>
       </div>
