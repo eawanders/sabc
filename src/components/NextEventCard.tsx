@@ -3,6 +3,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useNextEvent } from '@/hooks/useNextEvent';
+import ActionButton from '@/components/ui/ActionButton';
+import { createSlug } from '@/lib/slug';
 
 function ChevronRightIcon({ color = '#4C6FFF' }: { color?: string }) {
   return (
@@ -23,6 +25,13 @@ export default function NextEventCard() {
 
   const handleNavigate = () => {
     router.push('/events');
+  };
+
+  const handleSignUp = () => {
+    if (event) {
+      const slug = createSlug(event.title);
+      router.push(`/events/${slug}`);
+    }
   };
 
   // Blue color for labels (matching the theme primary color)
@@ -138,6 +147,23 @@ export default function NextEventCard() {
                 {event.date}
               </span>
             </div>
+
+            {/* Sign Up Button - only shown when embeddedForm exists */}
+            {event.embeddedForm && (
+              <div style={{ marginTop: '12px', width: '100%' }}>
+              <ActionButton
+                onClick={handleSignUp}
+                style={{
+                  background: '#E1E8FF',
+                  color: '#4C6FFF',
+                  width: '100%',
+                }}
+                arrowColor="#4C6FFF"
+              >
+                Sign up
+              </ActionButton>
+              </div>
+            )}
           </>
         )}
       </div>
