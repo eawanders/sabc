@@ -1,6 +1,9 @@
 // src/components/EventCard.tsx
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/classnames';
+import ActionButton from '@/components/ui/ActionButton';
+import { createSlug } from '@/lib/slug';
 
 export interface Event {
   id: string;
@@ -10,6 +13,7 @@ export interface Event {
   time?: string; // from "Date" property (date with time) - formatted display time
   dateTime?: string; // ISO string for the actual date/time value
   imageUrl?: string; // from "Files & media" property (file)
+  embeddedForm?: string; // from "Embedded Form" property (rich text) - iframe snippet
 }
 
 export interface EventCardProps {
@@ -18,6 +22,13 @@ export interface EventCardProps {
 }
 
 export function EventCard({ event, className }: EventCardProps) {
+  const router = useRouter();
+
+  const handleSignUp = () => {
+    const slug = createSlug(event.title);
+    router.push(`/events/${slug}`);
+  };
+
   return (
     <div
       className={cn("flex flex-col items-start", className)}
@@ -80,6 +91,21 @@ export function EventCard({ event, className }: EventCardProps) {
             <div>{event.time}</div>
           )}
         </div>
+
+        {/* Sign Up Button - only shown when embeddedForm exists */}
+        {event.embeddedForm && (
+          <ActionButton
+            onClick={handleSignUp}
+            style={{
+              background: '#E1E8FF',
+              color: '#4C6FFF',
+              marginTop: '8px',
+            }}
+            arrowColor="#4C6FFF"
+          >
+            Sign up
+          </ActionButton>
+        )}
       </div>
     </div>
   );

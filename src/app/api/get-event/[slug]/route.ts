@@ -1,15 +1,28 @@
-// src/app/api/get-events/route.ts
+// src/app/api/get-event/[slug]/route.ts
 import { NextResponse } from 'next/server'
 import { queryDataSource } from '@/server/notion/query'
 import { startTiming, createServerTiming } from '@/server/timing'
+import { createSlug } from '@/lib/slug'
 
 export const revalidate = 120
 
-export async function GET() {
+interface RouteContext {
+  params: Promise<{
+    slug: string
+  }>
+}
+
+export async function GET(
+  request: Request,
+  context: RouteContext
+) {
   const start = startTiming()
+  const { slug } = await context.params
+
   try {
     const databaseId = resolveEventsDatabaseId()
 
+    // Fetch all events
     const pages = await queryDataSource<any>(
       databaseId,
       {
@@ -19,26 +32,42 @@ export async function GET() {
             direction: 'ascending',
           },
         ],
-        page_size: 50,
+        page_size: 100,
       },
       'events.query'
     )
 
+    // Transform pages and find matching event by slug
     const events = pages.map((page: any) => transformNotionPageToEvent(page))
+    const matchingEvent = events.find((event: any) => {
+      const eventSlug = createSlug(event.title)
+      return eventSlug === slug
+    })
+
+    if (!matchingEvent) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: 'Event not found'
+        },
+        { status: 404 }
+      )
+      response.headers.set('Server-Timing', createServerTiming(start))
+      return response
+    }
 
     const response = NextResponse.json({
       success: true,
-      events,
-      count: events.length
+      event: matchingEvent
     })
     response.headers.set('Server-Timing', createServerTiming(start))
     return response
 
   } catch (error) {
-    console.error('❌ Error fetching events:', error)
+    console.error('❌ Error fetching event:', error)
     const response = NextResponse.json(
       {
-        error: 'Failed to fetch events',
+        error: 'Failed to fetch event',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
