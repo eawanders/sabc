@@ -10,9 +10,17 @@ export async function GET() {
   try {
     const databaseId = resolveEventsDatabaseId()
 
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+
     const pages = await queryDataSource<any>(
       databaseId,
       {
+        filter: {
+          property: 'Date',
+          date: {
+            on_or_after: today,
+          },
+        },
         sorts: [
           {
             property: 'Date',
