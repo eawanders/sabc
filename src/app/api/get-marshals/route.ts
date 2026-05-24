@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server';
 import { getMarshals } from '@/server/notion/marshals';
 import { startTiming, createServerTiming } from '@/server/timing';
 
-export const revalidate = 30;
+// Always read Notion fresh — the page is signup-driven and stale data
+// (e.g. after assign/clear or an edit made directly in Notion) confuses
+// captains who expect the table to reflect reality immediately.
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const start = startTiming();
