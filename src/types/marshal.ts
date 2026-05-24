@@ -27,7 +27,7 @@ export type MarshalLocation =
 
 export type MarshalEvent = 'Eights 2026' | 'Torpids 2026' | 'Other';
 
-export type ClashCrew = 'M4' | 'M3' | 'W3';
+export type ClashCrew = 'Men Div 4' | 'Men Div 3' | 'Women Div 3';
 
 export type MarshalPersonStatus =
   | 'Open'

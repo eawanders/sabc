@@ -22,15 +22,8 @@ export async function POST(request: NextRequest) {
 
     if (memberId) {
       properties['Person'] = { relation: [{ id: memberId }] };
-
-      const slotPage = await notion.pages.retrieve({ page_id: slotId });
-      const current =
-        (slotPage as { properties?: Record<string, { select?: { name?: string } }> })
-          .properties?.['Person Status']?.select?.name;
-      const skipSet = current && ['Confirmed', 'Reserved', 'Not Available'].includes(current);
-      if (!skipSet) {
-        properties['Person Status'] = { select: { name: 'Awaiting Approval' } };
-      }
+      // Signup = confirmed. No intermediate approval step.
+      properties['Person Status'] = { select: { name: 'Confirmed' } };
     } else {
       properties['Person'] = { relation: [] };
       properties['Person Status'] = { select: { name: 'Open' } };
