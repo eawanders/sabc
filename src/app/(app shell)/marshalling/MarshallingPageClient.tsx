@@ -1,11 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  MarshalDay,
-  MarshalPersonStatus,
-  MarshalSlot,
-} from '@/types/marshal';
+import type { MarshalDay, MarshalSlot } from '@/types/marshal';
 import type { Member } from '@/types/members';
 import MarshalDrawer from './MarshalDrawer';
 
@@ -22,15 +18,6 @@ const ROLE_COLORS: Record<string, string> = {
   Marshal: '#0177FB',
   Umpire: '#F97316',
   'Static Umpire': '#A855F7',
-};
-
-const STATUS_COLORS: Record<MarshalPersonStatus, { bg: string; fg: string }> = {
-  Open: { bg: '#F1F5F9', fg: '#64748B' },
-  Reserved: { bg: '#E2E8F0', fg: '#475569' },
-  'Maybe Available': { bg: '#DBEAFE', fg: '#1D4ED8' },
-  'Awaiting Approval': { bg: '#FEF3C7', fg: '#B45309' },
-  Confirmed: { bg: '#DCFCE7', fg: '#15803D' },
-  'Not Available': { bg: '#FEE2E2', fg: '#B91C1C' },
 };
 
 function formatTimeRange(start: string, end?: string) {
@@ -101,9 +88,8 @@ export default function MarshallingPageClient() {
 
   const counts = useMemo(() => {
     const total = slots.length;
-    const filled = slots.filter((s) => s.person && s.personStatus !== 'Open').length;
-    const confirmed = slots.filter((s) => s.personStatus === 'Confirmed').length;
-    return { total, filled, confirmed };
+    const filled = slots.filter((s) => Boolean(s.person)).length;
+    return { total, filled };
   }, [slots]);
 
   return (
@@ -130,9 +116,9 @@ export default function MarshallingPageClient() {
           Marshalling & Umpires
         </h1>
         <p style={{ color: '#425466', fontFamily: 'Gilroy', fontSize: '16px', margin: 0 }}>
-          St Antony&apos;s commitments for Summer Eights 2026 (27–30 May). Click a slot to sign up.
-          Slots tagged with a crew warning cannot be taken by rowers in that crew (race time ± 1 hr
-          falls within the shift).
+          St Antony&apos;s commitments for Summer Eights 2026 (27–30 May). Click a slot to sign up
+          — your name confirms the slot. Crew warnings indicate rowers who cannot take the slot
+          (race time ± 1 hr overlaps the shift).
         </p>
         <p
           style={{
@@ -142,9 +128,7 @@ export default function MarshallingPageClient() {
             margin: '4px 0 0 0',
           }}
         >
-          {loading
-            ? 'Loading…'
-            : `${counts.filled} / ${counts.total} filled · ${counts.confirmed} confirmed`}
+          {loading ? 'Loading…' : `${counts.filled} / ${counts.total} filled`}
         </p>
       </header>
 
@@ -199,6 +183,7 @@ export default function MarshallingPageClient() {
           isOpen={!!selectedSlot}
           onClose={() => setSelectedId(null)}
           onChange={() => loadSlots()}
+          onMembersChange={() => loadMembers()}
         />
       )}
     </main>
@@ -206,14 +191,14 @@ export default function MarshallingPageClient() {
 }
 
 function SlotRow({ slot, onClick }: { slot: MarshalSlot; onClick: () => void }) {
-  const statusColors = STATUS_COLORS[slot.personStatus] ?? STATUS_COLORS.Open;
   const roleColor = slot.role ? ROLE_COLORS[slot.role] : '#0177FB';
+  const filled = Boolean(slot.person);
   return (
     <button
       onClick={onClick}
       style={{
         display: 'grid',
-        gridTemplateColumns: '140px 170px minmax(180px, 1fr) minmax(160px, 1fr) 160px minmax(160px, 1fr)',
+        gridTemplateColumns: '140px 170px minmax(180px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr)',
         gap: '12px',
         alignItems: 'center',
         background: '#FFF',
@@ -246,22 +231,24 @@ function SlotRow({ slot, onClick }: { slot: MarshalSlot; onClick: () => void }) 
         {slot.role ?? '—'} · {slot.shift ?? ''}
       </span>
       <span style={{ color: '#425466', fontSize: '13px' }}>{slot.location ?? '—'}</span>
-      <span style={{ color: '#161736' }}>
-        {slot.person ? slot.person.name : <em style={{ color: '#94A3B8' }}>Unfilled</em>}
-      </span>
       <span
         style={{
           display: 'inline-flex',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          background: statusColors.bg,
-          color: statusColors.fg,
-          fontSize: '12px',
-          fontWeight: 600,
-          width: 'fit-content',
+          alignItems: 'center',
+          gap: '8px',
+          color: filled ? '#15803D' : '#94A3B8',
+          fontWeight: filled ? 600 : 400,
+          fontStyle: filled ? 'normal' : 'italic',
         }}
       >
-        {slot.personStatus}
+        {filled ? (
+          <>
+            <span aria-hidden>✓</span>
+            {slot.person!.name}
+          </>
+        ) : (
+          'Unfilled'
+        )}
       </span>
       <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
         {slot.clashCrews.length > 0 ? (

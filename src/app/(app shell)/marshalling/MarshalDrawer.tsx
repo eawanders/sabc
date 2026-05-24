@@ -2,21 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Sheet from '@/components/ui/Sheet';
-import type {
-  ClashCrew,
-  MarshalPersonStatus,
-  MarshalSlot,
-} from '@/types/marshal';
+import type { ClashCrew, MarshalSlot } from '@/types/marshal';
 import type { Member } from '@/types/members';
-
-const STATUS_OPTIONS: MarshalPersonStatus[] = [
-  'Open',
-  'Reserved',
-  'Maybe Available',
-  'Awaiting Approval',
-  'Confirmed',
-  'Not Available',
-];
 
 interface MarshalDrawerProps {
   slot: MarshalSlot;
@@ -24,6 +11,7 @@ interface MarshalDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onChange: () => void;
+  onMembersChange?: () => void;
 }
 
 function formatTimeRange(start: string, end?: string) {
@@ -52,27 +40,38 @@ export default function MarshalDrawer({
   isOpen,
   onClose,
   onChange,
+  onMembersChange,
 }: MarshalDrawerProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(slot.person?.id ?? null);
-  const [status, setStatus] = useState<MarshalPersonStatus>(slot.personStatus);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedMemberId(slot.person?.id ?? null);
-    setStatus(slot.personStatus);
     setQuery('');
     setError(null);
-  }, [slot.id, slot.person?.id, slot.personStatus]);
+  }, [slot.id, slot.person?.id]);
+
+  const trimmedQuery = query.trim();
 
   const filteredMembers = useMemo(() => {
-    if (!query.trim()) return members;
-    const q = query.toLowerCase();
+    if (!trimmedQuery) return members;
+    const q = trimmedQuery.toLowerCase();
     return members.filter(
       (m) => m.name.toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
     );
-  }, [members, query]);
+  }, [members, trimmedQuery]);
+
+  const exactMatch = useMemo(
+    () =>
+      trimmedQuery &&
+      members.some((m) => m.name.toLowerCase() === trimmedQuery.toLowerCase()),
+    [members, trimmedQuery]
+  );
+
+  const canCreate = Boolean(trimmedQuery) && !exactMatch && !creating;
 
   async function saveAssignment(newMemberId: string | null) {
     setSaving(true);
@@ -93,33 +92,41 @@ export default function MarshalDrawer({
     }
   }
 
-  async function saveStatus(newStatus: MarshalPersonStatus) {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/update-marshal-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slotId: slot.id, status: newStatus }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || 'Failed to update');
-      onChange();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handlePick(memberId: string | null) {
     setSelectedMemberId(memberId);
     await saveAssignment(memberId);
   }
 
-  async function handleStatusChange(next: MarshalPersonStatus) {
-    setStatus(next);
-    await saveStatus(next);
+  async function handleCreateAndAssign() {
+    const name = trimmedQuery;
+    if (!name) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const createRes = await fetch('/api/add-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, role: 'non-member' }),
+      });
+      if (!createRes.ok) {
+        const data = await createRes.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to create member (HTTP ${createRes.status})`);
+      }
+      const created = await createRes.json();
+      const newId: string | undefined = created?.member?.id;
+      if (!newId) throw new Error('Member created but no ID returned');
+
+      // Refresh parent members list so this name is discoverable next time
+      onMembersChange?.();
+
+      // Assign to this slot
+      setSelectedMemberId(newId);
+      await saveAssignment(newId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add new member');
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -158,13 +165,13 @@ export default function MarshalDrawer({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '10px 14px',
-                background: '#EEF6FF',
-                border: '1px solid #BFDBFE',
+                background: '#DCFCE7',
+                border: '1px solid #86EFAC',
                 borderRadius: '8px',
               }}
             >
-              <span style={{ color: '#161736', fontWeight: 600 }}>
-                {members.find((m) => m.id === selectedMemberId)?.name ?? 'Selected'}
+              <span style={{ color: '#15803D', fontWeight: 600 }}>
+                ✓ {members.find((m) => m.id === selectedMemberId)?.name ?? 'Confirmed'}
               </span>
               <button
                 type="button"
@@ -179,14 +186,14 @@ export default function MarshalDrawer({
             <>
               <input
                 type="search"
-                placeholder="Search members…"
+                placeholder="Search members or type a new name…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 style={inputStyle}
               />
               <div
                 style={{
-                  maxHeight: '240px',
+                  maxHeight: '320px',
                   overflowY: 'auto',
                   border: '1px solid #DFE5F1',
                   borderRadius: '8px',
@@ -202,7 +209,7 @@ export default function MarshalDrawer({
                       key={m.id}
                       type="button"
                       onClick={() => handlePick(m.id)}
-                      disabled={saving}
+                      disabled={saving || creating}
                       style={memberRowStyle}
                     >
                       <span style={{ fontWeight: 600 }}>{m.name}</span>
@@ -211,29 +218,23 @@ export default function MarshalDrawer({
                   ))
                 )}
               </div>
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={handleCreateAndAssign}
+                  disabled={saving || creating}
+                  style={createBtnStyle}
+                >
+                  + Add “{trimmedQuery}” as new member and sign up
+                </button>
+              )}
+              {creating && (
+                <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+                  Creating member…
+                </p>
+              )}
             </>
           )}
-        </section>
-
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={labelStyle}>Status</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {STATUS_OPTIONS.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                disabled={saving}
-                onClick={() => handleStatusChange(opt)}
-                style={{
-                  ...chipBtnStyle,
-                  background: status === opt ? '#0177FB' : '#F1F5F9',
-                  color: status === opt ? '#FFF' : '#475569',
-                }}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
         </section>
 
         {error && (
@@ -331,19 +332,22 @@ const clearBtnStyle: React.CSSProperties = {
   padding: '4px 10px',
   borderRadius: '6px',
   background: '#FFF',
-  border: '1px solid #BFDBFE',
-  color: '#1D4ED8',
+  border: '1px solid #86EFAC',
+  color: '#15803D',
   fontSize: '12px',
   fontWeight: 600,
   cursor: 'pointer',
 };
 
-const chipBtnStyle: React.CSSProperties = {
-  padding: '6px 12px',
-  borderRadius: '999px',
-  border: 'none',
+const createBtnStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  borderRadius: '8px',
+  border: '1px dashed #BFDBFE',
+  background: '#EFF6FF',
+  color: '#1D4ED8',
   fontSize: '13px',
   fontWeight: 600,
   cursor: 'pointer',
   fontFamily: 'Gilroy',
+  textAlign: 'left',
 };
