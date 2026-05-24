@@ -31,12 +31,24 @@ function formatTimeRange(start: string, end?: string) {
   return `${fmt(new Date(start))}–${fmt(new Date(end))}`;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 export default function MarshallingPageClient() {
   const [slots, setSlots] = useState<MarshalSlot[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const loadSlots = useCallback(async () => {
     setLoading(true);
@@ -97,10 +109,12 @@ export default function MarshallingPageClient() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '32px',
-        padding: '32px',
+        gap: isMobile ? '24px' : '32px',
+        padding: isMobile ? '16px' : '32px',
         boxSizing: 'border-box',
         width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
       }}
     >
       <header style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -108,15 +122,23 @@ export default function MarshallingPageClient() {
           style={{
             color: '#161736',
             fontFamily: 'Gilroy',
-            fontSize: '32px',
+            fontSize: isMobile ? '24px' : '32px',
             fontWeight: 800,
             margin: 0,
           }}
         >
           Marshalling & Umpires
         </h1>
-        <p style={{ color: '#425466', fontFamily: 'Gilroy', fontSize: '16px', margin: 0 }}>
-          St Antony&apos;s commitments for Summer Eights 2026 (27–30 May). Click a slot to sign up
+        <p
+          style={{
+            color: '#425466',
+            fontFamily: 'Gilroy',
+            fontSize: isMobile ? '14px' : '16px',
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          St Antony&apos;s commitments for Summer Eights 2026 (27–30 May). Tap a slot to sign up
           — your name confirms the slot. Crew warnings indicate rowers who cannot take the slot
           (race time ± 1 hr overlaps the shift).
         </p>
@@ -154,7 +176,7 @@ export default function MarshallingPageClient() {
               style={{
                 color: '#161736',
                 fontFamily: 'Gilroy',
-                fontSize: '20px',
+                fontSize: isMobile ? '17px' : '20px',
                 fontWeight: 700,
                 margin: 0,
                 paddingBottom: '4px',
@@ -168,6 +190,7 @@ export default function MarshallingPageClient() {
                 <SlotRow
                   key={slot.id}
                   slot={slot}
+                  isMobile={isMobile}
                   onClick={() => setSelectedId(slot.id)}
                 />
               ))}
@@ -190,88 +213,146 @@ export default function MarshallingPageClient() {
   );
 }
 
-function SlotRow({ slot, onClick }: { slot: MarshalSlot; onClick: () => void }) {
+function SlotRow({
+  slot,
+  isMobile,
+  onClick,
+}: {
+  slot: MarshalSlot;
+  isMobile: boolean;
+  onClick: () => void;
+}) {
   const roleColor = slot.role ? ROLE_COLORS[slot.role] : '#0177FB';
   const filled = Boolean(slot.person);
+
+  const personEl = filled ? (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        color: '#15803D',
+        fontWeight: 600,
+      }}
+    >
+      <span aria-hidden>✓</span>
+      {slot.person!.name}
+    </span>
+  ) : (
+    <span style={{ color: '#94A3B8', fontStyle: 'italic' }}>Unfilled</span>
+  );
+
+  const clashEl =
+    slot.clashCrews.length > 0 ? (
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        {slot.clashCrews.map((c) => (
+          <span
+            key={c}
+            title="Rowers in this crew cannot take this slot"
+            style={{
+              padding: '2px 8px',
+              borderRadius: '999px',
+              background: '#FEE2E2',
+              color: '#B91C1C',
+              fontSize: '11px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ⚠ {c}
+          </span>
+        ))}
+      </span>
+    ) : (
+      <span style={{ color: '#94A3B8', fontSize: '12px' }}>No clashes</span>
+    );
+
+  const roleChip = (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '4px 10px',
+        borderRadius: '999px',
+        background: `${roleColor}15`,
+        color: roleColor,
+        fontWeight: 600,
+        fontSize: '12px',
+        width: 'fit-content',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {slot.role ?? '—'} · {slot.shift ?? ''}
+    </span>
+  );
+
+  const baseBtnStyle: React.CSSProperties = {
+    background: '#FFF',
+    border: '1px solid #DFE5F1',
+    borderRadius: '12px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+    fontFamily: 'Gilroy',
+    color: '#161736',
+    fontSize: '14px',
+    width: '100%',
+  };
+
+  if (isMobile) {
+    return (
+      <button
+        onClick={onClick}
+        style={{
+          ...baseBtnStyle,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          padding: '14px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '8px',
+            width: '100%',
+          }}
+        >
+          <span style={{ fontWeight: 700, fontSize: '15px' }}>
+            {formatTimeRange(slot.startTime, slot.endTime)}
+          </span>
+          {roleChip}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+          <span style={{ color: '#64748B' }}>{slot.location ?? '—'}</span>
+          <span>{personEl}</span>
+        </div>
+        <div>{clashEl}</div>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
       style={{
+        ...baseBtnStyle,
         display: 'grid',
-        gridTemplateColumns: '140px 170px minmax(180px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr)',
+        gridTemplateColumns:
+          '140px 170px minmax(180px, 1fr) minmax(160px, 1fr) minmax(160px, 1fr)',
         gap: '12px',
         alignItems: 'center',
-        background: '#FFF',
-        border: '1px solid #DFE5F1',
-        borderRadius: '12px',
         padding: '14px 16px',
-        textAlign: 'left',
-        cursor: 'pointer',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-        fontFamily: 'Gilroy',
-        color: '#161736',
-        fontSize: '14px',
       }}
     >
       <span style={{ fontWeight: 600 }}>{formatTimeRange(slot.startTime, slot.endTime)}</span>
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          background: `${roleColor}15`,
-          color: roleColor,
-          fontWeight: 600,
-          fontSize: '12px',
-          width: 'fit-content',
-        }}
-      >
-        {slot.role ?? '—'} · {slot.shift ?? ''}
-      </span>
+      {roleChip}
       <span style={{ color: '#425466', fontSize: '13px' }}>{slot.location ?? '—'}</span>
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          color: filled ? '#15803D' : '#94A3B8',
-          fontWeight: filled ? 600 : 400,
-          fontStyle: filled ? 'normal' : 'italic',
-        }}
-      >
-        {filled ? (
-          <>
-            <span aria-hidden>✓</span>
-            {slot.person!.name}
-          </>
-        ) : (
-          'Unfilled'
-        )}
-      </span>
-      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-        {slot.clashCrews.length > 0 ? (
-          slot.clashCrews.map((c) => (
-            <span
-              key={c}
-              title="Rowers in this crew cannot take this slot"
-              style={{
-                padding: '2px 8px',
-                borderRadius: '999px',
-                background: '#FEE2E2',
-                color: '#B91C1C',
-                fontSize: '11px',
-                fontWeight: 700,
-              }}
-            >
-              ⚠ {c}
-            </span>
-          ))
-        ) : (
-          <span style={{ color: '#94A3B8', fontSize: '12px' }}>No clashes</span>
-        )}
-      </span>
+      <span>{personEl}</span>
+      <span>{clashEl}</span>
     </button>
   );
 }

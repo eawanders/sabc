@@ -34,6 +34,17 @@ function formatDate(start: string) {
   });
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 export default function MarshalDrawer({
   slot,
   members,
@@ -47,6 +58,7 @@ export default function MarshalDrawer({
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setSelectedMemberId(slot.person?.id ?? null);
@@ -116,10 +128,7 @@ export default function MarshalDrawer({
       const newId: string | undefined = created?.member?.id;
       if (!newId) throw new Error('Member created but no ID returned');
 
-      // Refresh parent members list so this name is discoverable next time
       onMembersChange?.();
-
-      // Assign to this slot
       setSelectedMemberId(newId);
       await saveAssignment(newId);
     } catch (e) {
@@ -132,7 +141,13 @@ export default function MarshalDrawer({
   return (
     <Sheet isOpen={isOpen} onClose={onClose} title={slot.name}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <section
+          style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gap: isMobile ? '12px' : '16px',
+          }}
+        >
           <Detail label="Date" value={formatDate(slot.startTime)} />
           <Detail label="Time" value={formatTimeRange(slot.startTime, slot.endTime)} />
           <Detail label="Role" value={`${slot.role ?? '—'} · ${slot.shift ?? ''}`} />
@@ -164,13 +179,22 @@ export default function MarshalDrawer({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '10px 14px',
+                padding: '12px 14px',
                 background: '#DCFCE7',
                 border: '1px solid #86EFAC',
                 borderRadius: '8px',
+                gap: '12px',
               }}
             >
-              <span style={{ color: '#15803D', fontWeight: 600 }}>
+              <span
+                style={{
+                  color: '#15803D',
+                  fontWeight: 600,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 ✓ {members.find((m) => m.id === selectedMemberId)?.name ?? 'Confirmed'}
               </span>
               <button
@@ -189,14 +213,19 @@ export default function MarshalDrawer({
                 placeholder="Search members or type a new name…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  padding: isMobile ? '12px 12px' : '10px 12px',
+                  fontSize: isMobile ? '16px' : '14px', // 16px prevents iOS auto-zoom
+                }}
               />
               <div
                 style={{
-                  maxHeight: '320px',
+                  maxHeight: isMobile ? '280px' : '320px',
                   overflowY: 'auto',
                   border: '1px solid #DFE5F1',
                   borderRadius: '8px',
+                  WebkitOverflowScrolling: 'touch',
                 }}
               >
                 {filteredMembers.length === 0 ? (
@@ -210,7 +239,11 @@ export default function MarshalDrawer({
                       type="button"
                       onClick={() => handlePick(m.id)}
                       disabled={saving || creating}
-                      style={memberRowStyle}
+                      style={{
+                        ...memberRowStyle,
+                        padding: isMobile ? '14px' : '10px 14px',
+                        minHeight: isMobile ? '48px' : 'auto',
+                      }}
                     >
                       <span style={{ fontWeight: 600 }}>{m.name}</span>
                       <span style={{ color: '#94A3B8', fontSize: '12px' }}>{m.memberType}</span>
@@ -223,7 +256,11 @@ export default function MarshalDrawer({
                   type="button"
                   onClick={handleCreateAndAssign}
                   disabled={saving || creating}
-                  style={createBtnStyle}
+                  style={{
+                    ...createBtnStyle,
+                    padding: isMobile ? '14px' : '10px 14px',
+                    minHeight: isMobile ? '48px' : 'auto',
+                  }}
                 >
                   + Add “{trimmedQuery}” as new member and sign up
                 </button>
@@ -305,11 +342,11 @@ const labelStyle: React.CSSProperties = {
 };
 
 const inputStyle: React.CSSProperties = {
-  padding: '10px 12px',
   border: '1px solid #DFE5F1',
   borderRadius: '8px',
-  fontSize: '14px',
   fontFamily: 'Gilroy',
+  width: '100%',
+  boxSizing: 'border-box',
 };
 
 const memberRowStyle: React.CSSProperties = {
@@ -317,7 +354,6 @@ const memberRowStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   width: '100%',
-  padding: '10px 14px',
   background: '#FFF',
   border: 'none',
   borderBottom: '1px solid #F1F5F9',
@@ -329,7 +365,7 @@ const memberRowStyle: React.CSSProperties = {
 };
 
 const clearBtnStyle: React.CSSProperties = {
-  padding: '4px 10px',
+  padding: '6px 12px',
   borderRadius: '6px',
   background: '#FFF',
   border: '1px solid #86EFAC',
@@ -337,10 +373,10 @@ const clearBtnStyle: React.CSSProperties = {
   fontSize: '12px',
   fontWeight: 600,
   cursor: 'pointer',
+  flexShrink: 0,
 };
 
 const createBtnStyle: React.CSSProperties = {
-  padding: '10px 14px',
   borderRadius: '8px',
   border: '1px dashed #BFDBFE',
   background: '#EFF6FF',
@@ -350,4 +386,5 @@ const createBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'Gilroy',
   textAlign: 'left',
+  width: '100%',
 };
