@@ -12,6 +12,7 @@ import { CoxingIcon } from "./CoxingIcon";
 import { RowerIcon } from "./RowerIcon";
 import { CalendarIcon } from "./CalendarIcon";
 import { EventsIcon } from "./EventsIcon";
+import MarshalIcon from "./MarshalIcon";
 import { usePathname, useRouter } from "next/navigation";
 import Box from "@/components/ui/Box";
 import ActionButton from "@/components/ui/ActionButton";
@@ -141,6 +142,12 @@ export default function Sidebar() {
             label="OURC Tests"
             icon={<SwimIcon stroke="#425466" />}
             active={pathname?.startsWith("/tests")}
+          />
+          <NavItem
+            href="/marshalling"
+            label="Marshalling"
+            icon={<MarshalIcon stroke={pathname?.startsWith("/marshalling") ? "#fff" : "#425466"} />}
+            active={pathname?.startsWith("/marshalling")}
           />
           <NavItem
             href="/events"
