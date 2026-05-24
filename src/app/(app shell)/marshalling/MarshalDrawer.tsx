@@ -11,6 +11,7 @@ interface MarshalDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onChange: () => void;
+  onMembersChange?: () => void;
 }
 
 function formatTimeRange(start: string, end?: string) {
@@ -39,10 +40,12 @@ export default function MarshalDrawer({
   isOpen,
   onClose,
   onChange,
+  onMembersChange,
 }: MarshalDrawerProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(slot.person?.id ?? null);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,13 +54,24 @@ export default function MarshalDrawer({
     setError(null);
   }, [slot.id, slot.person?.id]);
 
+  const trimmedQuery = query.trim();
+
   const filteredMembers = useMemo(() => {
-    if (!query.trim()) return members;
-    const q = query.toLowerCase();
+    if (!trimmedQuery) return members;
+    const q = trimmedQuery.toLowerCase();
     return members.filter(
       (m) => m.name.toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
     );
-  }, [members, query]);
+  }, [members, trimmedQuery]);
+
+  const exactMatch = useMemo(
+    () =>
+      trimmedQuery &&
+      members.some((m) => m.name.toLowerCase() === trimmedQuery.toLowerCase()),
+    [members, trimmedQuery]
+  );
+
+  const canCreate = Boolean(trimmedQuery) && !exactMatch && !creating;
 
   async function saveAssignment(newMemberId: string | null) {
     setSaving(true);
@@ -81,6 +95,38 @@ export default function MarshalDrawer({
   async function handlePick(memberId: string | null) {
     setSelectedMemberId(memberId);
     await saveAssignment(memberId);
+  }
+
+  async function handleCreateAndAssign() {
+    const name = trimmedQuery;
+    if (!name) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const createRes = await fetch('/api/add-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, role: 'non-member' }),
+      });
+      if (!createRes.ok) {
+        const data = await createRes.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to create member (HTTP ${createRes.status})`);
+      }
+      const created = await createRes.json();
+      const newId: string | undefined = created?.member?.id;
+      if (!newId) throw new Error('Member created but no ID returned');
+
+      // Refresh parent members list so this name is discoverable next time
+      onMembersChange?.();
+
+      // Assign to this slot
+      setSelectedMemberId(newId);
+      await saveAssignment(newId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add new member');
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -140,7 +186,7 @@ export default function MarshalDrawer({
             <>
               <input
                 type="search"
-                placeholder="Search members…"
+                placeholder="Search members or type a new name…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 style={inputStyle}
@@ -163,7 +209,7 @@ export default function MarshalDrawer({
                       key={m.id}
                       type="button"
                       onClick={() => handlePick(m.id)}
-                      disabled={saving}
+                      disabled={saving || creating}
                       style={memberRowStyle}
                     >
                       <span style={{ fontWeight: 600 }}>{m.name}</span>
@@ -172,6 +218,21 @@ export default function MarshalDrawer({
                   ))
                 )}
               </div>
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={handleCreateAndAssign}
+                  disabled={saving || creating}
+                  style={createBtnStyle}
+                >
+                  + Add “{trimmedQuery}” as new member and sign up
+                </button>
+              )}
+              {creating && (
+                <p style={{ color: '#64748B', fontSize: '12px', margin: 0 }}>
+                  Creating member…
+                </p>
+              )}
             </>
           )}
         </section>
@@ -276,4 +337,17 @@ const clearBtnStyle: React.CSSProperties = {
   fontSize: '12px',
   fontWeight: 600,
   cursor: 'pointer',
+};
+
+const createBtnStyle: React.CSSProperties = {
+  padding: '10px 14px',
+  borderRadius: '8px',
+  border: '1px dashed #BFDBFE',
+  background: '#EFF6FF',
+  color: '#1D4ED8',
+  fontSize: '13px',
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontFamily: 'Gilroy',
+  textAlign: 'left',
 };

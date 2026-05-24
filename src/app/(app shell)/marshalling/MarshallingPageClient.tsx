@@ -183,6 +183,7 @@ export default function MarshallingPageClient() {
           isOpen={!!selectedSlot}
           onClose={() => setSelectedId(null)}
           onChange={() => loadSlots()}
+          onMembersChange={() => loadMembers()}
         />
       )}
     </main>
