@@ -2,16 +2,16 @@
 -- Ids are fake Notion page ids in canonical form.
 
 insert into public.members (id, name, member_type, cox_experience) values
-  ('00000000-0000-4000-8000-000000000001', 'Ada Oarsworth',   'Rower', null),
-  ('00000000-0000-4000-8000-000000000002', 'Ben Blade',       'Rower', null),
-  ('00000000-0000-4000-8000-000000000003', 'Cora Catch',      'Rower', null),
-  ('00000000-0000-4000-8000-000000000004', 'Dev Drive',       'Rower', null),
-  ('00000000-0000-4000-8000-000000000005', 'Eve Feather',     'Rower', null),
-  ('00000000-0000-4000-8000-000000000006', 'Finn Finish',     'Rower', null),
-  ('00000000-0000-4000-8000-000000000007', 'Gus Gate',        'Rower', null),
-  ('00000000-0000-4000-8000-000000000008', 'Hana Hull',       'Rower', null),
-  ('00000000-0000-4000-8000-000000000009', 'Ivo Rudder',      'Cox',   'Experienced'),
-  ('00000000-0000-4000-8000-000000000010', 'Jo Launch',       'Coach', null);
+  ('00000000-0000-4000-8000-000000000001', 'Ada Oarsworth',   '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000002', 'Ben Blade',       '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000003', 'Cora Catch',      '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000004', 'Dev Drive',       '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000005', 'Eve Feather',     '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000006', 'Finn Finish',     '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000007', 'Gus Gate',        '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000008', 'Hana Hull',       '{College Rower,Member}', null),
+  ('00000000-0000-4000-8000-000000000009', 'Ivo Rudder',      '{Cox,Member}', 'Experienced'),
+  ('00000000-0000-4000-8000-000000000010', 'Jo Launch',       '{Coach}', null);
 
 insert into public.outings (id, outing_no, name, type, div, shell, start_at, end_at, status, publish, details) values
   ('00000000-0000-4000-8000-000000000101', 1, 'M1 water session', 'Water Outing', 'M1', 'Eight',

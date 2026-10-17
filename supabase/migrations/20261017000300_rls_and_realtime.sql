@@ -17,10 +17,37 @@ begin
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
     execute format('grant select on public.%I to anon, authenticated', t);
+  end loop;
+end;
+$$;
+
+-- Reads. Unpublished outings and marshal slots are hidden from everyone but
+-- the server (as the UI does today); seats and reports follow their outing.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'members', 'member_unavailability', 'events', 'swim_tests', 'swim_test_slots', 'change_log'
+  ] loop
     execute format('create policy "Public read" on public.%I for select to anon, authenticated using (true)', t);
   end loop;
 end;
 $$;
+
+create policy "Published outings" on public.outings
+  for select to anon, authenticated using (publish);
+
+create policy "Published marshal slots" on public.marshal_slots
+  for select to anon, authenticated using (publish);
+
+create policy "Seats of published outings" on public.outing_seats
+  for select to anon, authenticated
+  using (exists (select 1 from public.outings o where o.id = outing_id and o.publish));
+
+create policy "Reports of published outings" on public.outing_reports
+  for select to anon, authenticated
+  using (exists (select 1 from public.outings o where o.id = outing_id and o.publish));
 
 -- The outbox is server-only: RLS on, no policy, no grants.
 alter table public.notion_outbox enable row level security;

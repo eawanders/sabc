@@ -1,7 +1,7 @@
 -- Schema: tables, keys, constraints and the row-level triggers.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(64);
+select plan(65);
 
 -- Tables
 select has_table('public', t, t || ' exists')
@@ -62,8 +62,9 @@ select throws_ok($$ insert into public.outing_seats (outing_id, seat) values ('b
   '23514', null, 'invalid seat name rejected');
 select throws_ok($$ update public.outing_seats set status = 'Booked' where seat = 'Bow' $$,
   '23514', null, 'invalid seat status rejected');
-select throws_ok($$ update public.outings set type = 'Swim' $$,
-  '23514', null, 'invalid outing type rejected');
+select lives_ok($$ update public.outings set type = 'Brand New Session Type' $$,
+  'any outing type is accepted (Notion-owned select)');
+select col_type_is('public', 'members', 'member_type', 'text[]', 'member_type is text[] (Notion multi_select)');
 select throws_ok($$ update public.outings set status = 'Maybe' $$,
   '23514', null, 'invalid outing status rejected');
 select throws_ok($$ insert into public.swim_test_slots (test_id, slot) values ('cccccccc-0000-4000-8000-000000000001', 7) $$,

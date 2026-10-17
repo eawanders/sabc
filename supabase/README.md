@@ -40,7 +40,7 @@ Not set up yet. Proposal:
 | Data | Owner | Table(s) | Direction |
 | --- | --- | --- | --- |
 | Outing details: name, type, division, shell, start/end, status (Confirmed / Provisional / Cancelled), Publish, details | Notion | `outings` | Synced in (B3) |
-| Members (name, member type, cox experience) | Notion | `members` | Synced in (B3) |
+| Members (name, member types, cox experience) | Notion | `members` | Synced in (B3) |
 | Events | Notion | `events` | Synced in (B3) |
 | Swim-test and marshal slot definitions | Notion | `swim_tests`, definition columns of `marshal_slots` | Synced in (B3) |
 | Seats and seat statuses | App | `outing_seats` | Mirrored out via `notion_outbox` (B3) |
@@ -59,6 +59,8 @@ enforces it). Synced tables carry `notion_last_edited_at` and `synced_at`.
   privileges at all; `notion_outbox` is invisible to them.
 - All writes go through server routes using the service role. The actor is a
   member id ("pick your name once"); there are no auth users.
+- Unpublished outings and marshal slots (and the seats and reports of
+  unpublished outings) are hidden from anon/authenticated.
 - `members` holds no emails, phone numbers or dates of birth, by design.
 
 ## Conflicts, history and the outbox
@@ -83,3 +85,8 @@ enforces it). Synced tables carry `notion_last_edited_at` and `synced_at`.
   `complete_notion_outbox(id, revision)`; if someone edited the page in the
   meantime the revision no longer matches and the row stays pending for the
   next pass.
+
+## Open items for B3
+
+- Notion "Files & media" URLs for uploaded files expire after about an hour, so `events.files` needs re-syncing (or the images re-hosting) rather than storing the URL once.
+- Notion date-only values are stored as midnight Europe/London in `start_at` with `all_day = true`.

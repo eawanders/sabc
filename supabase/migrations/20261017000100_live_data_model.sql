@@ -33,7 +33,7 @@ $$;
 create table public.members (
   id                    public.notion_id primary key,
   name                  text not null,
-  member_type           text,
+  member_type           text[] not null default '{}',   -- Notion multi_select
   cox_experience        text,
   notion_last_edited_at timestamptz,
   synced_at             timestamptz not null default now()
@@ -47,7 +47,7 @@ create table public.outings (
   id                    public.notion_id primary key,
   outing_no             integer,            -- Notion "Outing ID" (unique_id number)
   name                  text not null default '',
-  type                  text check (type in ('Water Outing', 'Erg Session', 'Tank Session', 'Gym Session', 'Race')),
+  type                  text,               -- Notion select; unchecked so a new option never breaks the sync
   div                   text,
   shell                 text,
   term                  text,
@@ -163,7 +163,7 @@ create index events_start_at_idx on public.events (start_at);
 create table public.swim_tests (
   id                    public.notion_id primary key,
   title                 text not null,                 -- Notion "OURC Test"
-  type                  text check (type in ('Swim Test', 'Capsize Drill')),
+  type                  text,                          -- Notion select; unchecked (see outings.type)
   available_slots       smallint not null default 0 check (available_slots between 0 and 6),
   start_at              timestamptz,
   end_at                timestamptz,
