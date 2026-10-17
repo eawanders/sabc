@@ -2,6 +2,9 @@
 import { liveRoute } from '@/server/live/route';
 import { swapSeatsSchema } from '@/lib/live/schemas';
 
+// Next to the database (Supabase, Ireland)
+export const preferredRegion = 'dub1';
+
 export const POST = liveRoute('seat/swap', swapSeatsSchema, async (i, ctx) => ({
   fn: 'swap_seats',
   args: {

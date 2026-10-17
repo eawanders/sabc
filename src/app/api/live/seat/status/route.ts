@@ -2,6 +2,9 @@
 import { liveRoute } from '@/server/live/route';
 import { setSeatStatusSchema } from '@/lib/live/schemas';
 
+// Next to the database (Supabase, Ireland)
+export const preferredRegion = 'dub1';
+
 export const POST = liveRoute('seat/status', setSeatStatusSchema, async (i, ctx) => ({
   fn: 'set_seat_status',
   args: {
