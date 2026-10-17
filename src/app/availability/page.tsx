@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useMembers } from '@/hooks/useMembers'
-import { useRowerAvailability, getEmptyAvailability } from '@/hooks/useRowerAvailability'
+import { useRowerAvailability, canEditAvailability, cacheSavedAvailability } from '@/hooks/useRowerAvailability'
 import { useUpdateRowerAvailability } from '@/hooks/useUpdateRowerAvailability'
 import { Member } from '@/types/members'
 import {
@@ -79,13 +79,18 @@ export default function RowerAvailabilityPage() {
   }, []);
 
   // Update local state when availability loads
+  // No fallback to an empty week: if loading failed, there is nothing safe to edit or save
   useEffect(() => {
-    if (availability) {
-      setLocalAvailability(availability)
-    } else if (selectedMember) {
-      setLocalAvailability(getEmptyAvailability(selectedMember.id))
-    }
-  }, [availability, selectedMember])
+    setLocalAvailability(availability)
+  }, [availability])
+
+  const canEdit = canEditAvailability({
+    selectedMemberId: selectedMember?.id,
+    availability,
+    localAvailability,
+    loading,
+    fetchError
+  })
 
   const handleMemberChange = (option: OptionItem | null) => {
     setSelectedMember(option?.member || null)
@@ -174,12 +179,13 @@ export default function RowerAvailabilityPage() {
   }
 
   const handleSave = async () => {
-    if (!localAvailability || !selectedMember) return
+    if (!localAvailability || !selectedMember || !canEdit) return
 
     setSaveSuccess(false)
 
     try {
       await updateAvailability(localAvailability)
+      cacheSavedAvailability(localAvailability)
       setSaveSuccess(true)
 
       // Clear success message after 3 seconds
@@ -207,7 +213,7 @@ export default function RowerAvailabilityPage() {
         height: '100%',
         width: '100%',
         position: 'relative',
-        paddingBottom: isMobile && selectedMember && localAvailability && !loading ? '100px' : '0'
+        paddingBottom: isMobile && canEdit ? '100px' : '0'
       }}
     >
       <h1 className="sr-only">Availability</h1>
@@ -418,7 +424,7 @@ export default function RowerAvailabilityPage() {
         )}
 
         {/* Horizontal Calendar Grid - Availability Form */}
-        {selectedMember && localAvailability && !loading && (
+        {canEdit && localAvailability && (
           <>
             <div
               onTouchStart={isMobile ? onTouchStart : undefined}
@@ -472,7 +478,7 @@ export default function RowerAvailabilityPage() {
         )}
 
         {/* Save Button Row */}
-        {selectedMember && localAvailability && !loading && (
+        {canEdit && localAvailability && (
           <div style={{
             display: 'flex',
             flexDirection: 'column',
