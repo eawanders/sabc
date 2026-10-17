@@ -4,10 +4,10 @@
 import { NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
 import { SEAT_PROPERTIES, isSeatStatus } from '@/lib/seatProperties'
+import { isNotionPageId } from '../_utils/schemas'
+import { readJsonObject } from '../_utils/request'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
-
-const NOTION_ID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i
 
 type SeatWrite = { seat: string; memberId: string; status: string }
 
@@ -21,11 +21,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing Notion token configuration', success: false }, { status: 500 })
   }
 
-  const body = await req.json().catch(() => null)
-  const outingId = body?.outingId
-  const seats: unknown = body?.seats
+  const body = await readJsonObject(req)
+  if (!body) return badRequest('Invalid JSON body')
+  const outingId = body.outingId
+  const seats: unknown = body.seats
 
-  if (typeof outingId !== 'string' || !NOTION_ID.test(outingId)) {
+  if (!isNotionPageId(outingId)) {
     return badRequest('Invalid outingId')
   }
   if (!Array.isArray(seats) || seats.length < 2) {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     const fields = typeof seat === 'string' && Object.hasOwn(SEAT_PROPERTIES, seat) ? SEAT_PROPERTIES[seat] : undefined
     if (!fields) return badRequest('Invalid seat')
     if (fields.relation in properties) return badRequest('Each seat may appear only once')
-    if (typeof entry.memberId !== 'string' || !NOTION_ID.test(entry.memberId)) return badRequest('Invalid memberId')
+    if (!isNotionPageId(entry.memberId)) return badRequest('Invalid memberId')
     if (!isSeatStatus(entry.status)) return badRequest('Invalid status')
 
     properties[fields.relation] = { relation: [{ id: entry.memberId }] }

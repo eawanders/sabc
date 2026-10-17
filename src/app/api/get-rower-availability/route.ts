@@ -4,6 +4,7 @@ import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { notionRequest } from '@/server/notion/client'
 import { mapRowerAvailability } from '@/server/notion/rowerAvailability'
 import { startTiming, createServerTiming } from '@/server/timing'
+import { isNotionPageId } from '../_utils/schemas'
 
 export const revalidate = 30
 
@@ -16,6 +17,15 @@ export async function GET(request: Request) {
     if (!memberId) {
       const response = NextResponse.json(
         { error: 'memberId is required', success: false },
+        { status: 400 }
+      )
+      response.headers.set('Server-Timing', createServerTiming(start))
+      return response
+    }
+
+    if (!isNotionPageId(memberId)) {
+      const response = NextResponse.json(
+        { error: 'Invalid memberId', success: false },
         { status: 400 }
       )
       response.headers.set('Server-Timing', createServerTiming(start))
@@ -41,12 +51,10 @@ export async function GET(request: Request) {
     return response
   } catch (error) {
     console.error('❌ Error fetching rower availability from Notion:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
     const response = NextResponse.json(
       {
         error: 'Failed to fetch rower availability',
-        details: errorMessage,
         success: false
       },
       { status: 500 }

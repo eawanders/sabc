@@ -20,7 +20,6 @@ export interface TitleText {
 export interface Member {
   id: string;
   name: string;
-  email: string;
   memberType: string;
   coxExperience?: string; // "Novice", "Novice (less than 1 term)", "Experienced", "Senior"
 }

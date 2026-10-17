@@ -11,18 +11,33 @@ import {
 } from '@/types/rowerAvailability'
 import { notionRequest } from '@/server/notion/client'
 import { ROWER_AVAILABILITY_TAG } from '@/server/notion/rowerAvailability'
+import { isNotionPageId } from '../_utils/schemas'
+import { readJsonObject } from '../_utils/request'
 
 export async function POST(request: Request) {
   try {
     console.log('🔄 Updating rower availability...')
 
-    const body: UpdateRowerAvailabilityRequest = await request.json()
+    const body = (await readJsonObject(request)) as UpdateRowerAvailabilityRequest | null
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', success: false },
+        { status: 400 }
+      )
+    }
     const { memberId, ...weekData } = body
 
     // Validate input
     if (!memberId) {
       return NextResponse.json(
         { error: 'Missing required field: memberId', success: false },
+        { status: 400 }
+      )
+    }
+
+    if (!isNotionPageId(memberId)) {
+      return NextResponse.json(
+        { error: 'Invalid memberId', success: false },
         { status: 400 }
       )
     }
@@ -95,12 +110,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Error updating rower availability:', error)
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-
     return NextResponse.json(
       {
         error: 'Failed to update rower availability',
-        details: errorMessage,
         success: false
       },
       { status: 500 }

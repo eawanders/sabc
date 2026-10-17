@@ -7,6 +7,7 @@ vi.mock('next/cache', () => ({ revalidateTag, unstable_cache: vi.fn((fn: unknown
 import { POST } from './route';
 import { ROWER_AVAILABILITY_TAG } from '@/server/notion/rowerAvailability';
 
+const MEMBER = '12345678-90ab-cdef-1234-567890abcdef';
 const week = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] };
 
 function post(body: unknown) {
@@ -26,7 +27,7 @@ describe('POST /api/update-rower-availability', () => {
 
   it('revalidates the all-members availability cache after a successful save', async () => {
     notionRequest.mockResolvedValueOnce({});
-    const response = await post({ memberId: 'member-a', ...week });
+    const response = await post({ memberId: MEMBER, ...week });
 
     expect(response.status).toBe(200);
     expect(revalidateTag).toHaveBeenCalledWith(ROWER_AVAILABILITY_TAG);
@@ -34,7 +35,7 @@ describe('POST /api/update-rower-availability', () => {
 
   it('does not revalidate when the Notion write fails', async () => {
     notionRequest.mockRejectedValueOnce(new Error('boom'));
-    const response = await post({ memberId: 'member-a', ...week });
+    const response = await post({ memberId: MEMBER, ...week });
 
     expect(response.status).toBe(500);
     expect(revalidateTag).not.toHaveBeenCalled();

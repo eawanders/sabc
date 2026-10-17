@@ -12,14 +12,12 @@ function mapMember(page: PageObjectResponse): Member | null {
     return null;
   }
 
-  const email = properties['Email Address']?.email ?? extractText(properties['Email Address']);
   const memberType = properties['Member Type']?.select?.name ?? extractText(properties['Member Type']);
   const coxExperience = properties['Cox Experience']?.select?.name ?? extractText(properties['Cox Experience']) ?? undefined;
 
   return {
     id: page.id,
     name: fullName,
-    email: email ?? '',
     memberType: memberType ?? '',
     coxExperience,
   };

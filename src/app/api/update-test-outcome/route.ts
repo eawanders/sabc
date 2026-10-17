@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
 import { TestOutcome } from '@/types/test'
+import { isNotionPageId } from '../_utils/schemas'
+import { readJsonObject } from '../_utils/request'
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -10,7 +12,14 @@ const notion = new Client({
 
 export async function POST(request: NextRequest) {
   try {
-    const { testId, slotNumber, outcome } = await request.json()
+    const body = await readJsonObject(request)
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', success: false },
+        { status: 400 }
+      )
+    }
+    const { testId, slotNumber, outcome } = body as { testId?: string; slotNumber?: number; outcome?: string }
 
     // Validate required fields
     if (!testId || !slotNumber) {
@@ -20,9 +29,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (slotNumber < 1 || slotNumber > 6) {
+    if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > 6) {
       return NextResponse.json(
         { error: 'Invalid slot number. Must be between 1 and 6', success: false },
+        { status: 400 }
+      )
+    }
+
+    if (!isNotionPageId(testId)) {
+      return NextResponse.json(
+        { error: 'Invalid testId', success: false },
         { status: 400 }
       )
     }
@@ -63,7 +79,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error updating test outcome:', error)
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: 'Failed to update test outcome',
         success: false
       },
       { status: 500 }

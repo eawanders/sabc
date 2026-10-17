@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
 import { SEAT_PROPERTIES, isSeatStatus } from '@/lib/seatProperties'
+import { isNotionPageId } from '../_utils/schemas'
+import { readJsonObject } from '../_utils/request'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
 
@@ -18,8 +20,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const body = await req.json()
-    const { outingId, seat, memberId, status } = body
+    const body = await readJsonObject(req)
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', success: false },
+        { status: 400 }
+      )
+    }
+    const { outingId, seat, memberId, status } = body as { outingId?: string; seat?: string; memberId?: string | null; status?: unknown }
 
     const isSub = seat && typeof seat === 'string' && seat.startsWith('Sub');
 
@@ -49,17 +57,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate seat format (should be a valid Notion property name)
-    if (typeof seat !== 'string' || seat.trim() === '') {
-      console.error('❌ Invalid seat format:', seat)
+    // Only known seats may be written: the seat name becomes a Notion property name
+    const seatProperties = typeof seat === 'string' && Object.hasOwn(SEAT_PROPERTIES, seat) ? SEAT_PROPERTIES[seat] : undefined
+    if (!seatProperties) {
+      console.error('❌ Invalid seat:', seat)
       return NextResponse.json(
-        { error: 'Invalid seat format', success: false },
+        { error: 'Invalid seat', success: false },
         { status: 400 }
       )
     }
 
     // Validate outingId format (should be a valid Notion page ID)
-    if (typeof outingId !== 'string' || outingId.length < 32) {
+    if (!isNotionPageId(outingId)) {
       console.error('❌ Invalid outingId format:', outingId)
       return NextResponse.json(
         { error: 'Invalid outingId format', success: false },
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate memberId if provided
-    if (memberId && (typeof memberId !== 'string' || memberId.length < 32)) {
+    if (memberId && !isNotionPageId(memberId)) {
       console.error('❌ Invalid memberId format:', memberId)
       return NextResponse.json(
         { error: 'Invalid memberId format', success: false },
@@ -77,8 +86,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate status if provided: it is written to the seat's status property in the same update
-    const statusProperty = typeof seat === 'string' ? SEAT_PROPERTIES[seat]?.status : undefined
-    if (status !== undefined && (!isSeatStatus(status) || !statusProperty)) {
+    const statusProperty = seatProperties.status
+    if (status !== undefined && !isSeatStatus(status)) {
       console.error('❌ Invalid status for seat:', { seat, status })
       return NextResponse.json(
         { error: 'Invalid status', success: false },
@@ -86,16 +95,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Map seat names to actual database field names
-    const seatToFieldMapping: Record<string, string> = {
-      'Coach/Bank Rider': 'Coach/Bank Rider', // This maps to the actual Notion property name
-      'Sub1': 'Sub 1', // Map Sub1 to "Sub 1" (with space)
-      'Sub2': 'Sub 2', // Map Sub2 to "Sub 2" (with space)
-      'Sub3': 'Sub 3', // Map Sub3 to "Sub 3" (with space)
-      'Sub4': 'Sub 4'  // Map Sub4 to "Sub 4" (with space)
-    }
-
-    const actualSeatField = seatToFieldMapping[seat] || seat;
+    const actualSeatField = seatProperties.relation;
 
     if (isSub) {
       console.log(`🔍 Processing SUB seat assignment:`, {
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
         relation: memberId ? [{ id: memberId }] : [],
       },
       // Member and status go in one update so a seat is never left with one half written
-      ...(status !== undefined && statusProperty ? { [statusProperty]: { status: { name: status } } } : {}),
+      ...(status !== undefined ? { [statusProperty]: { status: { name: status } } } : {}),
     }
 
     console.log(`🔄 Updating Notion page ${isSub ? '(SUB SEAT)' : ''}with payload:`, {
@@ -184,19 +184,19 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error) {
       if (error.message.includes('Could not find page')) {
         return NextResponse.json(
-          { error: 'Outing not found', details: errorMessage, success: false },
+          { error: 'Outing not found', success: false },
           { status: 404 }
         )
       }
       if (error.message.includes('Invalid page_id')) {
         return NextResponse.json(
-          { error: 'Invalid outing ID', details: errorMessage, success: false },
+          { error: 'Invalid outing ID', success: false },
           { status: 400 }
         )
       }
       if (error.message.includes('property does not exist')) {
         return NextResponse.json(
-          { error: 'Invalid seat property', details: errorMessage, success: false },
+          { error: 'Invalid seat property', success: false },
           { status: 400 }
         )
       }
@@ -205,7 +205,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: 'Failed to assign seat',
-        details: errorMessage,
         success: false
       },
       { status: 500 }
