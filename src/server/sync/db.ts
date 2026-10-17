@@ -39,6 +39,8 @@ export interface SyncDb {
   /** Applies Notion's outing statuses through the sync_outing_statuses ownership rule. */
   syncOutingStatuses(rows: { id: string; status: string | null }[]): Promise<void>;
   getOutingStatus(id: string): Promise<string | null>;
+  /** True only if `secret` equals the Vault secret 'sync_shared_secret' (see verify_sync_secret). */
+  verifySyncSecret(secret: string): Promise<boolean>;
 }
 
 const CHUNK = 500;
@@ -140,6 +142,13 @@ export function createSupabaseSyncDb(client: SupabaseClient): SyncDb {
         'read outings.status',
       ) as { status: string | null } | null;
       return data?.status ?? null;
+    },
+
+    async verifySyncSecret(secret) {
+      return check(
+        await client.rpc('verify_sync_secret', { p_secret: secret }),
+        'verify_sync_secret',
+      ) === true;
     },
   };
 }
