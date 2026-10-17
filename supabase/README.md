@@ -171,7 +171,7 @@ per-minute tick catches anything debounced.
 
 ### Proposed scheduler (not applied)
 
-Supabase `pg_cron` + `pg_net` call `/api/sync/run` every minute, and a full
+Supabase `pg_cron` + `pg_net` call `/api/sync/run` every 5 minutes (Vercel Hobby budget), and a full
 sweep nightly at 03:17 (migration `20261018300100_sync_schedule`). The jobs send
 the Vault secret `sync_shared_secret` in `x-sync-secret`, and the route checks
 it with `public.verify_sync_secret()` (migration `20261018400100`), so the

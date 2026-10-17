@@ -3,8 +3,8 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(6);
 
-select is((select schedule from cron.job where jobname = 'notion-sync'), '* * * * *',
-  'incremental sync runs every minute');
+select is((select schedule from cron.job where jobname = 'notion-sync'), '*/5 * * * *',
+  'incremental sync runs every 5 minutes (Vercel Hobby budget)');
 select is((select schedule from cron.job where jobname = 'notion-sync-full'), '17 3 * * *',
   'full sweep runs nightly at 03:17');
 select ok((select command from cron.job where jobname = 'notion-sync') like '%trigger_notion_sync(false)%',
