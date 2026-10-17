@@ -13,6 +13,13 @@ interface UseAllRowerAvailabilityResult {
 const globalCache = new Map<string, { data: RowerWeeklyAvailability; timestamp: number }>()
 const CACHE_TTL_MS = 60_000 // 1 minute
 
+/**
+ * Replace a member's cached availability (e.g. after saving it)
+ */
+export function setCachedMemberAvailability(data: RowerWeeklyAvailability): void {
+  globalCache.set(data.memberId, { data, timestamp: Date.now() })
+}
+
 async function fetchMemberAvailability(memberId: string): Promise<RowerWeeklyAvailability | null> {
   try {
     const response = await fetch(`/api/get-rower-availability?memberId=${memberId}`)
