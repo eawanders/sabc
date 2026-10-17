@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@notionhq/client": "^5.0.0",
+    "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/forms": "^0.5.10",
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.4",

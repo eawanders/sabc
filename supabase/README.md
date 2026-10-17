@@ -86,7 +86,145 @@ enforces it). Synced tables carry `notion_last_edited_at` and `synced_at`.
   meantime the revision no longer matches and the row stays pending for the
   next pass.
 
-## Open items for B3
+## Notion sync (B3)
 
-- Notion "Files & media" URLs for uploaded files expire after about an hour, so `events.files` needs re-syncing (or the images re-hosting) rather than storing the URL once.
-- Notion date-only values are stored as midnight Europe/London in `start_at` with `all_day = true`.
+Code: `src/server/sync/`. Entry points: `POST /api/sync/run` (the per-minute
+tick) and `POST /api/sync/notion-webhook`. Bookkeeping: `sync_state` (one
+cursor per data source) and `notion_webhook_handshake`, both server-only.
+
+**Inbound (Notion → Postgres)**, members → outings → events → swim_tests →
+marshal_slots. Each source asks Notion for pages with `last_edited_time` on or
+after its cursor (oldest first), upserts them by id and moves the cursor to the
+newest edit it upserted. Notion rounds `last_edited_time` to the minute, so the
+cursor minute is re-read every pass; upserts are idempotent so that is harmless.
+Only Notion-owned columns are ever sent (`src/server/sync/sources.ts`), and
+PostgREST's upsert updates only the columns it is given, so seats, slot
+bookings, marshal sign-ups, reports and unavailability are never touched.
+
+- Date-only Notion values are stored as midnight Europe/London with
+  `all_day = true` (outings have no `all_day` column; their date-only starts
+  are just midnight).
+- `Member Type` (multi_select) → `members.member_type text[]`.
+- The live Outings property is **Details**, not "Session Details" (checked
+  2026-10-17); the sync reads Details and falls back to Session Details.
+  Outings has no Term or Week property, so those columns stay null.
+- Values that would break a CHECK (an unknown outing status, Available Slots
+  outside 0–6) are stored as null / clamped rather than failing the batch.
+
+**Deletions (soft approach).** Only rows of Notion-owned tables are deleted, and
+only when Notion says so: a page returned as `archived`/`in_trash`, a
+`page.deleted` webhook (the page is re-read first; `page.undeleted` restores
+it), or a full sweep (`/api/sync/run?full=1`) that no longer sees the page.
+A full sweep never deletes from an empty result. Note the cascades: deleting an
+outing deletes its seats and report; deleting a member clears their seats and
+sign-ups (`on delete set null`).
+
+**Outbound (Postgres → Notion).** `runOutbox` sends due `notion_outbox` rows
+(`next_attempt_at <= now`, oldest first) as `PATCH /v1/pages/{page_id}` with the
+row's `payload` as `properties`, then calls `complete_notion_outbox(id,
+revision)`. A revision mismatch leaves the row pending and it is sent again with
+the merged payload. Errors: `attempts + 1`, `last_error`, and `next_attempt_at`
+= now + 10 s × 2^(attempts−1) (capped at 1 h, jittered to 50–100%). A 429 uses
+Notion's `retry-after` (+ up to 1 s jitter) and ends the run. All Notion calls
+in one server instance share a pacer: at most 2.5 requests/second.
+
+**Budget.** `/api/sync/run` gives inbound 25 s and stops starting new outbox
+rows at 50 s (function `maxDuration` 60 s). Inbound saves its cursor after
+every page of results, so a run cut short resumes where it stopped.
+
+**Webhook.** Notion integration webhooks
+(<https://developers.notion.com/reference/webhooks>). Setup, once:
+
+1. Deploy with `NOTION_WEBHOOK_VERIFICATION_TOKEN` **unset**.
+2. In the Notion integration settings → Webhooks, add
+   `https://<app>/api/sync/notion-webhook` and subscribe to page events.
+3. Notion POSTs a `verification_token`; the route stores it in
+   `notion_webhook_handshake` (never logged). Read it in the Supabase table
+   editor, paste it into Notion's Verify dialog, and set it as
+   `NOTION_WEBHOOK_VERIFICATION_TOKEN`. Redeploy. Further handshakes are ignored.
+
+Every event must carry `X-Notion-Signature: sha256=<HMAC-SHA256(raw body,
+token)>`. Page changes trigger an incremental sync of their data source after
+the response (`after()`), debounced to once per 15 s per source; the
+per-minute tick catches anything debounced.
+
+**Environment** (server only; never `NEXT_PUBLIC_`):
+
+| Variable | Used by |
+| --- | --- |
+| `SUPABASE_URL` | sync worker, backfill |
+| `SUPABASE_SERVICE_ROLE_KEY` | sync worker, backfill (bypasses RLS) |
+| `NOTION_TOKEN` | existing; the integration needs read + update content on the five databases |
+| `NOTION_WEBHOOK_VERIFICATION_TOKEN` | webhook signature check |
+| `SYNC_SHARED_SECRET` | `x-sync-secret` header on `/api/sync/run` |
+
+### Proposed scheduler (not applied)
+
+Supabase `pg_cron` + `pg_net` (both on the free tier) call the tick every
+minute. It needs the shared secret, so it lives here rather than in a
+migration; keep the secret in Vault, not in the job text:
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select vault.create_secret('<SYNC_SHARED_SECRET>', 'sync_shared_secret');
+
+select cron.schedule('notion-sync', '* * * * *', $$
+  select net.http_post(
+    url     := 'https://<app>/api/sync/run',
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-sync-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'sync_shared_secret')),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 55000);
+$$);
+
+-- Nightly full sweep (also infers deletions):
+select cron.schedule('notion-sync-full', '17 3 * * *', $$
+  select net.http_post(
+    url     := 'https://<app>/api/sync/run?full=1',
+    headers := jsonb_build_object(
+      'content-type', 'application/json',
+      'x-sync-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'sync_shared_secret')),
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 55000);
+$$);
+```
+
+### One-off backfill of app-owned data
+
+Copies today's seats + statuses, outing reports, weekly unavailability,
+swim-test slot bookings + outcomes and marshal sign-ups from Notion into
+Postgres. It reads Notion only, never runs automatically, writes only rows that
+differ (a second run writes nothing) and leaves rows the app has already changed
+(`version > 0`) alone unless `--overwrite`:
+
+```sh
+# .env.local with NOTION_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+npx -y tsx --env-file=.env.local scripts/sync-backfill.ts --dry-run   # full inbound sync + counts
+npx -y tsx --env-file=.env.local scripts/sync-backfill.ts             # write
+```
+
+Relations to members Postgres does not have (nameless form submissions) are
+dropped and counted as `unknownRefs`; only the first member of a relation is
+used.
+
+### Tests
+
+- Unit (CI): `npx vitest run src/server/sync src/app/api/sync`.
+- pgTAP: `supabase test db` (includes `04_sync_state.test.sql`).
+- Integration against the local stack (not CI): see the header of
+  `src/server/sync/integration.test.ts`.
+
+### Known risks
+
+- The pacer is per server instance. Two instances (a webhook burst during the
+  minute tick) can briefly exceed 2.5 req/s together; the 429 path absorbs it.
+- No lease on the outbox: two overlapping ticks could send the same row twice.
+  That is harmless (payloads are full current values) and the 50 s budget keeps
+  ticks from overlapping.
+- A row that fails permanently (e.g. a 400 for a renamed Notion property) keeps
+  retrying hourly with `last_error` set; nothing alerts on it yet.
+- Notion "Files & media" URLs for uploaded files expire after about an hour, so
+  `events.files` goes stale between edits; re-hosting the images is still open.
