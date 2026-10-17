@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { CrewDrawer, Status } from '../_components/CrewDrawer';
-import { SignedInAs } from '../_components/Identity';
 import { outingStatusTone } from '../_lib/seats';
 import { dayLabel, hhmm, londonParts, weekLabel } from '../_lib/time';
 import type { WeekOuting } from '../_lib/week';
@@ -69,7 +68,6 @@ export function ScheduleClient(props: {
           <div className="sub">{weekLabel(props.week)}</div>
         </div>
         <div className="b-nav">
-          <SignedInAs />
           <Link className="b-icon" href={`/beta/schedule?week=${props.prevWeek}`} aria-label="Previous week" title="Previous week">
             <Chevron dir="left" />
           </Link>
