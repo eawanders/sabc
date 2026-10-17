@@ -3,7 +3,7 @@
 -- syncOutingConfirmation; a Cancelled outing is never moved (audit A6).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(29);
 
 insert into public.members (id, name, cox_experience) values
   ('aaaaaaaa-0000-4000-8000-000000000001', 'R1', null),
@@ -22,7 +22,11 @@ insert into public.outings (id, name, type, status, start_at, publish) values
   ('bbbbbbbb-0000-4000-8000-000000000001', 'Water', 'Water Outing', 'Provisional', now(), true),
   ('bbbbbbbb-0000-4000-8000-000000000002', 'Erg', 'Erg Session', 'Provisional', now(), true),
   ('bbbbbbbb-0000-4000-8000-000000000003', 'Cancelled water', 'Water Outing', 'Cancelled', now(), true),
-  ('bbbbbbbb-0000-4000-8000-000000000004', 'Cancelled erg', 'Erg Session', 'Cancelled', now(), true);
+  ('bbbbbbbb-0000-4000-8000-000000000004', 'Cancelled erg', 'Erg Session', 'Cancelled', now(), true),
+  ('bbbbbbbb-0000-4000-8000-000000000005', 'Water, flag unknown', 'Water Outing', 'Provisional', now(), true),
+  ('bbbbbbbb-0000-4000-8000-000000000006', 'Water, red flag', 'Water Outing', 'Provisional', now(), true),
+  ('bbbbbbbb-0000-4000-8000-000000000007', 'Water, black flag', 'Water Outing', 'Provisional', now(), true),
+  ('bbbbbbbb-0000-4000-8000-000000000008', 'Water, confirmed, flag lost', 'Water Outing', 'Provisional', now(), true);
 
 -- Fill a water outing's 9 main seats with the experienced cox, all Available except Bow (Awaiting Approval)
 create function pg_temp.fill_water(p_outing text) returns void language sql as $$
@@ -154,6 +158,35 @@ select public.claim_seat('bbbbbbbb-0000-4000-8000-000000000004', 'Stroke', 'aaaa
        'aaaaaaaa-0000-4000-8000-000000000001', 0, null);
 select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000004'), 'Cancelled',
   'a Cancelled erg is never auto-confirmed');
+
+-- ------------------------------------------------------------ flag unknown / red / black (owner decision 17 Oct)
+select pg_temp.fill_water('bbbbbbbb-0000-4000-8000-000000000005');
+select public.set_seat_status('bbbbbbbb-0000-4000-8000-000000000005', 'Bow', 'Available',
+       'aaaaaaaa-0000-4000-8000-000000000008', 'aaaaaaaa-0000-4000-8000-000000000008', null);
+select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000005'), 'Provisional',
+  'water: a full crew is not auto-confirmed while the flag is unknown');
+
+select pg_temp.fill_water('bbbbbbbb-0000-4000-8000-000000000006');
+select public.set_seat_status('bbbbbbbb-0000-4000-8000-000000000006', 'Bow', 'Available',
+       'aaaaaaaa-0000-4000-8000-000000000008', 'aaaaaaaa-0000-4000-8000-000000000008', 'Red');
+select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000006'), 'Provisional',
+  'water: not auto-confirmed on a red flag');
+
+select pg_temp.fill_water('bbbbbbbb-0000-4000-8000-000000000007');
+select public.set_seat_status('bbbbbbbb-0000-4000-8000-000000000007', 'Bow', 'Available',
+       'aaaaaaaa-0000-4000-8000-000000000008', 'aaaaaaaa-0000-4000-8000-000000000008', 'Black');
+select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000007'), 'Provisional',
+  'water: not auto-confirmed on a black flag');
+
+-- A confirmed full crew must not be de-confirmed just because the flag became unknown.
+select pg_temp.fill_water('bbbbbbbb-0000-4000-8000-000000000008');
+select public.set_seat_status('bbbbbbbb-0000-4000-8000-000000000008', 'Bow', 'Available',
+       'aaaaaaaa-0000-4000-8000-000000000008', 'aaaaaaaa-0000-4000-8000-000000000008', 'Green');
+select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000008'), 'Confirmed', 'setup: confirmed on green');
+select public.claim_seat('bbbbbbbb-0000-4000-8000-000000000008', 'Sub 1', 'aaaaaaaa-0000-4000-8000-000000000010', 'Maybe Available',
+       'aaaaaaaa-0000-4000-8000-000000000010', 0, null);
+select is(pg_temp.status_of('bbbbbbbb-0000-4000-8000-000000000008'), 'Confirmed',
+  'water: a sub change while the flag is unknown does not de-confirm a full crew');
 
 select * from finish();
 rollback;
