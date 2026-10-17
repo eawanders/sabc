@@ -53,7 +53,8 @@ export function getEligibleCoxesUnified(
   outingDate: string,
   outingStartTime: string,
   outingEndTime: string | undefined,
-  availabilityMap: Map<string, Record<DayOfWeek, TimeRange[]>>
+  availabilityMap: Map<string, Record<DayOfWeek, TimeRange[]>>,
+  availabilityUnknown = false
 ): Member[] {
   const sessionStartTime = extractTime(outingStartTime);
   const sessionEndTime = outingEndTime ? extractTime(outingEndTime) : undefined;
@@ -62,6 +63,11 @@ export function getEligibleCoxesUnified(
   const eligibleCoxes = allMembers.filter(member =>
     isCoxEligible(member.coxExperience, flagStatus)
   );
+
+  // Availability could not be loaded: don't filter on it (callers mark these coxes as unknown)
+  if (availabilityUnknown) {
+    return eligibleCoxes;
+  }
 
   // Further filter by availability
   // A cox is available if they have NOT marked this time as unavailable

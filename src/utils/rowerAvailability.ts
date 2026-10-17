@@ -103,6 +103,24 @@ export function isRowerAvailable(
   return !isRowerUnavailable(unavailableRanges, sessionStartTime)
 }
 
+export type SessionAvailability = 'available' | 'unavailable' | 'unknown'
+
+/**
+ * A member's availability for a session. 'unknown' when availability could not
+ * be loaded, so a failed load is never read as "available".
+ */
+export function getSessionAvailability(
+  memberAvailability: Record<DayOfWeek, TimeRange[]> | undefined,
+  availabilityUnknown: boolean,
+  sessionDate: string,
+  sessionStartTime: string,
+  sessionEndTime?: string
+): SessionAvailability {
+  if (availabilityUnknown) return 'unknown'
+  if (!memberAvailability) return 'available'
+  return isRowerAvailable(memberAvailability, sessionDate, sessionStartTime, sessionEndTime) ? 'available' : 'unavailable'
+}
+
 /**
  * Filter members to only those available for a session
  *

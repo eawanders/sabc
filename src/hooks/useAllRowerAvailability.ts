@@ -1,96 +1,99 @@
 // src/hooks/useAllRowerAvailability.ts
 import { useState, useEffect, useCallback } from 'react'
 import { RowerWeeklyAvailability, DayOfWeek, TimeRange } from '@/types/rowerAvailability'
-import { Member } from '@/types/members'
+
+type AvailabilityMap = Map<string, Record<DayOfWeek, TimeRange[]>>
 
 interface UseAllRowerAvailabilityResult {
-  availabilityMap: Map<string, Record<DayOfWeek, TimeRange[]>>
+  availabilityMap: AvailabilityMap
   loading: boolean
+  // Set when availability could not be loaded: it is then unknown, not "available"
   error: string | null
   refetch: () => Promise<void>
 }
 
-const globalCache = new Map<string, { data: RowerWeeklyAvailability; timestamp: number }>()
+let globalCache: { map: AvailabilityMap; timestamp: number } | null = null
+let inFlight: Promise<AvailabilityMap> | null = null
 const CACHE_TTL_MS = 60_000 // 1 minute
+
+function toDays(availability: RowerWeeklyAvailability): Record<DayOfWeek, TimeRange[]> {
+  return {
+    monday: availability.monday,
+    tuesday: availability.tuesday,
+    wednesday: availability.wednesday,
+    thursday: availability.thursday,
+    friday: availability.friday,
+    saturday: availability.saturday,
+    sunday: availability.sunday
+  }
+}
+
+function getFreshCache(): AvailabilityMap | null {
+  return globalCache && Date.now() - globalCache.timestamp < CACHE_TTL_MS ? globalCache.map : null
+}
 
 /**
  * Replace a member's cached availability (e.g. after saving it)
  */
 export function setCachedMemberAvailability(data: RowerWeeklyAvailability): void {
-  globalCache.set(data.memberId, { data, timestamp: Date.now() })
+  globalCache?.map.set(data.memberId, toDays(data))
 }
 
-async function fetchMemberAvailability(memberId: string): Promise<RowerWeeklyAvailability | null> {
-  try {
-    const response = await fetch(`/api/get-rower-availability?memberId=${memberId}`)
-    const data = await response.json()
+async function fetchAllAvailability(): Promise<AvailabilityMap> {
+  const response = await fetch('/api/get-all-rower-availability')
+  const data = await response.json()
 
-    if (!response.ok || !data.success) {
-      // If member has no availability data, return null (they're available)
-      return null
-    }
-
-    return data.availability
-  } catch (err) {
-    console.error(`Failed to fetch availability for member ${memberId}:`, err)
-    return null
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Failed to fetch rower availability')
   }
+
+  const map: AvailabilityMap = new Map()
+  for (const availability of data.availability as RowerWeeklyAvailability[]) {
+    map.set(availability.memberId, toDays(availability))
+  }
+  return map
+}
+
+/**
+ * Load every member's availability with ONE request, shared by all callers:
+ * served from cache within the TTL and deduped while a request is in flight.
+ * Rejects on failure (nothing is cached), so callers never mistake a failed
+ * load for "everyone available".
+ */
+export function loadAllRowerAvailability(force = false): Promise<AvailabilityMap> {
+  const cached = force ? null : getFreshCache()
+  if (cached) return Promise.resolve(cached)
+  if (inFlight && !force) return inFlight
+
+  const request = fetchAllAvailability()
+    .then((map) => {
+      globalCache = { map, timestamp: Date.now() }
+      return map
+    })
+    .finally(() => {
+      if (inFlight === request) inFlight = null
+    })
+  inFlight = request
+  return request
 }
 
 /**
  * Hook to fetch rower availability for all members
  */
-export function useAllRowerAvailability(members: Member[]): UseAllRowerAvailabilityResult {
-  const [availabilityMap, setAvailabilityMap] = useState<Map<string, Record<DayOfWeek, TimeRange[]>>>(new Map())
-  const [loading, setLoading] = useState(false)
+export function useAllRowerAvailability(): UseAllRowerAvailabilityResult {
+  const [availabilityMap, setAvailabilityMap] = useState<AvailabilityMap>(() => getFreshCache() ?? new Map())
+  const [loading, setLoading] = useState(() => getFreshCache() === null)
   const [error, setError] = useState<string | null>(null)
 
-  const loadAllAvailability = useCallback(async (memberList: Member[], force = false) => {
-    if (memberList.length === 0) {
-      setAvailabilityMap(new Map())
-      return
-    }
-
-    setLoading(true)
+  const loadAvailability = useCallback(async (force = false) => {
+    if (force || !getFreshCache()) setLoading(true)
     setError(null)
 
     try {
-      const newMap = new Map<string, Record<DayOfWeek, TimeRange[]>>()
-
-      // Fetch availability for each member
-      await Promise.all(
-        memberList.map(async (member) => {
-          // Check cache first
-          const cached = globalCache.get(member.id)
-          let availability: RowerWeeklyAvailability | null = null
-
-          if (!force && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-            availability = cached.data
-          } else {
-            availability = await fetchMemberAvailability(member.id)
-            if (availability) {
-              globalCache.set(member.id, { data: availability, timestamp: Date.now() })
-            }
-          }
-
-          // Only add to map if member has availability data
-          if (availability) {
-            newMap.set(member.id, {
-              monday: availability.monday,
-              tuesday: availability.tuesday,
-              wednesday: availability.wednesday,
-              thursday: availability.thursday,
-              friday: availability.friday,
-              saturday: availability.saturday,
-              sunday: availability.sunday
-            })
-          }
-        })
-      )
-
-      setAvailabilityMap(newMap)
+      setAvailabilityMap(await loadAllRowerAvailability(force))
     } catch (err) {
       console.error('Error fetching rower availability:', err)
+      setAvailabilityMap(new Map())
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
@@ -98,12 +101,12 @@ export function useAllRowerAvailability(members: Member[]): UseAllRowerAvailabil
   }, [])
 
   const refetch = useCallback(async () => {
-    await loadAllAvailability(members, true)
-  }, [members, loadAllAvailability])
+    await loadAvailability(true)
+  }, [loadAvailability])
 
   useEffect(() => {
-    loadAllAvailability(members)
-  }, [members, loadAllAvailability])
+    loadAvailability()
+  }, [loadAvailability])
 
   return { availabilityMap, loading, error, refetch }
 }

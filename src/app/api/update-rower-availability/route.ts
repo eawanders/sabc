@@ -1,5 +1,6 @@
 // src/app/api/update-rower-availability/route.ts
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import {
   UpdateRowerAvailabilityRequest,
   UpdateRowerAvailabilityResponse,
@@ -9,6 +10,7 @@ import {
   DAY_LABELS
 } from '@/types/rowerAvailability'
 import { notionRequest } from '@/server/notion/client'
+import { ROWER_AVAILABILITY_TAG } from '@/server/notion/rowerAvailability'
 
 export async function POST(request: Request) {
   try {
@@ -74,6 +76,9 @@ export async function POST(request: Request) {
       },
       'rower-availability.update'
     )
+
+    // Drop the cached all-members availability so the saved week shows straight away
+    revalidateTag(ROWER_AVAILABILITY_TAG)
 
     console.log(`✅ Successfully updated rower availability for member ${memberId}`)
 
