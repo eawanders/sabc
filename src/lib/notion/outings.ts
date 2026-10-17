@@ -30,36 +30,35 @@ export async function getOutingById(id: string): Promise<RawOuting | null> {
 }
 
 /**
- * Get member details from Notion Members database
+ * Get member details from Notion Members database.
+ * Throws if the members can't be fetched: an empty result would make every occupied seat look free.
  */
 export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
-  try {
-    if (memberIds.length === 0) return [];
+  if (memberIds.length === 0) return [];
 
-    const params = new URLSearchParams({ ids: memberIds.join(',') });
+  const params = new URLSearchParams({ ids: memberIds.join(',') });
 
-    // Fetch only the members we need - use relative URL to work in all environments
-    const response = await fetch(`/api/get-members?${params.toString()}`);
+  // Fetch only the members we need - use relative URL to work in all environments
+  const response = await fetch(`/api/get-members?${params.toString()}`);
 
-    if (!response.ok) {
-      console.error('Failed to fetch members:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const allMembers = data.members as Array<{id: string; name: string; email: string; memberType: string}>;
-
-    // Convert to our Member type and filter to only requested IDs
-    return allMembers.map(member => ({
-      id: member.id,
-      name: member.name,
-      role: member.memberType
-    }));
-  } catch (error) {
-    console.error('Error fetching members:', error);
-    return [];
+  if (!response.ok) {
+    console.error('Failed to fetch members:', response.status);
+    throw new Error(`Failed to fetch members: ${response.status}`);
   }
+
+  const data = await response.json();
+  const allMembers = data.members as Array<{id: string; name: string; email: string; memberType: string}>;
+
+  // Convert to our Member type and filter to only requested IDs
+  return allMembers.map(member => ({
+    id: member.id,
+    name: member.name,
+    role: member.memberType
+  }));
 }
+
+// Shown for a seat whose relation points at a member we couldn't resolve
+export const UNKNOWN_MEMBER_NAME = 'Unknown member';
 
 /**
  * Convert raw outing data to detailed outing with populated member data
@@ -129,13 +128,14 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
       const status = outing.properties[statusField] as { status: { name: string } | null } | undefined;
 
       const memberId = relation?.relation?.[0]?.id;
-      const member = memberId ? memberMap.get(memberId) || null : null;
+      // A relation we can't resolve is still an occupied seat
+      const member = memberId ? memberMap.get(memberId) || { id: memberId, name: UNKNOWN_MEMBER_NAME } : null;
       const availabilityStatus = status?.status?.name as AvailabilityStatus || AvailabilityStatus.AwaitingApproval;
 
       // A seat is available for assignment if:
       // 1. No member is assigned AND status is "Awaiting Approval"
       // (If someone is assigned, the seat is taken regardless of status)
-      const isAvailable = !member && availabilityStatus === AvailabilityStatus.AwaitingApproval;
+      const isAvailable = !memberId && availabilityStatus === AvailabilityStatus.AwaitingApproval;
 
       seatAssignments.push({
         seatType,
@@ -165,8 +165,9 @@ export async function getOutingWithMembers(id: string): Promise<DetailedOuting |
 
     return detailedOuting;
   } catch (error) {
+    // Rethrow so the caller shows an error rather than seats with their members missing
     console.error('Error creating detailed outing:', error);
-    return null;
+    throw error;
   }
 }
 

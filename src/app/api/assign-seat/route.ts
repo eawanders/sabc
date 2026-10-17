@@ -1,6 +1,7 @@
 // src/app/api/assign-seat/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { Client } from '@notionhq/client'
+import { SEAT_PROPERTIES, isSeatStatus } from '@/lib/seatProperties'
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN })
 
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { outingId, seat, memberId } = body
+    const { outingId, seat, memberId, status } = body
 
     const isSub = seat && typeof seat === 'string' && seat.startsWith('Sub');
 
@@ -75,6 +76,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Validate status if provided: it is written to the seat's status property in the same update
+    const statusProperty = typeof seat === 'string' ? SEAT_PROPERTIES[seat]?.status : undefined
+    if (status !== undefined && (!isSeatStatus(status) || !statusProperty)) {
+      console.error('❌ Invalid status for seat:', { seat, status })
+      return NextResponse.json(
+        { error: 'Invalid status', success: false },
+        { status: 400 }
+      )
+    }
+
     // Map seat names to actual database field names
     const seatToFieldMapping: Record<string, string> = {
       'Coach/Bank Rider': 'Coach/Bank Rider', // This maps to the actual Notion property name
@@ -98,7 +109,9 @@ export async function POST(req: NextRequest) {
     const updatePayload = {
       [actualSeatField]: {
         relation: memberId ? [{ id: memberId }] : [],
-      }
+      },
+      // Member and status go in one update so a seat is never left with one half written
+      ...(status !== undefined && statusProperty ? { [statusProperty]: { status: { name: status } } } : {}),
     }
 
     console.log(`🔄 Updating Notion page ${isSub ? '(SUB SEAT)' : ''}with payload:`, {
@@ -145,41 +158,6 @@ export async function POST(req: NextRequest) {
       memberId: memberId || 'cleared',
       isSub
     })
-
-    // Verify the update by reading back the property
-    console.log(`🔍 [assign-seat] Verifying property update by reading back from Notion...`);
-    try {
-      const verifyResponse = await notion.pages.retrieve({ page_id: outingId });
-      const properties = (verifyResponse as any).properties;
-      const updatedProperty = properties[actualSeatField];
-
-      console.log(`✅ [assign-seat] Property verification for ${actualSeatField}:`, {
-        propertyExists: !!updatedProperty,
-        propertyType: updatedProperty?.type,
-        propertyValue: updatedProperty?.relation,
-        expectedMemberId: memberId || 'none (clearing)',
-        actualMemberIds: updatedProperty?.relation?.map((r: any) => r.id) || []
-      });
-
-      // Check if the value actually matches what we tried to set
-      const actualRelationIds = updatedProperty?.relation?.map((r: any) => r.id) || [];
-      const expectedRelationIds = memberId ? [memberId] : [];
-      const valuesMatch = JSON.stringify(actualRelationIds.sort()) === JSON.stringify(expectedRelationIds.sort());
-
-      if (!valuesMatch) {
-        console.warn(`⚠️ [assign-seat] MISMATCH DETECTED for ${actualSeatField}:`, {
-          expected: expectedRelationIds,
-          actual: actualRelationIds,
-          seat,
-          actualSeatField,
-          isSub
-        });
-      } else {
-        console.log(`✅ [assign-seat] Values match! ${actualSeatField} was updated correctly.`);
-      }
-    } catch (verifyError) {
-      console.error(`❌ [assign-seat] Failed to verify property update:`, verifyError);
-    }
 
     return NextResponse.json({
       success: true,
