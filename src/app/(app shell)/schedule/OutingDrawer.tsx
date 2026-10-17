@@ -52,7 +52,7 @@ import { Member } from '@/types/members';
 import Sheet from '@/components/ui/Sheet';
 import { getEligibleCoxesUnified } from '@/utils/coxEligibility';
 import { useAllRowerAvailability } from '@/hooks/useAllRowerAvailability';
-import { isRowerAvailable, extractTime } from '@/utils/rowerAvailability';
+import { getSessionAvailability, extractTime } from '@/utils/rowerAvailability';
 import ReportDrawer from './ReportDrawer';
 import ActionButton from '@/components/ui/ActionButton';
 import { useScheduleUrlState } from '@/hooks/useUrlState';
@@ -238,6 +238,7 @@ interface RowerRowProps {
   outingTime?: string;
   outingEndTime?: string;
   rowerAvailabilityMap?: Map<string, Record<string, { start: string; end: string }[]>>;
+  rowerAvailabilityUnknown?: boolean;
   onCreateMember: (seat: string, inputValue: string) => Promise<{ value: string; label: string; member: Member } | null>;
   allOutings: Outing[];
   currentOutingId: string;
@@ -260,6 +261,7 @@ const RowerRow: React.FC<RowerRowProps> = ({
   outingTime,
   outingEndTime,
   rowerAvailabilityMap,
+  rowerAvailabilityUnknown = false,
   allOutings,
   currentOutingId,
   onCreateMember
@@ -350,7 +352,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
                     outingDate,
                     outingTime,
                     outingEndTime,
-                    rowerAvailabilityMap
+                    rowerAvailabilityMap,
+                    rowerAvailabilityUnknown
                   );
                 }
 
@@ -366,15 +369,16 @@ const RowerRow: React.FC<RowerRowProps> = ({
                 // For rower seats (not Cox), check rower availability
                 const memberOptionsWithAvailability: MemberOptionType[] = filteredMembers.map((member) => {
                   let isAvailable = true;
+                  // Availability not loaded (still loading or failed): unknown, never "available"
+                  let isAvailabilityUnknown = Boolean(outingDate && outingTime && rowerAvailabilityUnknown);
 
                   // Check rower availability for non-Cox seats
                   if (seat !== 'Cox' && outingDate && outingTime && rowerAvailabilityMap) {
-                    const memberAvailability = rowerAvailabilityMap.get(member.id);
-                    if (memberAvailability) {
-                      const sessionStartTime = extractTime(outingTime);
-                      const sessionEndTime = outingEndTime ? extractTime(outingEndTime) : undefined;
-                      isAvailable = isRowerAvailable(memberAvailability, outingDate, sessionStartTime, sessionEndTime);
-                    }
+                    const sessionStartTime = extractTime(outingTime);
+                    const sessionEndTime = outingEndTime ? extractTime(outingEndTime) : undefined;
+                    const status = getSessionAvailability(rowerAvailabilityMap.get(member.id), rowerAvailabilityUnknown, outingDate, sessionStartTime, sessionEndTime);
+                    isAvailable = status === 'available';
+                    isAvailabilityUnknown = status === 'unknown';
                   }
 
                   // Check if member is already assigned to a non-sub seat on the same day
@@ -386,9 +390,11 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   );
 
                   // Format label with availability indicator
-                  const label = isAvailable
-                    ? member.name
-                    : `${member.name} (Unavailable)`;
+                  const label = isAvailabilityUnknown
+                    ? `${member.name} (Availability unknown)`
+                    : isAvailable
+                      ? member.name
+                      : `${member.name} (Unavailable)`;
 
                   return {
                     value: member.id,
@@ -754,7 +760,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
   const { urlState, openReportDrawer, closeDrawer, openSessionDrawer } = useScheduleUrlState();
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
   const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
-  const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading } = useAllRowerAvailability(members);
+  const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading, error: rowerAvailabilityError } = useAllRowerAvailability();
+  const rowerAvailabilityUnknown = rowerAvailabilityLoading || Boolean(rowerAvailabilityError);
   const { outings: allOutings } = useOutingsResource();
 
   // State management from the proven OutingCard pattern
@@ -2333,6 +2340,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingTime={outingTime}
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
+                    rowerAvailabilityUnknown={rowerAvailabilityUnknown}
                     onCreateMember={handleCreateMember}
                     allOutings={allOutings}
                     currentOutingId={outingId}
@@ -2373,6 +2381,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingTime={outingTime}
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
+                    rowerAvailabilityUnknown={rowerAvailabilityUnknown}
                     onCreateMember={handleCreateMember}
                     allOutings={allOutings}
                     currentOutingId={outingId}
@@ -2423,6 +2432,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                       outingTime={outingTime}
                       outingEndTime={outingEndTime}
                       rowerAvailabilityMap={rowerAvailabilityMap}
+                      rowerAvailabilityUnknown={rowerAvailabilityUnknown}
                       onCreateMember={handleCreateMember}
                       allOutings={allOutings}
                       currentOutingId={outingId}
@@ -2541,6 +2551,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
                     outingTime={outingTime}
                     outingEndTime={outingEndTime}
                     rowerAvailabilityMap={rowerAvailabilityMap}
+                    rowerAvailabilityUnknown={rowerAvailabilityUnknown}
                     onCreateMember={handleCreateMember}
                     allOutings={allOutings}
                     currentOutingId={outingId}

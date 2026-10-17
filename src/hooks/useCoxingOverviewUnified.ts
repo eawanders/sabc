@@ -38,10 +38,11 @@ interface UseCoxingOverviewResult {
  */
 export function useCoxingOverviewUnified(): UseCoxingOverviewResult {
   const { members, loading: membersLoading, error: membersError } = useMembers()
-  const { availabilityMap, loading: availabilityLoading } = useAllRowerAvailability(members)
+  const { availabilityMap, loading: availabilityLoading, error: availabilityError } = useAllRowerAvailability()
 
   const loading = membersLoading || availabilityLoading
-  const error = membersError
+  // A failed availability load must not list every cox as available all week
+  const error = membersError || (availabilityError ? 'Could not load cox availability' : null)
 
   const coxes = useMemo(() => {
     if (loading || error) return []

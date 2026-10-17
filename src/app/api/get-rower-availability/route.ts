@@ -1,8 +1,8 @@
 // src/app/api/get-rower-availability/route.ts
 import { NextResponse } from 'next/server'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
-import { RowerWeeklyAvailability, parseTimeRanges } from '@/types/rowerAvailability'
 import { notionRequest } from '@/server/notion/client'
+import { mapRowerAvailability } from '@/server/notion/rowerAvailability'
 import { startTiming, createServerTiming } from '@/server/timing'
 
 export const revalidate = 30
@@ -54,44 +54,4 @@ export async function GET(request: Request) {
     response.headers.set('Server-Timing', createServerTiming(start))
     return response
   }
-}
-
-function mapRowerAvailability(page: PageObjectResponse): RowerWeeklyAvailability {
-  const properties = page.properties as Record<string, any>
-
-  // Extract member name
-  const fullName = extractText(properties['Full Name']) || 'Unknown'
-
-  // Map day properties to availability
-  const availability: RowerWeeklyAvailability = {
-    memberId: page.id,
-    memberName: fullName,
-    monday: parseTimeRanges(extractText(properties['Unavailable Monday'])),
-    tuesday: parseTimeRanges(extractText(properties['Unavailable Tuesday'])),
-    wednesday: parseTimeRanges(extractText(properties['Unavailable Wednesday'])),
-    thursday: parseTimeRanges(extractText(properties['Unavailable Thursday'])),
-    friday: parseTimeRanges(extractText(properties['Unavailable Friday'])),
-    saturday: parseTimeRanges(extractText(properties['Unavailable Saturday'])),
-    sunday: parseTimeRanges(extractText(properties['Unavailable Sunday']))
-  }
-
-  return availability
-}
-
-function extractText(property: any): string | undefined {
-  if (!property) return undefined
-
-  if (Array.isArray(property.title)) {
-    return property.title.map((item: { plain_text?: string }) => item.plain_text ?? '').join('').trim() || undefined
-  }
-
-  if (Array.isArray(property.rich_text)) {
-    return property.rich_text.map((item: { plain_text?: string }) => item.plain_text ?? '').join('').trim() || undefined
-  }
-
-  if (typeof property === 'string') {
-    return property.trim()
-  }
-
-  return undefined
 }
