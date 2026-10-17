@@ -1,6 +1,8 @@
 // src/app/api/assign-marshal/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@notionhq/client';
+import { isNotionPageId } from '../_utils/schemas';
+import { readJsonObject } from '../_utils/request';
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -9,11 +11,25 @@ const notion = new Client({
 
 export async function POST(request: NextRequest) {
   try {
-    const { slotId, memberId } = await request.json();
+    const body = await readJsonObject(request);
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', success: false },
+        { status: 400 }
+      );
+    }
+    const { slotId, memberId } = body;
 
     if (!slotId) {
       return NextResponse.json(
         { error: 'Missing required field: slotId', success: false },
+        { status: 400 }
+      );
+    }
+
+    if (!isNotionPageId(slotId) || (memberId && !isNotionPageId(memberId))) {
+      return NextResponse.json(
+        { error: 'Invalid slotId or memberId', success: false },
         { status: 400 }
       );
     }
@@ -44,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error assigning marshal slot:', error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: 'Failed to assign marshal slot',
         success: false,
       },
       { status: 500 }

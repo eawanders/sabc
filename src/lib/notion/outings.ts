@@ -47,7 +47,7 @@ export async function getMembersByIds(memberIds: string[]): Promise<Member[]> {
   }
 
   const data = await response.json();
-  const allMembers = data.members as Array<{id: string; name: string; email: string; memberType: string}>;
+  const allMembers = data.members as Array<{id: string; name: string; memberType: string}>;
 
   // Convert to our Member type and filter to only requested IDs
   return allMembers.map(member => ({

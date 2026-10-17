@@ -1,6 +1,31 @@
 import { Client } from '@notionhq/client';
+import { isNotionPageId } from '../_utils/schemas';
+import { readJsonObject } from '../_utils/request';
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
+
+// Seat status fields the client may send (OutingDrawer's getStatusField), mapped to Notion property names
+const SEAT_STATUS_FIELDS = new Map<string, string>([
+  ['CoxStatus', 'Cox Status'],
+  ['StrokeStatus', 'Stroke Status'],
+  ['BowStatus', 'Bow Status'],
+  ['7 SeatStatus', '7 Seat Status'],
+  ['6 SeatStatus', '6 Seat Status'],
+  ['5 SeatStatus', '5 Seat Status'],
+  ['4 SeatStatus', '4 Seat Status'],
+  ['3 SeatStatus', '3 Seat Status'],
+  ['2 SeatStatus', '2 Seat Status'],
+  ['BankRiderStatus', 'Bank Rider Status'],
+  ['Sub1Status', 'Sub 1 Status'],
+  ['Sub2Status', 'Sub 2 Status'],
+  ['Sub3Status', 'Sub 3 Status'],
+  ['Sub4Status', 'Sub 4 Status'],
+]);
+
+// The outing-level 'Status' property. OutingDrawer's auto-confirm / de-confirm sends only these two values;
+// anything else (e.g. Cancelled) must not be settable through this route.
+const OUTING_STATUS_FIELD = 'Status';
+const OUTING_STATUS_VALUES = ['Confirmed', 'Provisional'];
 
 export async function POST(req: Request) {
   try {
@@ -18,10 +43,19 @@ export async function POST(req: Request) {
       )
     }
 
-    const body = await req.json();
+    const body = await readJsonObject(req);
+    if (!body) {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid JSON body',
+          success: false
+        }),
+        { status: 400 }
+      );
+    }
     console.log("📥 Received availability update request:", body);
 
-    const { outingId, statusField, status } = body;
+    const { outingId, statusField, status } = body as { outingId?: string; statusField?: unknown; status?: string };
 
     // Validate required fields
     if (!outingId) {
@@ -58,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     // Validate outingId format
-    if (typeof outingId !== 'string' || outingId.length < 32) {
+    if (!isNotionPageId(outingId)) {
       console.error('❌ Invalid outingId format:', outingId)
       return new Response(
         JSON.stringify({
@@ -69,33 +103,35 @@ export async function POST(req: Request) {
       )
     }
 
-    // Map frontend status field names to actual Notion property names
-    const statusFieldMapping: Record<string, string> = {
-      'CoxStatus': 'Cox Status',
-      'StrokeStatus': 'Stroke Status',
-      'BowStatus': 'Bow Status',
-      '7 SeatStatus': '7 Seat Status',
-      '6 SeatStatus': '6 Seat Status',
-      '5 SeatStatus': '5 Seat Status',
-      '4 SeatStatus': '4 Seat Status',
-      '3 SeatStatus': '3 Seat Status',
-      '2 SeatStatus': '2 Seat Status',
-      'BankRiderStatus': 'Bank Rider Status',
-      'Sub1Status': 'Sub 1 Status',
-      'Sub2Status': 'Sub 2 Status',
-      'Sub3Status': 'Sub 3 Status',
-      'Sub4Status': 'Sub 4 Status',
-  // frontend uses the key 'OutingStatus' but the Notion property is named 'Status'
-  'OutingStatus': 'Status'
-    };
+    if (typeof statusField !== 'string') {
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid statusField',
+          success: false
+        }),
+        { status: 400 }
+      );
+    }
 
     // Try to normalize the status field name (remove spaces if present)
     const normalizedField = statusField.replace(/\s+/g, '');
 
-    // Try different variations of the field name to ensure we find the right one
-    const actualPropertyName = statusFieldMapping[statusField] ||
-                            statusFieldMapping[normalizedField] ||
-                            statusField;
+    // Only known status properties may be written: a seat status, or the outing-level Status
+    const isOutingStatus = statusField === OUTING_STATUS_FIELD;
+    const actualPropertyName = isOutingStatus
+      ? OUTING_STATUS_FIELD
+      : SEAT_STATUS_FIELDS.get(statusField) ?? SEAT_STATUS_FIELDS.get(normalizedField);
+
+    if (!actualPropertyName || (isOutingStatus && !OUTING_STATUS_VALUES.includes(status))) {
+      console.error('❌ Disallowed status field/value:', { statusField, status });
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid statusField',
+          success: false
+        }),
+        { status: 400 }
+      );
+    }
 
     console.log(`🔄 Mapping status field:`, {
       original: statusField,
@@ -166,7 +202,6 @@ export async function POST(req: Request) {
         return new Response(
           JSON.stringify({
             error: 'Outing not found',
-            details: errorMessage,
             success: false
           }),
           { status: 404 }
@@ -176,7 +211,6 @@ export async function POST(req: Request) {
         return new Response(
           JSON.stringify({
             error: 'Invalid outing ID',
-            details: errorMessage,
             success: false
           }),
           { status: 400 }
@@ -190,7 +224,6 @@ export async function POST(req: Request) {
         return new Response(
           JSON.stringify({
             error: 'Invalid availability property',
-            details: errorMessage,
             success: false
           }),
           { status: 400 }
@@ -201,7 +234,6 @@ export async function POST(req: Request) {
     return new Response(
       JSON.stringify({
         error: 'Failed to update availability',
-        details: errorMessage,
         success: false
       }),
       { status: 500 }

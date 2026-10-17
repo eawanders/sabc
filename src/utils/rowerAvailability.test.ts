@@ -21,7 +21,7 @@ describe('getSessionAvailability', () => {
 });
 
 describe('getEligibleCoxesUnified', () => {
-  const cox: Member = { id: 'cox-1', name: 'Cox One', email: '', memberType: 'Cox', coxExperience: 'Senior' };
+  const cox: Member = { id: 'cox-1', name: 'Cox One', memberType: 'Cox', coxExperience: 'Senior' };
 
   it('does not filter coxes by availability it could not load', () => {
     const blocked = new Map([['cox-1', blockedMonday]]);

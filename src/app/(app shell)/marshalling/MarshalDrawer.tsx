@@ -71,9 +71,7 @@ export default function MarshalDrawer({
   const filteredMembers = useMemo(() => {
     if (!trimmedQuery) return members;
     const q = trimmedQuery.toLowerCase();
-    return members.filter(
-      (m) => m.name.toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
-    );
+    return members.filter((m) => m.name.toLowerCase().includes(q));
   }, [members, trimmedQuery]);
 
   const exactMatch = useMemo(

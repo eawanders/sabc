@@ -1,7 +1,18 @@
 import { z } from 'zod';
 
 // Common schemas
-export const notionPageIdSchema = z.string().regex(/^[a-f0-9]{32}$/, 'Invalid Notion page ID format');
+// A Notion page id: 32 hex characters, or the hyphenated 8-4-4-4-12 form the Notion API returns.
+// Client ids are interpolated into Notion API paths, so anything else (e.g. `../users/me`) is rejected.
+export const notionPageIdSchema = z
+  .string()
+  .regex(
+    /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+    'Invalid Notion page ID format'
+  );
+
+export function isNotionPageId(value: unknown): value is string {
+  return notionPageIdSchema.safeParse(value).success;
+}
 export const emailSchema = z.string().email().max(255);
 export const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const timeStringSchema = z.string().regex(/^\d{2}:\d{2}$/);

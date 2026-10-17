@@ -2,6 +2,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@notionhq/client';
+import { isNotionPageId } from '../_utils/schemas';
+import { readJsonObject } from '../_utils/request';
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -21,7 +23,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const body = await readJsonObject(req);
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body', success: false },
+        { status: 400 }
+      );
+    }
     console.log('📥 Received outing report submission:', body);
 
     const { outingId, outingSummary, boatFeel, outingSuccesses, nextFocus, coachFeedback } = body;
@@ -36,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate outingId format (should be a valid Notion page ID)
-    if (typeof outingId !== 'string' || outingId.length < 32) {
+    if (!isNotionPageId(outingId)) {
       console.error('❌ Invalid outingId format:', outingId);
       return NextResponse.json(
         { error: 'Invalid outingId format', success: false },

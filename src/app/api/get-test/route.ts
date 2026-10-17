@@ -5,6 +5,7 @@ import { Client } from '@notionhq/client'
 import { Test } from '@/types/test'
 import { Member } from '@/types/members'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
+import { isNotionPageId } from '../_utils/schemas'
 
 const notion = new Client({
   auth: process.env.NOTION_TOKEN,
@@ -27,6 +28,13 @@ export async function GET(request: NextRequest) {
       console.log('❌ No test ID provided in request');
       return NextResponse.json(
         { error: 'Test ID is required', success: false },
+        { status: 400 }
+      )
+    }
+
+    if (!isNotionPageId(testId)) {
+      return NextResponse.json(
+        { error: 'Invalid test ID', success: false },
         { status: 400 }
       )
     }
@@ -129,7 +137,6 @@ export async function GET(request: NextRequest) {
             return {
               id: memberResponse.id,
               name: getPropertyValue(memberProperties, 'Full Name') || 'Unknown Member',
-              email: getPropertyValue(memberProperties, 'Email Address') || '',
               memberType: getPropertyValue(memberProperties, 'Member Type') || 'Standard',
               coxExperience: getPropertyValue(memberProperties, 'Cox Experience'),
             } as Member
@@ -209,7 +216,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Failed to fetch test',
+        error: 'Failed to fetch test',
         success: false,
         timestamp: new Date().toISOString(),
         processingTime: Date.now() - startTime

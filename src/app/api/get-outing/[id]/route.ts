@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints'
 import { notionRequest } from '@/server/notion/client'
+import { isNotionPageId } from '../../_utils/schemas'
 import { startTiming, createServerTiming } from '@/server/timing'
 
 export const revalidate = 15
@@ -17,6 +18,13 @@ export async function GET(
     if (!id) {
       return NextResponse.json(
         { error: 'Outing ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!isNotionPageId(id)) {
+      return NextResponse.json(
+        { error: 'Invalid outing ID' },
         { status: 400 }
       )
     }

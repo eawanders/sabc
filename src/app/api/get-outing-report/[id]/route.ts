@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import { notionRequest } from '@/server/notion/client';
+import { isNotionPageId } from '../../_utils/schemas';
 import { startTiming, createServerTiming } from '@/server/timing';
 
 // Type definitions for Notion API responses
@@ -44,7 +45,7 @@ export async function GET(
     }
 
     // Validate outingId format (should be a valid Notion page ID)
-    if (typeof id !== 'string' || id.length < 32) {
+    if (!isNotionPageId(id)) {
       console.error('❌ Invalid outingId format:', id);
       return NextResponse.json(
         { error: 'Invalid outingId format', success: false },
