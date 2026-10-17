@@ -2,6 +2,7 @@
 // The form is drawn from the snippet's https src only (parseEmbeddedForm), never injected as HTML.
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { anonClient } from '../../_lib/week';
 import { EVENT_COLUMNS, eventWhen, findBySlug, parseEmbeddedForm, type ClubEvent } from '../../_lib/club-events';
 import '../../_components/club/club.css';
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function BetaEvent({ params }: { params: Params }) {
   const { event, error } = await load((await params).slug);
+  if (!error && !event) notFound();
   const when = event ? eventWhen(event) : null;
   const form = event ? parseEmbeddedForm(event.embedded_form) : null;
 
@@ -37,11 +39,6 @@ export default async function BetaEvent({ params }: { params: Params }) {
         <span>{event?.title ?? 'Not found'}</span>
       </div>
       {error && <div className="b-list b-empty">{error}</div>}
-      {!error && !event && (
-        <div className="b-list b-empty">
-          This event could not be found. <Link className="b-link" href="/beta/events">Back to events</Link>
-        </div>
-      )}
       {event && when && (
         <>
           <div className="c-card">

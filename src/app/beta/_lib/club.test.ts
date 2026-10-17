@@ -208,6 +208,25 @@ describe('events', () => {
     expect(parseEmbeddedForm('<iframe src="http://example.com"></iframe>')).toBeNull();
     expect(parseEmbeddedForm('<script>alert(1)</script>')).toBeNull();
     expect(parseEmbeddedForm(null)).toBeNull();
+    for (const own of [
+      'https://sabcoxford.com/beta',
+      'https://www.sabcoxford.com/x',
+      'https://SABCOXFORD.COM./x',
+      'https://sabc-qicbimqxs-eawanders-projects.vercel.app/beta',
+      'https://localhost:3000/',
+      'https://127.0.0.1/',
+      'https://[::1]/',
+    ]) {
+      expect(parseEmbeddedForm(`<iframe src="${own}"></iframe>`), own).toBeNull();
+      expect(parseEmbeddedForm(own), own).toBeNull();
+    }
+    expect(parseEmbeddedForm('<iframe src="https://stantonysboatclub.notion.site/ebd/2a380040a8fa807eb44dd13b1aad0641">')?.src).toBe(
+      'https://stantonysboatclub.notion.site/ebd/2a380040a8fa807eb44dd13b1aad0641',
+    );
+    expect(parseEmbeddedForm('<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSc/viewform?usp=header">')?.src).toBe(
+      'https://docs.google.com/forms/d/e/1FAIpQLSc/viewform?usp=header',
+    );
+    expect(parseEmbeddedForm('https://notsabcoxford.com/f')?.src).toBe('https://notsabcoxford.com/f');
     expect(parseEmbeddedForm("<iframe height='99999' src='https://x.example/f'>")?.height).toBe(2000);
   });
 });

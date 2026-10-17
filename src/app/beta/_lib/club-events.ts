@@ -55,6 +55,24 @@ export function eventWhen(e: Pick<ClubEvent, 'start_at' | 'end_at' | 'all_day'>)
   return { day: dayLabel(start), long: longDay.format(start), time };
 }
 
+/**
+ * Hosts that serve (or could serve) this app. The form iframe allows scripts + same-origin, which
+ * from our own origin would undo the sandbox, so these are never embedded.
+ */
+export function isOwnHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/\.$/, '');
+  return (
+    h === 'sabcoxford.com' ||
+    h.endsWith('.sabcoxford.com') ||
+    h === 'vercel.app' ||
+    h.endsWith('.vercel.app') ||
+    h === 'localhost' ||
+    h.endsWith('.localhost') ||
+    h === '127.0.0.1' ||
+    h === '[::1]'
+  );
+}
+
 export type EmbeddedForm = { src: string; height: number };
 
 /**
@@ -74,7 +92,7 @@ export function parseEmbeddedForm(snippet: string | null | undefined): EmbeddedF
   } catch {
     return null;
   }
-  if (url.protocol !== 'https:') return null;
+  if (url.protocol !== 'https:' || isOwnHost(url.hostname)) return null;
   const h = /\sheight\s*=\s*["']?(\d+)/i.exec(text);
   const height = h ? Math.min(2000, Math.max(300, Number(h[1]))) : 800;
   return { src: url.toString(), height };
