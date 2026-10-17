@@ -24,15 +24,12 @@ development keys, so don't put them anywhere else and don't commit `.env*`.
 
 ## Applying migrations to the remote project
 
-- `.github/workflows/supabase-migrate.yml` runs on push to `main` when
-  `supabase/migrations/**` changes: `supabase db push --db-url`. It needs one
-  repository secret, `SUPABASE_DB_URL` (the Session pooler connection string,
-  password included), which reaches only this database. It can also be run by
-  hand from the Actions tab.
+- Supabase's GitHub integration (project settings → Integrations → GitHub,
+  "Deploy to production" on branch `main`) applies new files in
+  `supabase/migrations` when they merge to `main`. No CI secret is involved.
 - `.github/workflows/db-tests.yml` runs `supabase test db` on every PR that
-  touches `supabase/**`.
-- `db push` refuses a migration older than the newest one already applied, so
-  name new files with a timestamp later than every existing migration.
+  touches `supabase/**`, so a migration is tested before it can merge.
+- New migrations must sort after every existing one (later timestamp).
 - Migrations are forward-only; a mistake is fixed by a new migration.
 - The first four migrations were applied through the Supabase MCP on 17 Oct
   and their history rows were renamed to match these filenames.
