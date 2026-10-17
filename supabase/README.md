@@ -111,6 +111,19 @@ bookings, marshal sign-ups, reports and unavailability are never touched.
 - Values that would break a CHECK (an unknown outing status, Available Slots
   outside 0–6) are stored as null / clamped rather than failing the batch.
 
+**Outing status is written by both sides.** The app auto-confirms outings
+(`recompute_outing_status`, which queues a Notion `Status` patch) and captains
+change Status in Notion, notably to Cancelled. The inbound sync never puts
+`status` in its plain upsert; it calls `sync_outing_statuses` (migration
+`20261018200100_status_ownership.sql`), which locks the outing and applies, per
+outing: (1) Notion says Cancelled → write Cancelled and drop `Status` from the
+page's pending outbox row (marking it done if nothing is left); (2) else a
+pending outbox row carrying `Status` → keep the app's value, it is on its way to
+Notion; (3) else write Notion's value. The outbox worker never resurrects a
+cancelled outing: a queued live Status is sent as Cancelled if the outing now
+reads Cancelled, and is re-asserted as Cancelled if the cancellation lands while
+the PATCH is in flight.
+
 **Deletions (soft approach).** Only rows of Notion-owned tables are deleted, and
 only when Notion says so: a page returned as `archived`/`in_trash`, a
 `page.deleted` webhook (the page is re-read first; `page.undeleted` restores

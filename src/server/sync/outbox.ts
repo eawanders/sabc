@@ -64,6 +64,24 @@ export async function runOutbox(notion: SyncNotion, db: SyncDb, options: OutboxO
   return result;
 }
 
+const CANCELLED = { status: { name: 'Cancelled' } };
+
+/** True when an outing payload sets Status to something other than Cancelled. */
+function sendsLiveStatus(entity: string, payload: Record<string, unknown>) {
+  const status = (payload?.Status as { status?: { name?: string } } | undefined)?.status?.name;
+  return entity === 'outing' && status !== undefined && status !== 'Cancelled';
+}
+
+/**
+ * An outing cancelled in Notion stays cancelled: if a queued Status patch would
+ * set anything else while the outing now reads Cancelled, send Cancelled.
+ */
+async function neverResurrect(db: SyncDb, row: OutboxRow, pageId: string) {
+  if (!sendsLiveStatus(row.entity, row.payload)) return row.payload;
+  if ((await db.getOutingStatus(pageId)) !== 'Cancelled') return row.payload;
+  return { ...row.payload, Status: CANCELLED };
+}
+
 async function sendRow(
   notion: SyncNotion,
   db: SyncDb,
@@ -76,7 +94,12 @@ async function sendRow(
     if (typeof pageId !== 'string' || !PAGE_ID.test(pageId)) {
       throw new Error('outbox row has no valid entity_key.page_id');
     }
-    await notion.updatePage(pageId, row.payload);
+    const payload = await neverResurrect(db, row, pageId);
+    await notion.updatePage(pageId, payload);
+    // A cancellation that landed while the PATCH was in flight: re-assert it.
+    if (sendsLiveStatus(row.entity, payload) && (await db.getOutingStatus(pageId)) === 'Cancelled') {
+      await notion.updatePage(pageId, { Status: CANCELLED });
+    }
   } catch (error) {
     const info = notionErrorInfo(error);
     const attempts = row.attempts + 1;

@@ -36,6 +36,9 @@ export interface SyncDb {
   completeOutbox(id: number, revision: number): Promise<boolean>;
   failOutbox(id: number, failure: OutboxFailure): Promise<void>;
   saveWebhookToken(token: string): Promise<void>;
+  /** Applies Notion's outing statuses through the sync_outing_statuses ownership rule. */
+  syncOutingStatuses(rows: { id: string; status: string | null }[]): Promise<void>;
+  getOutingStatus(id: string): Promise<string | null>;
 }
 
 const CHUNK = 500;
@@ -120,6 +123,23 @@ export function createSupabaseSyncDb(client: SupabaseClient): SyncDb {
 
     async saveWebhookToken(token) {
       check(await client.from('notion_webhook_handshake').insert({ token }), 'write notion_webhook_handshake');
+    },
+
+    async syncOutingStatuses(rows) {
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        check(
+          await client.rpc('sync_outing_statuses', { p_statuses: rows.slice(i, i + CHUNK) }),
+          'sync_outing_statuses',
+        );
+      }
+    },
+
+    async getOutingStatus(id) {
+      const data = check(
+        await client.from('outings').select('status').eq('id', id).maybeSingle(),
+        'read outings.status',
+      ) as { status: string | null } | null;
+      return data?.status ?? null;
     },
   };
 }
