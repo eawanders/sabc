@@ -3,8 +3,8 @@
 // command-palette assignment, and a keyboard model (see ../_lib/keyboard.ts).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFlagStatus } from '@/hooks/useFlagStatus';
-import type { WeeklyUnavailability } from '../_lib/availability';
-import { loadMembers, loadUnavailability, type DirectoryMember } from '../_lib/directory';
+import { useLiveUnavailability } from '../_lib/availability-live';
+import { loadMembers, type DirectoryMember } from '../_lib/directory';
 import { drawerKey } from '../_lib/keyboard';
 import { viewSeat } from '../_lib/seatState';
 import {
@@ -37,7 +37,7 @@ export function CrewDrawer(props: {
   onCrewChange?: (outingId: string, filled: number, status: string | null) => void;
 }) {
   const [members, setMembers] = useState<DirectoryMember[]>([]);
-  const [unavailability, setUnavailability] = useState<Record<string, WeeklyUnavailability>>({});
+  const unavailability = useLiveUnavailability();
   const byId = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const crew = useCrew(props.outingId, (id) => (id ? byId.get(id)?.name ?? null : null));
   const [focus, setFocus] = useState(1);
@@ -48,7 +48,6 @@ export function CrewDrawer(props: {
 
   useEffect(() => {
     loadMembers().then(setMembers).catch(() => {});
-    loadUnavailability().then(setUnavailability).catch(() => {});
   }, []);
 
   const outing = crew.outing ?? props.initial ?? null;
