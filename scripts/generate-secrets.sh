@@ -23,24 +23,13 @@ echo "✅ NEXTAUTH_SECRET (for NextAuth.js):"
 echo "   $NEXTAUTH_SECRET"
 echo ""
 
-# Generate CRON_HMAC_KEY
-CRON_HMAC_KEY=$(openssl rand -hex 32)
-echo "✅ CRON_HMAC_KEY (for cron job authentication):"
-echo "   $CRON_HMAC_KEY"
-echo ""
-
 echo "📋 Next Steps:"
 echo ""
 echo "1. Add these secrets to Vercel:"
 echo "   • Go to: https://vercel.com/[your-team]/sabc/settings/environment-variables"
 echo "   • Add NEXTAUTH_SECRET (Production, Preview, Development)"
-echo "   • Add CRON_HMAC_KEY (Production, Preview)"
 echo ""
-echo "2. Add CRON_HMAC_KEY to GitHub:"
-echo "   • Go to: Settings → Environments → outing-update"
-echo "   • Add secret: CRON_HMAC_KEY"
-echo ""
-echo "3. Configure other required environment variables:"
+echo "2. Configure other required environment variables:"
 echo "   • NEXTAUTH_URL"
 echo "   • Email provider settings (for magic links)"
 echo "   • Upstash Redis credentials (for rate limiting)"
@@ -62,9 +51,6 @@ if [ ! -f .env.local ]; then
 # NextAuth
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 NEXTAUTH_URL=http://localhost:3000
-
-# Cron Authentication
-CRON_HMAC_KEY=$CRON_HMAC_KEY
 
 # Add other variables from .env.example as needed
 # NOTION_TOKEN=
