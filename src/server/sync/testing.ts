@@ -17,6 +17,7 @@ export class FakeDb implements SyncDb {
   outbox: (OutboxRow & { done: boolean; next_attempt_at: string; last_error?: string })[] = [];
   failures: { id: number; failure: OutboxFailure }[] = [];
   tokens: string[] = [];
+  syncSecret: string | null = null;
 
   rows(table: string) {
     if (!this.tables.has(table)) this.tables.set(table, []);
@@ -109,6 +110,10 @@ export class FakeDb implements SyncDb {
         outing.status = status;
       }
     }
+  }
+
+  async verifySyncSecret(secret: string) {
+    return this.syncSecret !== null && secret !== '' && secret === this.syncSecret;
   }
 
   async getOutingStatus(id: string) {

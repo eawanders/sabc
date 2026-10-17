@@ -168,40 +168,23 @@ per-minute tick catches anything debounced.
 | `SUPABASE_SERVICE_ROLE_KEY` | sync worker, backfill (bypasses RLS) |
 | `NOTION_TOKEN` | existing; the integration needs read + update content on the five databases |
 | `NOTION_WEBHOOK_VERIFICATION_TOKEN` | webhook signature check |
-| `SYNC_SHARED_SECRET` | `x-sync-secret` header on `/api/sync/run` |
 
 ### Proposed scheduler (not applied)
 
-Supabase `pg_cron` + `pg_net` (both on the free tier) call the tick every
-minute. It needs the shared secret, so it lives here rather than in a
-migration; keep the secret in Vault, not in the job text:
+Supabase `pg_cron` + `pg_net` call `/api/sync/run` every minute, and a full
+sweep nightly at 03:17 (migration `20261018300100_sync_schedule`). The jobs send
+the Vault secret `sync_shared_secret` in `x-sync-secret`, and the route checks
+it with `public.verify_sync_secret()` (migration `20261018400100`), so the
+secret is created and used only inside the database and is never copied into
+Vercel. With no Vault secret the jobs make no request and the route answers 401.
+
+Create or rotate the secret without ever seeing it (run as a privileged role):
 
 ```sql
-create extension if not exists pg_cron;
-create extension if not exists pg_net;
-
-select vault.create_secret('<SYNC_SHARED_SECRET>', 'sync_shared_secret');
-
-select cron.schedule('notion-sync', '* * * * *', $$
-  select net.http_post(
-    url     := 'https://<app>/api/sync/run',
-    headers := jsonb_build_object(
-      'content-type', 'application/json',
-      'x-sync-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'sync_shared_secret')),
-    body    := '{}'::jsonb,
-    timeout_milliseconds := 55000);
-$$);
-
--- Nightly full sweep (also infers deletions):
-select cron.schedule('notion-sync-full', '17 3 * * *', $$
-  select net.http_post(
-    url     := 'https://<app>/api/sync/run?full=1',
-    headers := jsonb_build_object(
-      'content-type', 'application/json',
-      'x-sync-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'sync_shared_secret')),
-    body    := '{}'::jsonb,
-    timeout_milliseconds := 55000);
-$$);
+select vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'),
+                           'sync_shared_secret', 'pg_cron -> /api/sync/run');
+-- rotate: select vault.update_secret((select id from vault.secrets where name = 'sync_shared_secret'),
+--                                     encode(extensions.gen_random_bytes(32), 'hex'));
 ```
 
 ### One-off backfill of app-owned data

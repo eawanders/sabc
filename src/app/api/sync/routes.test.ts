@@ -26,7 +26,7 @@ const { POST: run } = await import('./run/route');
 const { POST: webhook } = await import('./notion-webhook/route');
 
 beforeEach(() => {
-  vi.stubEnv('SYNC_SHARED_SECRET', 'tick-secret');
+  db.syncSecret = 'tick-secret';
   vi.stubEnv('NOTION_WEBHOOK_VERIFICATION_TOKEN', 'secret_hook');
 });
 afterEach(() => {
@@ -47,9 +47,17 @@ describe('POST /api/sync/run', () => {
     expect(runOutbox).not.toHaveBeenCalled();
   });
 
-  it('refuses to run when no secret is configured', async () => {
-    vi.stubEnv('SYNC_SHARED_SECRET', '');
-    expect((await run(runRequest({ 'x-sync-secret': '' }))).status).toBe(503);
+  it('checks the secret against the database (Vault), not an env var', async () => {
+    vi.stubEnv('SYNC_SHARED_SECRET', 'env-secret');
+    expect((await run(runRequest({ 'x-sync-secret': 'env-secret' }))).status).toBe(401);
+    expect((await run(runRequest({ 'x-sync-secret': 'tick-secret' }))).status).toBe(200);
+  });
+
+  it('rejects everything when no secret is stored', async () => {
+    db.syncSecret = null;
+    expect((await run(runRequest({ 'x-sync-secret': '' }))).status).toBe(401);
+    expect((await run(runRequest({ 'x-sync-secret': 'tick-secret' }))).status).toBe(401);
+    expect(syncAll).not.toHaveBeenCalled();
   });
 
   it('runs the inbound sweep then the outbox with the right secret', async () => {
