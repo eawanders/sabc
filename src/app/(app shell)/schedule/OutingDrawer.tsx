@@ -61,6 +61,7 @@ import { GoogleCalendarIcon } from '@/components/icons/GoogleCalendarIcon';
 import { SwapIcon } from '@/components/icons/SwapIcon';
 import { useOutingsResource } from '@/hooks/useOutingsResource';
 import type { Outing } from '@/types/outing';
+import { UNKNOWN_MEMBER_NAME } from '@/lib/notion/outings';
 
 // Type definitions for Notion properties
 interface NotionDate {
@@ -437,7 +438,8 @@ const RowerRow: React.FC<RowerRowProps> = ({
                   return { value: selectedMemberObj.id, label: selectedMemberObj.name, member: selectedMemberObj };
                 }
 
-                return { value: '', label: 'Select Member', member: null };
+                // Occupied by someone we couldn't resolve: never show the seat as empty
+                return { value: '', label: selectedMember, member: null };
               })()}
               onChange={(option) => {
                 // Fix: Handle MultiValue type from react-select
@@ -759,7 +761,7 @@ const Pill = ({ children, type, value, shouldStretch = false }: { children: Reac
 export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawerProps) {
   const { urlState, openReportDrawer, closeDrawer, openSessionDrawer } = useScheduleUrlState();
   const { outing, loading, error, refresh } = useOutingDetails(outingId);
-  const { members, loading: membersLoading, refresh: refreshMembers } = useMembers();
+  const { members, loading: membersLoading, error: membersError, refresh: refreshMembers } = useMembers();
   const { availabilityMap: rowerAvailabilityMap, loading: rowerAvailabilityLoading, error: rowerAvailabilityError } = useAllRowerAvailability();
   const rowerAvailabilityUnknown = rowerAvailabilityLoading || Boolean(rowerAvailabilityError);
   const { outings: allOutings } = useOutingsResource();
@@ -1116,7 +1118,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
   // Initialize assignments from outing data - using the proven pattern
   React.useEffect(() => {
-    if (!outing || !members.length) return;
+    // Wait for members to finish loading (even if it failed) so occupied seats are never initialised as empty
+    if (!outing || membersLoading) return;
 
     // Only initialize when the outing ID changes, not on every outing data update
     if (currentOutingIdRef.current === outing.id) return;
@@ -1149,6 +1152,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             initialAssignments[seat] = matchedMember.name;
             console.log(`🎯 Pre-filled ${seat} with ${matchedMember.name} (ID: ${relatedId})`);
           } else {
+            initialAssignments[seat] = UNKNOWN_MEMBER_NAME;
             console.log(`⚠️ No member found for ID ${relatedId} in seat ${seat}`);
           }
         }
@@ -1220,7 +1224,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     setIsInitialized(true);
     setIsLoadingStatus(false);
     console.log(`✅ Assignments initialized for outing ${outing.id}:`, initialAssignments);
-  }, [outing?.id, members.length, getOutingProperty]);
+  }, [outing?.id, members.length, membersLoading, getOutingProperty]);
 
   // Fetch flag status for water outings
   useEffect(() => {
@@ -1288,8 +1292,11 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
             } else {
               console.log(`🔄 Fresh assignment for ${seat}: ${matchedMember.name} (ID: ${relatedId})`);
             }
-          } else if (isSub) {
-            console.warn(`⚠️ [SUBS] No member found for SUB ${seat} with ID: ${relatedId}`);
+          } else {
+            freshAssignments[seat] = UNKNOWN_MEMBER_NAME;
+            if (isSub) {
+              console.warn(`⚠️ [SUBS] No member found for SUB ${seat} with ID: ${relatedId}`);
+            }
           }
         } else if (isSub) {
           console.log(`ℹ️ [SUBS] Empty relation array for SUB ${seat}`);
@@ -1374,7 +1381,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       const assignBody = {
         outingId: outing.id,
         seat,
-        memberId: data.member.id
+        memberId: data.member.id,
+        status: 'Awaiting Approval'
       };
       console.log('🆕 [OutingDrawer] Assign request body:', assignBody);
 
@@ -1404,17 +1412,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         [seat]: data.member.name,
         [`${seat}_status`]: 'Awaiting Approval'
       }));
-
-      // Set status to "Awaiting Approval" (best effort, don't block UI)
-      const statusField = getStatusField(seat);
-      console.log('🆕 [OutingDrawer] Setting status to Awaiting Approval:', { outingId: outing.id, statusField });
-      fetch('/api/update-availability', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outingId: outing.id, statusField, status: 'Awaiting Approval' }),
-      }).catch((e) => {
-        console.error('🆕 [OutingDrawer] Failed to update status:', e);
-      });
 
       // Clear loading state immediately
       console.log('🆕 [OutingDrawer] Clearing loading state');
@@ -1453,6 +1450,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     const prevMemberName = assignments[seat] || "";
     const member = members.find((m) => m.name === memberName) || null;
 
+    // A name we can't resolve would be sent as memberId null, which clears the seat
+    if (memberName !== "" && !member) {
+      console.error(`❌ [OutingDrawer] No member found named "${memberName}" - not changing ${seat}`);
+      return;
+    }
+
     const isSub = seat.startsWith('Sub');
     console.log(`🔍 [OutingDrawer] Assignment change for ${isSub ? 'SUB SEAT' : 'regular seat'}:`, {
       seat,
@@ -1470,6 +1473,9 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
     // Track if we're removing a member
     const isRemovingMember = prevMemberName !== "" && memberName === "";
     console.log(`📝 [OutingDrawer] isRemovingMember: ${isRemovingMember}, isSub: ${isSub}`);
+
+    // Any change of member resets the seat status to "Awaiting Approval", in the same write
+    const resetsStatus = (memberName !== "" && prevMemberName !== memberName) || isRemovingMember;
 
     // Mark this seat as having a pending optimistic update
     setPendingOptimisticUpdates(prev => new Set([...prev, seat]));
@@ -1494,6 +1500,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         outingId: outing.id,
         seat,
         memberId: member ? member.id : null,
+        ...(resetsStatus ? { status: "Awaiting Approval" } : {}),
       };
       console.log(`� [OutingDrawer] Sending assign-seat request for ${isSub ? 'SUB' : 'regular'} seat:`, assignBody);
 
@@ -1552,14 +1559,8 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       console.log(`📝 [OutingDrawer] Clearing loading state after seat assignment for ${seat}`);
       setIsLoadingStatus(false);
 
-      // Handle status update for both adding/changing a member OR removing a member
-      const statusField = getStatusField(seat);
-
-      if ((memberName !== "" && prevMemberName !== memberName) || isRemovingMember) {
-        // Always update to "Awaiting Approval" when there's a change
-        console.log(`� [OutingDrawer] Resetting ${statusField} to "Awaiting Approval" due to assignment change`);
-
-        // Optimistically update the UI first
+      // The status was written with the member: reflect it in the UI
+      if (resetsStatus) {
         setAssignments((prev) => {
           const updated = { ...prev };
 
@@ -1573,50 +1574,6 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
           return updated;
         });
-
-        try {
-          const statusBody = {
-            outingId: outing.id,
-            statusField,
-            status: "Awaiting Approval",
-          };
-          console.log('📝 [OutingDrawer] Update status request body:', statusBody);
-
-          const res = await fetch("/api/update-availability", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(statusBody),
-          });
-
-          console.log('📝 [OutingDrawer] Update status response:', { status: res.status, ok: res.ok });
-
-          if (!res.ok) {
-            const errorText = await res.text().catch((e) => {
-              console.error('📝 [OutingDrawer] Failed to read status error response:', e);
-              return 'Unknown error';
-            });
-            console.error('📝 [OutingDrawer] Status update failed:', errorText);
-            throw new Error(`Failed to reset availability: ${errorText}`);
-          }
-
-          console.log(`✅ [OutingDrawer] ${statusField} reset to "Awaiting Approval"`);
-        } catch (err) {
-          console.error(`❌ [OutingDrawer] Error resetting ${statusField}:`, err);
-          console.error('❌ [OutingDrawer] Error stack:', err instanceof Error ? err.stack : 'No stack');
-          // Revert on error
-          setAssignments((prev) => {
-            const updated = { ...prev };
-
-            // Restore previous status
-            if (previousAssignments[`${seat}_status`]) {
-              updated[`${seat}_status`] = previousAssignments[`${seat}_status`];
-            } else {
-              delete updated[`${seat}_status`];
-            }
-
-            return updated;
-          });
-        }
       }
 
       // Refresh the data immediately to get updated backend state
@@ -1648,6 +1605,106 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       setIsLoadingStatus(false);
       // State already rolled back above
       return;
+    }
+  };
+
+  // Auto-confirm the outing, or (Water Outings only) put it back to Provisional, after a seat status change
+  const syncOutingConfirmation = async (updatedAssignments: Record<string, string>, status: string) => {
+    if (!outing) return;
+
+    // Get cox experience for bank rider requirement check
+    const coxMember = members.find(m => m.name === updatedAssignments['Cox']);
+    const coxExperience = coxMember?.coxExperience;
+
+    const shouldConfirm = shouldAutoConfirmOuting(
+      updatedAssignments,
+      outing?.properties?.Type?.select?.name || '',
+      flagStatus?.status_text || null,
+      coxExperience
+    );
+
+    // Handle auto-confirmation when all requirements are met
+    if (status === 'Available' && shouldConfirm) {
+      console.log('🎯 All required participants are available - auto-confirming outing');
+
+      try {
+        const payload = {
+          outingId: outing.id,
+          // Notion property for outing-level status is called 'Status'
+          statusField: 'Status',
+          status: 'Confirmed',
+        };
+
+        console.log('🔁 Auto-confirm request payload:', payload);
+
+        const confirmRes = await fetch("/api/update-availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        // Read response text for richer debugging information when not OK
+        const respText = await confirmRes.text();
+
+        if (confirmRes.ok) {
+          console.log('✅ Outing automatically confirmed', { status: confirmRes.status, body: respText });
+          // Update local state immediately for instant UI feedback
+          console.debug('[OutingDrawer] setting OutingStatus local to Confirmed for', outing.id);
+          const updatedForConfirm = { ...assignments, OutingStatus: 'Confirmed' };
+          setAssignments(updatedForConfirm);
+          try {
+            window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForConfirm } }));
+          } catch (err) {
+            console.error('[OutingDrawer] failed to dispatch outing-state-updated (Confirmed):', err);
+          }
+        } else {
+          console.error('❌ Failed to auto-confirm outing', { status: confirmRes.status, body: respText });
+          // Throw so the outer catch logs full error
+          throw new Error(`Auto-confirm failed: ${confirmRes.status} - ${respText}`);
+        }
+      } catch (confirmErr) {
+        console.error('❌ Error auto-confirming outing:', confirmErr);
+      }
+    }
+    // Handle de-confirmation when requirements are no longer met (ONLY for Water Outings)
+    else if (status !== 'Available' && !shouldConfirm && outing?.properties?.Type?.select?.name === 'Water Outing') {
+      // Check if outing was previously confirmed and should now be provisional
+      const currentOutingStatus = outing?.properties?.OutingStatus?.status?.name;
+      if (currentOutingStatus === 'Confirmed') {
+        console.log('⚠️ Requirements no longer met - changing status back to Provisional');
+
+        try {
+          const deconfirmRes = await fetch("/api/update-availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              outingId: outing.id,
+              // Use the Notion property name directly
+              statusField: 'Status',
+              status: 'Provisional',
+            }),
+          });
+
+          const deconfirmText = await deconfirmRes.text();
+          if (deconfirmRes.ok) {
+            console.log('✅ Outing status changed back to Provisional', { status: deconfirmRes.status, body: deconfirmText });
+            // Update local state immediately for instant UI feedback
+            console.debug('[OutingDrawer] setting OutingStatus local to Provisional for', outing.id);
+            const updatedForProvisional = { ...assignments, OutingStatus: 'Provisional' };
+            setAssignments(updatedForProvisional);
+            try {
+              window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForProvisional } }));
+            } catch (err) {
+              console.error('[OutingDrawer] failed to dispatch outing-state-updated (Provisional):', err);
+            }
+          } else {
+            console.error('❌ Failed to de-confirm outing', { status: deconfirmRes.status, body: deconfirmText });
+            throw new Error(`De-confirm failed: ${deconfirmRes.status} - ${deconfirmText}`);
+          }
+        } catch (deconfirmErr) {
+          console.error('❌ Error de-confirming outing:', deconfirmErr);
+        }
+      }
     }
   };
 
@@ -1743,100 +1800,7 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         [`${seat}_status`]: status,
       };
 
-      // Get cox experience for bank rider requirement check
-      const coxMember = members.find(m => m.name === updatedAssignments['Cox']);
-      const coxExperience = coxMember?.coxExperience;
-
-      const shouldConfirm = shouldAutoConfirmOuting(
-        updatedAssignments,
-        outing?.properties?.Type?.select?.name || '',
-        flagStatus?.status_text || null,
-        coxExperience
-      );
-
-      // Handle auto-confirmation when all requirements are met
-      if (status === 'Available' && shouldConfirm) {
-        console.log('🎯 All required participants are available - auto-confirming outing');
-
-        try {
-          const payload = {
-            outingId: outing.id,
-            // Notion property for outing-level status is called 'Status'
-            statusField: 'Status',
-            status: 'Confirmed',
-          };
-
-          console.log('🔁 Auto-confirm request payload:', payload);
-
-          const confirmRes = await fetch("/api/update-availability", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-
-          // Read response text for richer debugging information when not OK
-          const respText = await confirmRes.text();
-
-          if (confirmRes.ok) {
-            console.log('✅ Outing automatically confirmed', { status: confirmRes.status, body: respText });
-            // Update local state immediately for instant UI feedback
-            console.debug('[OutingDrawer] setting OutingStatus local to Confirmed for', outing.id);
-            const updatedForConfirm = { ...assignments, OutingStatus: 'Confirmed' };
-            setAssignments(updatedForConfirm);
-            try {
-              window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForConfirm } }));
-            } catch (err) {
-              console.error('[OutingDrawer] failed to dispatch outing-state-updated (Confirmed):', err);
-            }
-          } else {
-            console.error('❌ Failed to auto-confirm outing', { status: confirmRes.status, body: respText });
-            // Throw so the outer catch logs full error
-            throw new Error(`Auto-confirm failed: ${confirmRes.status} - ${respText}`);
-          }
-        } catch (confirmErr) {
-          console.error('❌ Error auto-confirming outing:', confirmErr);
-        }
-      }
-      // Handle de-confirmation when requirements are no longer met (ONLY for Water Outings)
-      else if (status !== 'Available' && !shouldConfirm && outing?.properties?.Type?.select?.name === 'Water Outing') {
-        // Check if outing was previously confirmed and should now be provisional
-        const currentOutingStatus = outing?.properties?.OutingStatus?.status?.name;
-        if (currentOutingStatus === 'Confirmed') {
-          console.log('⚠️ Requirements no longer met - changing status back to Provisional');
-
-          try {
-            const deconfirmRes = await fetch("/api/update-availability", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                outingId: outing.id,
-                // Use the Notion property name directly
-                statusField: 'Status',
-                status: 'Provisional',
-              }),
-            });
-
-            const deconfirmText = await deconfirmRes.text();
-            if (deconfirmRes.ok) {
-              console.log('✅ Outing status changed back to Provisional', { status: deconfirmRes.status, body: deconfirmText });
-              // Update local state immediately for instant UI feedback
-              console.debug('[OutingDrawer] setting OutingStatus local to Provisional for', outing.id);
-              const updatedForProvisional = { ...assignments, OutingStatus: 'Provisional' };
-              setAssignments(updatedForProvisional);
-              try {
-                window.dispatchEvent(new CustomEvent('outing-state-updated', { detail: { outingId: outing.id, assignments: updatedForProvisional } }));
-              } catch (err) {
-                console.error('[OutingDrawer] failed to dispatch outing-state-updated (Provisional):', err);
-              }
-            } else {
-              console.error('❌ Failed to de-confirm outing', { status: deconfirmRes.status, body: deconfirmText });
-              throw new Error(`De-confirm failed: ${deconfirmRes.status} - ${deconfirmText}`);
-            }
-          } catch (deconfirmErr) {
-            console.error('❌ Error de-confirming outing:', deconfirmErr);
-          }
-        }
-      }
+      await syncOutingConfirmation(updatedAssignments, status);
 
       // Notify parent of state change to refresh data
       console.log('✅ [OutingDrawer] Starting data refresh after availability update');
@@ -1963,7 +1927,18 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
 
     console.log(`🔄 [SwapInSubs] Performing ${swapsToMake} swap(s)`);
 
-    // Perform all swaps
+    // Resolve a seat's member ID by name, falling back to the outing's relation (covers unresolved members)
+    const getSeatMemberId = (seat: string, memberName: string): string | undefined => {
+      const byName = members.find((m) => m.name === memberName)?.id;
+      if (byName) return byName;
+      const seatProp = getOutingProperty(seat) as { relation?: { id: string }[] } | undefined;
+      return seatProp?.relation?.[0]?.id;
+    };
+
+    // Every swap goes to the server as ONE write: both seats' members and statuses, all swaps together
+    const seatWrites: { seat: string; memberId: string; status: string }[] = [];
+    const swapChanges: Record<string, string> = {};
+
     for (let i = 0; i < swapsToMake; i++) {
       const rower = unavailableRowers[i];
       const sub = availableSubs[i];
@@ -1972,58 +1947,57 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
       const rowerStatus = assignments[`${rower.seat}_status`]; // Should be "Not Available"
       const subStatus = assignments[`${sub.seat}_status`]; // Should be "Available"
 
-      console.log(`🔄 [SwapInSubs] ========== SWAP ${i + 1}/${swapsToMake} ==========`);
-      console.log(`🔄 [SwapInSubs] Swapping ${rower.memberName} (${rower.seat}) ↔ ${sub.memberName} (${sub.seat})`);
-      console.log(`🔄 [SwapInSubs] Swap details:`, {
-        swap: i + 1,
-        total: swapsToMake,
-        rower: {
-          name: rower.memberName,
-          seat: rower.seat,
-          status: rowerStatus
-        },
-        sub: {
-          name: sub.memberName,
-          seat: sub.seat,
-          status: subStatus
-        }
-      });
-
-      try {
-        // Step 1: Assign sub member to rower seat
-        console.log(`🔄 [SwapInSubs] Step 1: Assigning ${sub.memberName} to ${rower.seat}`);
-        await handleAssignmentChange(rower.seat, sub.memberName);
-        console.log(`✅ [SwapInSubs] Step 1 complete: ${sub.memberName} → ${rower.seat}`);
-
-        // Step 2: Assign rower member to sub seat
-        console.log(`🔄 [SwapInSubs] Step 2: Assigning ${rower.memberName} to ${sub.seat}`);
-        await handleAssignmentChange(sub.seat, rower.memberName);
-        console.log(`✅ [SwapInSubs] Step 2 complete: ${rower.memberName} → ${sub.seat}`);
-
-        // Step 3: Update status for rower seat (sub's status - should be "Available")
-        console.log(`🔄 [SwapInSubs] Step 3: Setting ${rower.seat} status to "${subStatus}"`);
-        await handleAvailabilityUpdate(rower.seat, subStatus);
-        console.log(`✅ [SwapInSubs] Step 3 complete: ${rower.seat} status → ${subStatus}`);
-
-        // Step 4: Update status for sub seat (rower's status - should be "Not Available")
-        console.log(`🔄 [SwapInSubs] Step 4: Setting ${sub.seat} status to "${rowerStatus}"`);
-        await handleAvailabilityUpdate(sub.seat, rowerStatus);
-        console.log(`✅ [SwapInSubs] Step 4 complete: ${sub.seat} status → ${rowerStatus}`);
-
-        console.log(`✅ [SwapInSubs] Successfully completed swap ${i + 1}/${swapsToMake}: ${rower.seat} ↔ ${sub.seat} (including statuses)`);
-      } catch (error) {
-        console.error(`❌ [SwapInSubs] Error during swap ${i + 1}/${swapsToMake}:`, {
-          swap: i + 1,
-          total: swapsToMake,
-          rowerSeat: rower.seat,
-          subSeat: sub.seat,
-          error: error instanceof Error ? error.message : String(error),
-          errorStack: error instanceof Error ? error.stack : undefined
-        });
+      const rowerId = getSeatMemberId(rower.seat, rower.memberName);
+      const subId = getSeatMemberId(sub.seat, sub.memberName);
+      if (!rowerId || !subId) {
+        console.error(`❌ [SwapInSubs] Could not resolve member IDs for ${rower.seat} ↔ ${sub.seat} - skipping`);
+        continue;
       }
+
+      console.log(`🔄 [SwapInSubs] Swapping ${rower.memberName} (${rower.seat}) ↔ ${sub.memberName} (${sub.seat})`);
+      seatWrites.push(
+        { seat: rower.seat, memberId: subId, status: subStatus },
+        { seat: sub.seat, memberId: rowerId, status: rowerStatus }
+      );
+      swapChanges[rower.seat] = sub.memberName;
+      swapChanges[`${rower.seat}_status`] = subStatus;
+      swapChanges[sub.seat] = rower.memberName;
+      swapChanges[`${sub.seat}_status`] = rowerStatus;
     }
 
-    console.log('✅ [SwapInSubs] All swaps completed successfully');
+    if (seatWrites.length === 0) {
+      console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED (NO SWAPS) ==========');
+      return;
+    }
+
+    setIsLoadingStatus(true);
+    try {
+      const res = await fetch('/api/swap-seats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outingId: outing.id, seats: seatWrites }),
+      });
+      if (!res.ok) {
+        throw new Error(`Swap failed: ${res.status}`);
+      }
+
+      // Same outing auto-confirm/de-confirm checks the old per-seat status updates ran
+      // (rower seat set to the sub's status, then sub seat set to the rower's status)
+      const postSwapAssignments = { ...assignments, ...swapChanges };
+      await syncOutingConfirmation(postSwapAssignments, 'Available');
+      await syncOutingConfirmation(postSwapAssignments, 'Not Available');
+
+      setAssignments((prev) => ({ ...prev, ...swapChanges }));
+      console.log('✅ [SwapInSubs] All swaps completed successfully');
+    } catch (error) {
+      console.error('❌ [SwapInSubs] Error swapping subs:', error);
+      alert('Swapping in subs failed. Reloading the outing to show its current crew.');
+    } finally {
+      setIsLoadingStatus(false);
+    }
+
+    // Reload from Notion either way so the drawer shows what was actually saved
+    await throttledRefresh(true);
     console.log('🔄 [SwapInSubs] ========== SWAP IN SUBS COMPLETED ==========');
   };
 
@@ -2052,6 +2026,13 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           <span className="ml-2 text-sm text-muted-foreground">Loading session details...</span>
+        </div>
+      )}
+
+      {error && !outing && !loading && (
+        <div className="flex flex-col items-center gap-2 py-8" role="alert">
+          <span className="text-sm text-red-600">{error}</span>
+          <button type="button" className="text-sm underline" onClick={() => throttledRefresh(true)}>Try again</button>
         </div>
       )}
 
@@ -2296,6 +2277,12 @@ export default function OutingDrawer({ outingId, isOpen, onClose }: OutingDrawer
               <div className="flex items-center justify-center" style={{ marginTop: '16px', marginBottom: '0px' }}>
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 <span className="ml-2 text-sm text-muted-foreground">Updating outing...</span>
+              </div>
+            )}
+
+            {membersError && (
+              <div className="text-sm text-red-600" role="alert" style={{ marginTop: '16px' }}>
+                Couldn&apos;t load members. Seats marked &quot;{UNKNOWN_MEMBER_NAME}&quot; are taken.
               </div>
             )}
           </div>
