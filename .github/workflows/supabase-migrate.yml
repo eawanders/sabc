@@ -1,8 +1,11 @@
 name: Apply Supabase migrations
 
 # Applies new files in supabase/migrations to the production database
-# (Supabase project "sabc") after they merge to main. Needs two repository
-# secrets: SUPABASE_ACCESS_TOKEN (Side Projects org) and SUPABASE_DB_PASSWORD.
+# (Supabase project "sabc") after they merge to main. Needs one repository
+# secret, SUPABASE_DB_URL: the project's Session pooler connection string with
+# the database password filled in. It reaches only this database, unlike an
+# account-wide Supabase access token. (The direct db.*.supabase.co host is
+# IPv6-only, which GitHub runners can't reach, hence the pooler.)
 
 on:
   push:
@@ -22,22 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      PROJECT_REF: ajikllznzxotmrwojjnd
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
           version: 2.75.0
-      - name: Check secrets are set
+      - name: Check the secret is set
         run: |
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "::error::SUPABASE_ACCESS_TOKEN and SUPABASE_DB_PASSWORD must be set as repository secrets"
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::Set the SUPABASE_DB_URL repository secret (Session pooler connection string)"
             exit 1
           fi
-      - run: supabase link --project-ref "$PROJECT_REF"
       - name: Show pending migrations
-        run: supabase db push --dry-run
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
       - name: Apply migrations
-        run: supabase db push
+        run: supabase db push --db-url "$SUPABASE_DB_URL"

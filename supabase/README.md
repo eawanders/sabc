@@ -25,9 +25,10 @@ development keys, so don't put them anywhere else and don't commit `.env*`.
 ## Applying migrations to the remote project
 
 - `.github/workflows/supabase-migrate.yml` runs on push to `main` when
-  `supabase/migrations/**` changes: `supabase link`, then `supabase db push`.
-  It needs the repository secrets `SUPABASE_ACCESS_TOKEN` (Side Projects org)
-  and `SUPABASE_DB_PASSWORD`. It can also be run by hand from the Actions tab.
+  `supabase/migrations/**` changes: `supabase db push --db-url`. It needs one
+  repository secret, `SUPABASE_DB_URL` (the Session pooler connection string,
+  password included), which reaches only this database. It can also be run by
+  hand from the Actions tab.
 - `.github/workflows/db-tests.yml` runs `supabase test db` on every PR that
   touches `supabase/**`.
 - `db push` refuses a migration older than the newest one already applied, so
