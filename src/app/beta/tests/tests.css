@@ -1,0 +1,50 @@
+/* /beta/tests (PER-277). Builds on beta.css (list, drawer, palette, toasts); scoped under .beta. */
+
+/* header filters: two small segmented controls */
+.beta .bt-filters { flex-wrap: wrap; justify-content: flex-end; }
+.beta .bt-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); padding: 1px; gap: 1px; }
+.beta .bt-seg > * { height: 24px; padding: 0 9px; border-radius: 4px; display: inline-flex; align-items: center; color: var(--fg-2); font-weight: 500; white-space: nowrap; }
+.beta .bt-seg > *:hover { background: var(--hover); color: var(--fg); }
+.beta .bt-seg > [aria-pressed='true'],
+.beta .bt-seg > [aria-current='true'] { background: var(--active); color: var(--fg); }
+
+/* list rows: open area + action cell (Book me / your slot / Full) */
+.beta .bt-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; min-height: 34px; padding-right: 12px; }
+.beta .bt-row:hover { background: var(--hover); }
+.beta .bt-row[aria-current='true'] { background: var(--active); }
+.beta .bt-open { display: grid; grid-template-columns: 64px minmax(0, 1fr) 120px 44px; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px 0 12px; text-align: left; min-width: 0; }
+.beta .bt-open .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.beta .bt-open .ty { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg-2); }
+.beta .bt-open .cn { font-variant-numeric: tabular-nums; color: var(--fg-2); text-align: right; }
+.beta .bt-open .cn.full { color: var(--muted); }
+.beta .bt-act { display: flex; justify-content: flex-end; font-size: 12px; }
+.beta .bt-book { height: 24px; padding: 0 8px; font-size: 12px; }
+.beta .bt-book kbd { margin-left: 2px; }
+.beta .bt-mine { font-size: 12px; }
+@media (max-width: 640px) {
+  .beta .bt-row { grid-template-columns: minmax(0, 1fr) auto; padding-right: 10px; }
+  .beta .bt-open { grid-template-columns: 52px minmax(0, 1fr) 32px; padding: 6px 8px 6px 12px; }
+  .beta .bt-open .ty { display: none; }
+  .beta .bt-book { height: 30px; padding: 0 10px; }
+}
+
+/* drawer slot rows */
+.beta .bt-srow { grid-template-columns: 24px minmax(0, 1fr) auto; }
+.beta .bt-srow .nm { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.beta .bt-you { font-size: 10.5px; color: var(--fg-2); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; line-height: 15px; flex: none; }
+.beta .bt-oc { position: relative; }
+.beta .b-dot.booked { background: var(--brand); }
+@media (hover: none) { .beta .bt-srow { height: 42px; } }
+
+.beta .bt-menu { position: absolute; right: 0; top: calc(100% + 4px); width: 170px; padding: 4px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-lg); box-shadow: 0 8px 24px rgba(15, 15, 15, 0.12); z-index: 50; outline: none; }
+
+.beta .bt-plus { width: 16px; text-align: center; color: var(--muted); font-weight: 500; }
+
+/* sign-up note and the collapsible information */
+.beta .bt-hint { margin: 10px 8px 0; color: var(--muted); font-size: 12px; }
+.beta .bt-info { margin: 12px 8px 0; border-top: 1px solid var(--line); padding-top: 8px; }
+.beta .bt-info summary { cursor: pointer; font-size: 11px; font-weight: 500; color: var(--muted); padding: 4px 0; list-style-position: inside; }
+.beta .bt-info summary:hover { color: var(--fg); }
+.beta .bt-info h3 { font-size: 12.5px; font-weight: 600; margin: 12px 0 2px; color: var(--fg); }
+.beta .bt-info p { margin: 2px 0; color: var(--fg-2); }
+.beta .bt-info ul { margin: 2px 0; padding-left: 18px; color: var(--fg-2); }
