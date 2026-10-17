@@ -25,15 +25,15 @@ added later when needed.
 
 ### 3. **Cron Job Security**
 
-- ✅ HMAC-SHA256 signatures with timestamp
-- ✅ Replay protection (5-minute window)
-- ✅ No more Bearer tokens in workflows
-- ✅ GitHub Actions pinned to minimal permissions
+- The HMAC-signed flag-status cron (`outing-status-cron.yml` and
+  `/api/update-outing-status`) was removed in PER-272. There are no cron jobs.
 
 ### 4. **Security Headers**
 
-- ✅ Content Security Policy (CSP)
-- ✅ HSTS with preload
+Set in `next.config.ts` (HSTS is added by Vercel):
+
+- ❌ Content Security Policy (CSP) - not set
+- ✅ HSTS (Vercel default)
 - ✅ X-Frame-Options: DENY
 - ✅ X-Content-Type-Options: nosniff
 - ✅ Permissions-Policy
@@ -43,27 +43,18 @@ added later when needed.
 
 - ✅ Structured logging with Pino
 - ✅ Automatic PII redaction
-- ✅ Security event tracking
 - ✅ Error boundaries
 
 ## 📋 Setup Checklist
 
 ### Immediate Actions Required
 
-- [ ] **1. Generate HMAC Secret**
-
-  ```bash
-  # CRON_HMAC_KEY
-  openssl rand -hex 32
-  ```
-
-- [ ] **2. Update Vercel Environment Variables**
+- [ ] **1. Update Vercel Environment Variables**
 
   In Vercel Dashboard → Settings → Environment Variables, add:
 
   **Production:**
 
-  - `CRON_HMAC_KEY`
   - `NOTION_TOKEN`
   - `NOTION_OUTINGS_DB_ID`
   - `NOTION_MEMBERS_DB_ID`
@@ -76,14 +67,7 @@ added later when needed.
 
   **Development:** Use `.env.local` file locally
 
-- [ ] **3. Update GitHub Environments**
-
-  In GitHub → Settings → Environments → `outing-update`:
-
-  - Remove `UPDATE_OUTING_STATUS_SECRET`
-  - Add `CRON_HMAC_KEY` (same value as in Vercel)
-
-- [ ] **4. Rotate Existing Secrets (If Needed)**
+- [ ] **2. Rotate Existing Secrets (If Needed)**
 
   If any secrets were committed to git history:
 
@@ -97,7 +81,7 @@ added later when needed.
   # 3. Revoke old integration
   ```
 
-- [ ] **5. Set Up Upstash Redis (Optional)**
+- [ ] **3. Set Up Upstash Redis (Optional)**
 
   For rate limiting:
 
@@ -108,18 +92,13 @@ added later when needed.
   # Note: If not configured, rate limiting will be disabled
   ```
 
-- [ ] **6. Deploy Changes**
+- [ ] **4. Deploy Changes**
 
   ```bash
   git add .
   git commit -m "feat: implement security hardening (no user auth)"
   git push origin edward/edw-74-safety-clean-up
   ```
-
-- [ ] **7. Test Cron Job**
-  - Manually trigger workflow in GitHub Actions
-  - Verify HMAC signature validation works
-  - Check Vercel logs for successful cron execution
 
 ### Optional but Recommended
 
@@ -177,23 +156,18 @@ export async function POST(req: NextRequest) {
 - `src/app/api/_utils/rate-limit.ts` - Rate limiting with Upstash Redis
   (optional)
 - `src/app/api/_utils/schemas.ts` - Zod validation schemas
-- `src/app/api/_utils/hmac.ts` - HMAC signing & verification
 - `src/app/api/_utils/logger.ts` - Structured logging with PII redaction
 - `src/app/api/_utils/response.ts` - Standard response helpers
 
 ### Configuration
 
-- `middleware.ts` - Security headers and CSP
 - `next.config.ts` - Security headers, HTTPS redirect
-- `.github/workflows/outing-status-cron.yml` - HMAC-signed cron job
 - `SECURITY.md` - Security policy and incident response
 
 ## 🚨 Breaking Changes
 
-1. **Cron authentication changed** - Update GitHub Environment with
-   `CRON_HMAC_KEY`
-2. **Stricter input validation** - Invalid requests return 400 with details
-3. **Rate limiting (if enabled)** - High-frequency requests will be throttled
+1. **Stricter input validation** - Invalid requests return 400 with details
+2. **Rate limiting (if enabled)** - High-frequency requests will be throttled
 
 ## 📖 Documentation
 
@@ -207,13 +181,9 @@ export async function POST(req: NextRequest) {
 2. **Treat Notion DB IDs as sensitive** - Don't expose in client bundles
 3. **Monitor logs for PII** - Verify redaction is working
 4. **Rotate keys quarterly** - See SECURITY.md for procedures
-5. **Test thoroughly** - Especially cron job HMAC validation
+5. **Test thoroughly**
 
 ## 🆘 Troubleshooting
-
-### "CRON_HMAC_KEY environment variable is not set"
-
-- Add `CRON_HMAC_KEY` to Vercel and GitHub environments
 
 ### "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN missing"
 
@@ -221,22 +191,15 @@ export async function POST(req: NextRequest) {
 - To enable rate limiting, create Redis database at upstash.com and add
   credentials
 
-### Cron job fails with 401
-
-- Verify `CRON_HMAC_KEY` matches in GitHub and Vercel
-- Check workflow logs for signature generation
-- Ensure timestamp is current (within 5 minutes)
-
 ## 🎯 Next Steps
 
 After implementing these changes:
 
 1. ✅ Complete the setup checklist above
-2. ✅ Test cron job functionality
-3. ✅ Review and update privacy policy
-4. ✅ Configure monitoring and alerting
-5. ✅ Schedule quarterly key rotation
-6. ✅ Consider security audit before public launch
+2. ✅ Review and update privacy policy
+3. ✅ Configure monitoring and alerting
+4. ✅ Schedule quarterly key rotation
+5. ✅ Consider security audit before public launch
 
 ## 🔮 Future: Adding User Authentication
 

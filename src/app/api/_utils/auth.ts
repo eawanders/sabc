@@ -7,7 +7,6 @@
  * Currently, API routes can optionally use:
  * - Rate limiting (via rate-limit.ts)
  * - Input validation (via schemas.ts)
- * - HMAC authentication for cron jobs (via hmac.ts)
  */
 
 // Placeholder types for future auth implementation

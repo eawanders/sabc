@@ -7,7 +7,6 @@ const logger = pino({
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
-      'req.headers["x-cron-signature"]',
       'password',
       'token',
       'secret',
@@ -65,22 +64,5 @@ export function logApiError(
     error: errorMessage,
     // Only log stack in development
     ...(process.env.NODE_ENV === 'development' && { stack: errorStack }),
-  });
-}
-
-// Helper to log security events
-export function logSecurityEvent(
-  event: 'AUTH_FAILURE' | 'RATE_LIMIT' | 'INVALID_SIGNATURE' | 'FORBIDDEN',
-  details: {
-    route: string;
-    ip?: string;
-    userId?: string;
-    reason?: string;
-  }
-) {
-  logger.warn({
-    type: 'SECURITY_EVENT',
-    event,
-    ...details,
   });
 }
