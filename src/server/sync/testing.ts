@@ -87,6 +87,33 @@ export class FakeDb implements SyncDb {
   async saveWebhookToken(token: string) {
     this.tokens.push(token);
   }
+
+  statusCalls: { id: string; status: string | null }[][] = [];
+
+  /** Same rule as public.sync_outing_status (tested in pgTAP 05). */
+  async syncOutingStatuses(rows: { id: string; status: string | null }[]) {
+    this.statusCalls.push(rows);
+    for (const { id, status } of rows) {
+      const outing = this.rows('outings').find((r) => r.id === id);
+      if (!outing) continue;
+      const pending = this.outbox.find((r) => !r.done && r.entity === 'outing' && r.entity_key.page_id === id);
+      if (status === 'Cancelled') {
+        outing.status = 'Cancelled';
+        if (pending && 'Status' in pending.payload) {
+          const { Status: _dropped, ...rest } = pending.payload; // eslint-disable-line @typescript-eslint/no-unused-vars
+          pending.payload = rest;
+          pending.revision++;
+          if (Object.keys(rest).length === 0) pending.done = true;
+        }
+      } else if (!(pending && 'Status' in pending.payload)) {
+        outing.status = status;
+      }
+    }
+  }
+
+  async getOutingStatus(id: string) {
+    return (this.rows('outings').find((r) => r.id === id)?.status as string | null | undefined) ?? null;
+  }
 }
 
 export const title = (text: string) => ({ type: 'title', title: [{ plain_text: text }] });

@@ -72,7 +72,7 @@ export async function syncSource(
         else result.skipped++;
         cursor = later(cursor, notionPage.last_edited_time);
       }
-      if (rows.length) await db.upsert(source.table, rows);
+      if (rows.length) await upsertRows(db, source, rows);
       if (trashed.length) await db.deleteByIds(source.table, trashed);
       result.upserted += rows.length;
       result.deleted += trashed.length;
@@ -98,6 +98,22 @@ export async function syncSource(
   return result;
 }
 
+/**
+ * Upserts mapped rows. outings.status is written by both sides, so it never goes
+ * in the plain upsert: the sync_outing_statuses RPC applies it under the
+ * ownership rule (Notion's Cancelled always wins; otherwise a pending app Status
+ * patch in notion_outbox wins; otherwise Notion's value is written).
+ */
+export async function upsertRows(db: SyncDb, source: SourceDef, rows: Row[]) {
+  if (source.key !== 'outings') {
+    await db.upsert(source.table, rows);
+    return;
+  }
+  const details = rows.map(({ status: _status, ...rest }) => rest); // eslint-disable-line @typescript-eslint/no-unused-vars
+  await db.upsert(source.table, details);
+  await db.syncOutingStatuses(rows.map((r) => ({ id: String(r.id), status: (r.status as string | null) ?? null })));
+}
+
 /** Members first (seats and sign-ups reference them), then the rest. */
 export async function syncAll(notion: SyncNotion, db: SyncDb, options: InboundOptions = {}) {
   const results: SourceResult[] = [];
@@ -117,6 +133,6 @@ export async function reconcilePage(notion: SyncNotion, db: SyncDb, source: Sour
   }
   const row = source.map(page);
   if (!row) return 'skipped' as const;
-  await db.upsert(source.table, [row]);
+  await upsertRows(db, source, [row]);
   return 'upserted' as const;
 }

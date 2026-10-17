@@ -112,4 +112,24 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
     const left = (await client.from('notion_outbox').select('id').is('done_at', null).eq('entity_key->>page_id', OUTING)).data;
     expect(left).toEqual([]);
   });
+  it('outing status follows the ownership rule through the RPC', async () => {
+    const outings = sourceByKey('outings');
+    const withStatus = (name: string) =>
+      page(OUTING, { Name: title('IT outing, renamed'), Status: status(name) }, { last_edited_time: '2026-10-17T09:10:00.000Z' });
+    const dbStatus = async () => (await client.from('outings').select('status').eq('id', OUTING).single()).data?.status;
+    const pendingRow = async () =>
+      (await client.from('notion_outbox').select('payload, done_at').eq('entity_key->>page_id', OUTING).order('id', { ascending: false }).limit(1)).data?.[0];
+
+    // The app auto-confirms and queues the Notion patch.
+    await client.from('outings').update({ status: 'Confirmed' }).eq('id', OUTING);
+    await client.rpc('enqueue_notion_outbox', { p_entity: 'outing', p_entity_key: { page_id: OUTING }, p_payload: { Status: { status: { name: 'Confirmed' } } } });
+
+    await syncSource(fakeNotion({ [outings.dataSourceId]: [withStatus('Provisional')] }), db, outings);
+    expect(await dbStatus()).toBe('Confirmed');
+
+    await syncSource(fakeNotion({ [outings.dataSourceId]: [withStatus('Cancelled')] }), db, outings);
+    expect(await dbStatus()).toBe('Cancelled');
+    expect(await pendingRow()).toMatchObject({ payload: {} });
+    expect((await pendingRow())?.done_at).not.toBeNull();
+  });
 });
