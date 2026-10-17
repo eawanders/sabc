@@ -1,0 +1,48 @@
+/* Home dashboard: two quiet columns of hairline panels on desktop, one column on phones. */
+.beta .h-page { max-width: 1120px; }
+.beta .h-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+@media (max-width: 960px) { .beta .h-grid { grid-template-columns: minmax(0, 1fr); } }
+.beta .h-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.beta .h-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 2px 6px; }
+.beta .h-head h2 { font-size: 13px; font-weight: 600; }
+.beta .h-more { font-size: 12px; color: var(--muted); }
+.beta .h-more:hover { color: var(--fg); }
+.beta .h-more::after { content: ' →'; }
+.beta .h-empty { padding: 16px 12px; color: var(--muted); }
+.beta .h-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.beta .h-today { color: var(--brand); font-weight: 500; }
+
+.beta .h-row { display: grid; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px; border-top: 1px solid var(--line); }
+.beta .h-row:first-child { border-top: 0; }
+.beta a.h-row:hover { background: var(--hover); }
+.beta .h-nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.beta .h-ty { color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.beta .h-cn { font-variant-numeric: tabular-nums; color: var(--fg-2); text-align: right; white-space: nowrap; }
+.beta .h-when { white-space: nowrap; }
+.beta .h-session { grid-template-columns: 112px minmax(0, 1fr) 110px 40px 14px; }
+.beta .h-recent { grid-template-columns: 112px minmax(0, 1fr) auto; }
+.beta .h-rep { font-size: 12px; color: var(--fg-2); }
+.beta .h-test { grid-template-columns: 112px minmax(0, 1fr) auto; }
+.beta .h-flag { grid-template-columns: minmax(0, 1fr) auto; font-weight: 500; }
+.beta .h-event { grid-template-columns: minmax(0, 1fr) auto; padding: 8px 12px; }
+.beta .h-event .h-nm { display: flex; flex-direction: column; }
+.beta .h-event b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.beta .h-event .b-muted { font-size: 12px; }
+.beta .h-tail { color: var(--muted); font-size: 12px; }
+@media (max-width: 640px) {
+  .beta .h-session { grid-template-columns: 96px minmax(0, 1fr) 36px 14px; padding: 6px 12px; }
+  .beta .h-session .h-ty { display: none; }
+  .beta .h-recent, .beta .h-test { grid-template-columns: 96px minmax(0, 1fr) auto; }
+}
+
+.beta .h-banner { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 16px; border: 1px solid var(--line-strong); border-left: 3px solid var(--no); border-radius: var(--r-lg); background: var(--surface); }
+.beta .h-banner b { font-weight: 600; }
+
+.beta .h-cox { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.beta .h-cox th, .beta .h-cox td { height: 30px; padding: 0 4px; text-align: center; border-top: 1px solid var(--line); }
+.beta .h-cox thead th { border-top: 0; height: 28px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.beta .h-cox thead th.h-today { color: var(--brand); }
+.beta .h-cox tbody th { text-align: left; font-weight: 400; color: var(--fg); padding-left: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.beta .h-cox td:last-child, .beta .h-cox th:last-child { padding-right: 12px; }
+.beta .h-cox td.h-today { background: var(--brand-soft); }
+.beta .h-cox .b-dot.unk { box-shadow: none; background: var(--line-strong); }

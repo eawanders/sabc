@@ -1,0 +1,55 @@
+/* My week (and "Your next outings" on Home): phone-first rows with a 34px three-way reply. */
+.beta .w-page { max-width: 760px; }
+.beta .w-me { display: none; margin: -6px 0 10px; }
+@media (max-width: 760px) { .beta .w-me { display: block; } }
+
+.beta .w-toggle { display: inline-grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.beta .w-toggle a { height: 28px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-2); white-space: nowrap; }
+.beta .w-toggle a + a { border-left: 1px solid var(--line); }
+.beta .w-toggle a:hover { background: var(--hover); }
+.beta .w-toggle a[aria-pressed='true'] { background: var(--active); color: var(--fg); font-weight: 500; }
+
+.beta .w-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-areas: 'date title' '. seg' '. saved';
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 12px 12px 8px;
+  border-top: 1px solid var(--line);
+  outline: none;
+}
+.beta .w-row:first-child { border-top: 0; }
+.beta .w-row.focus { background: var(--hover); }
+.beta .w-date { grid-area: date; padding-top: 1px; white-space: nowrap; }
+.beta .w-title { grid-area: title; min-width: 0; display: block; }
+.beta .w-title b { display: block; font-weight: 500; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.beta .w-title > span { font-size: 12px; color: var(--muted); }
+.beta .w-title:hover b { text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.beta .w-crew { font-variant-numeric: tabular-nums; }
+.beta .w-cancel { color: var(--no); }
+
+.beta .w-seg { grid-area: seg; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.beta .w-seg button { height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--fg-2); white-space: nowrap; }
+.beta .w-seg button + button { border-left: 1px solid var(--line); }
+.beta .w-seg button:hover:not(:disabled) { background: var(--hover); }
+.beta .w-seg button[aria-pressed='true'] { background: var(--active); color: var(--fg); font-weight: 500; }
+.beta .w-seg button:disabled { cursor: default; }
+.beta .w-seg button[aria-pressed='false'] .b-dot { opacity: 0.45; }
+.beta .w-saved { grid-area: saved; font-size: 11px; color: var(--muted); min-height: 15px; }
+.beta .w-saved .b-link { font-size: 11px; }
+.beta .w-row.past .w-title, .beta .w-row.past .w-date { opacity: 0.6; }
+.beta .w-row.past .w-seg { opacity: 0.55; }
+
+/* Wider screens: reply control on the same line as the outing */
+@media (min-width: 761px) {
+  .beta .w-row {
+    grid-template-columns: 64px minmax(0, 1fr) 300px;
+    grid-template-areas: 'date title seg' '. . saved';
+    align-items: center;
+    row-gap: 2px;
+    padding: 8px 12px 4px;
+  }
+  .beta .w-saved { text-align: center; }
+}
+.beta .w-keys { border-top: 0; padding: 8px 2px; }
