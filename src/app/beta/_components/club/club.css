@@ -1,0 +1,87 @@
+/* Club pages of the beta (PER-277): marshalling, events, flag, FAQs, feedback, membership.
+   Same tokens and feel as beta.css; scoped under .beta, prefixed c-. */
+
+/* shared */
+.beta .c-primary { background: var(--fg); color: #fff; border-color: var(--fg); }
+.beta .c-primary:hover { background: #4a4842; }
+.beta .c-primary kbd { background: transparent; color: #ddd; border-color: #777; }
+.beta .b-btn:disabled { opacity: 0.55; cursor: default; }
+.beta .c-sm { height: 24px; padding: 0 8px; font-size: 12px; }
+.beta .c-pending { opacity: 0.6; }
+.beta .c-callout { display: flex; gap: 8px; align-items: baseline; margin: 10px 14px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); color: var(--fg-2); background: var(--surface); }
+.beta .c-callout b { color: var(--fg); font-weight: 500; }
+.beta .c-notes { margin: 10px 14px 0; color: var(--fg-2); white-space: pre-wrap; }
+.beta .c-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 14px 0; }
+.beta .c-plus { width: 16px; text-align: center; color: var(--brand); font-weight: 600; }
+.beta .c-pagekeys { border-top: 0; padding: 10px 2px; }
+
+/* marshalling */
+.beta .c-event { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 12px 2px; font-weight: 600; color: var(--fg); border-top: 1px solid var(--line-strong); }
+.beta .c-event:first-child { border-top: 0; }
+.beta .c-shift { padding: 6px 12px 2px 12px; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.beta .c-mrow { display: grid; grid-template-columns: 96px minmax(0, 1fr) minmax(0, 150px) minmax(0, 200px) 92px; align-items: center; gap: 10px; min-height: 34px; padding: 0 12px; cursor: pointer; }
+.beta .c-mrow:hover { background: var(--hover); }
+.beta .c-mrow.focus, .beta .c-mrow[aria-current='true'] { background: var(--active); }
+.beta .c-mrow:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; border-radius: var(--r); }
+.beta .c-mrow.pending .c-person, .beta .c-mrow.pending .c-act { opacity: 0.6; }
+.beta .c-mrow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+.beta .c-role { color: var(--muted); margin-left: 8px; }
+.beta .c-clash { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.beta .c-person { min-width: 0; overflow: hidden; }
+.beta .c-person .b-st { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.beta .c-act { display: flex; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .beta .c-mrow { grid-template-columns: 44px minmax(0, 1fr) auto; grid-template-areas: 't n a' 't p a' 't c a'; row-gap: 0; padding: 6px 12px; }
+  .beta .c-mrow > .b-mono { grid-area: t; align-self: start; padding-top: 1px; }
+  .beta .c-mrow .nm { grid-area: n; }
+  .beta .c-mrow .c-person { grid-area: p; }
+  .beta .c-mrow .c-clash { grid-area: c; }
+  .beta .c-mrow .c-clash:empty { display: none; }
+  .beta .c-mrow .c-act { grid-area: a; }
+  .beta .c-end { display: none; }
+  .beta .c-pagekeys { display: none; }
+}
+@media (hover: none) { .beta .c-pagekeys { display: none; } }
+
+/* events */
+.beta .c-erow { display: grid; grid-template-columns: 96px 84px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px 12px; }
+.beta .c-erow:hover { background: var(--hover); }
+.beta .c-erow .ti { color: var(--fg); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.beta .c-erow .de { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 12px; }
+.beta .c-erow .day { color: var(--fg-2); white-space: nowrap; }
+.beta .c-tabs { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.beta .c-tabs a { height: 26px; display: inline-flex; align-items: center; padding: 0 10px; color: var(--fg-2); }
+.beta .c-tabs a + a { border-left: 1px solid var(--line-strong); }
+.beta .c-tabs a[aria-current='page'] { background: var(--active); color: var(--fg); font-weight: 500; }
+@media (max-width: 640px) {
+  .beta .c-erow { grid-template-columns: 76px minmax(0, 1fr) auto; }
+  .beta .c-erow .tm { display: none; }
+}
+.beta .c-detail { max-width: 760px; }
+.beta .c-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px; }
+.beta .c-card + .c-card { margin-top: 12px; }
+.beta .c-desc { margin: 12px 0 0; white-space: pre-wrap; color: var(--fg); }
+.beta .c-crumb { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: inline-flex; gap: 6px; }
+.beta .c-crumb a:hover { color: var(--fg); }
+
+/* embeds (event forms, FAQs, feedback, membership) */
+.beta .c-embed { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+.beta .c-embed-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.beta .c-embed iframe { display: block; width: 100%; border: 0; background: var(--surface); }
+
+/* flag */
+.beta .c-flag { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; align-items: center; }
+.beta .c-swatch { width: 56px; height: 40px; border-radius: var(--r); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.beta .c-flag h2 { font-size: 20px; }
+.beta .c-flag .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.beta .c-section { font-size: 11px; font-weight: 500; color: var(--muted); margin: 0 0 6px; }
+.beta .c-ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.beta .c-ul li { display: flex; gap: 8px; align-items: baseline; }
+.beta .c-ul li::before { content: ''; flex: none; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); transform: translateY(-2px); }
+.beta .c-rules { width: 100%; border-collapse: collapse; }
+.beta .c-rules td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+.beta .c-rules tr:first-child td { border-top: 0; }
+.beta .c-rules td:first-child { white-space: nowrap; width: 1%; }
+.beta .c-rules tr.cur td { background: var(--brand-soft); }
+.beta .c-rules .br { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.beta .c-mini { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
