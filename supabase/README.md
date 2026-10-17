@@ -24,16 +24,17 @@ development keys, so don't put them anywhere else and don't commit `.env*`.
 
 ## Applying migrations to the remote project
 
-Not set up yet. Proposal:
-
-- A GitHub Actions job runs on push to `main` when `supabase/migrations/**`
-  changes: `supabase link --project-ref <ref>` then `supabase db push`.
-- Secrets: `SUPABASE_ACCESS_TOKEN` (a personal or org access token) and
-  `SUPABASE_DB_PASSWORD`. The project ref is not secret and can live in the
-  workflow.
-- PRs that add migrations should keep running `supabase db reset && supabase
-  test db` locally (a CI job for the pgTAP tests can follow later).
+- `.github/workflows/supabase-migrate.yml` runs on push to `main` when
+  `supabase/migrations/**` changes: `supabase link`, then `supabase db push`.
+  It needs the repository secrets `SUPABASE_ACCESS_TOKEN` (Side Projects org)
+  and `SUPABASE_DB_PASSWORD`. It can also be run by hand from the Actions tab.
+- `.github/workflows/db-tests.yml` runs `supabase test db` on every PR that
+  touches `supabase/**`.
+- `db push` refuses a migration older than the newest one already applied, so
+  name new files with a timestamp later than every existing migration.
 - Migrations are forward-only; a mistake is fixed by a new migration.
+- The first four migrations were applied through the Supabase MCP on 17 Oct
+  and their history rows were renamed to match these filenames.
 
 ## Who owns what
 

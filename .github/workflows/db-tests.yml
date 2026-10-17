@@ -1,0 +1,24 @@
+name: Database tests
+
+on:
+  pull_request:
+    paths: ["supabase/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-tests-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+      - run: supabase db start
+      - run: supabase test db

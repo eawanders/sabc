@@ -182,7 +182,9 @@ $$;
 --
 -- p_flag_status: the river flag's status_text (e.g. 'Green', 'Light Blue'),
 --   which the route fetches from OURCS (cached ~60 s) because SQL can't. Null
---   when unknown, which (as in the drawer) means no bank-rider requirement.
+--   when unknown. Unknown means no bank-rider requirement when judging whether
+--   the crew is complete (so it never de-confirms anything on its own), but a
+--   water outing is not auto-confirmed while the flag is unknown (owner, 17 Oct).
 -- p_triggers: the seat statuses this write set (null = cleared). The drawer
 --   ran its check after a seat status change with that new status; a swap ran
 --   it with both 'Available' and 'Not Available'.
@@ -199,7 +201,9 @@ $$;
 --   N1  Any other type "ready": at least one non-sub seat (bank rider included)
 --       has a member, and every non-sub seat with a member is Available.
 --   R1  Confirm: a trigger is 'Available', the outing is ready, and it is not
---       already Confirmed  ->  Confirmed.
+--       already Confirmed  ->  Confirmed. A Water Outing additionally needs a
+--       known flag that is not 'red' or 'black' (no crews out); otherwise it
+--       stays as it is and a coach decides.
 --   R2  De-confirm (Water Outing only): a trigger is not 'Available', the
 --       outing is not ready, and it is Confirmed  ->  Provisional.
 --   Anything else leaves the status alone (an erg is never de-confirmed; a
@@ -250,7 +254,8 @@ begin
   end if;
   v_ready := coalesce(v_ready, false);
 
-  if v_ready and 'Available' = any (p_triggers) and v_status is distinct from 'Confirmed' then
+  if v_ready and 'Available' = any (p_triggers) and v_status is distinct from 'Confirmed'
+     and (v_type is distinct from 'Water Outing' or v_flag not in ('', 'red', 'black')) then
     v_new := 'Confirmed';                                                          -- R1
   elsif not v_ready and v_type = 'Water Outing' and v_status = 'Confirmed'
         and exists (select 1 from unnest(p_triggers) as t where t is distinct from 'Available') then
