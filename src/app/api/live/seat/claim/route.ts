@@ -2,6 +2,9 @@
 import { liveRoute } from '@/server/live/route';
 import { claimSeatSchema } from '@/lib/live/schemas';
 
+// Next to the database (Supabase, Ireland)
+export const preferredRegion = 'dub1';
+
 export const POST = liveRoute('seat/claim', claimSeatSchema, async (i, ctx) => ({
   fn: 'claim_seat',
   args: {

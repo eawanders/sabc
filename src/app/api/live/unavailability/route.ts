@@ -2,6 +2,9 @@
 import { liveRoute } from '@/server/live/route';
 import { saveUnavailabilitySchema } from '@/lib/live/schemas';
 
+// Next to the database (Supabase, Ireland)
+export const preferredRegion = 'dub1';
+
 export const POST = liveRoute('unavailability', saveUnavailabilitySchema, (i) => ({
   fn: 'save_unavailability',
   args: {

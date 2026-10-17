@@ -46,6 +46,9 @@ export default function ResponsiveLayout({ children }: ResponsiveLayoutProps) {
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
+  // The /beta preview (PER-277) has its own full-screen shell and is kept out of the nav
+  if (pathname?.startsWith('/beta')) return <>{children}</>;
+
   return (
     <>
       {/* Mobile Header - visible only on mobile (< 768px) */}

@@ -2,6 +2,9 @@
 import { liveRoute } from '@/server/live/route';
 import { saveOutingReportSchema } from '@/lib/live/schemas';
 
+// Next to the database (Supabase, Ireland)
+export const preferredRegion = 'dub1';
+
 const COLUMNS = {
   outingSummary: 'outing_summary',
   boatFeel: 'boat_feel',
