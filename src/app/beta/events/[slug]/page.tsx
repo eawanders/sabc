@@ -1,10 +1,19 @@
 // /beta/events/[slug]: one event, with its sign-up form. The slug is today's (createSlug(title)).
 // The form is drawn from the snippet's https src only (parseEmbeddedForm), never injected as HTML.
+// Images come through /api/beta/event-image (the stored Notion URLs expire), lazily, in fixed boxes.
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { anonClient } from '../../_lib/week';
-import { EVENT_COLUMNS, eventWhen, findBySlug, parseEmbeddedForm, type ClubEvent } from '../../_lib/club-events';
+import {
+  EVENT_COLUMNS,
+  eventImageIndexes,
+  eventImageUrl,
+  eventWhen,
+  findBySlug,
+  parseEmbeddedForm,
+  type ClubEvent,
+} from '../../_lib/club-events';
 import '../../_components/club/club.css';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +39,7 @@ export default async function BetaEvent({ params }: { params: Params }) {
   if (!error && !event) notFound();
   const when = event ? eventWhen(event) : null;
   const form = event ? parseEmbeddedForm(event.embedded_form) : null;
+  const images = event ? eventImageIndexes(event.files) : [];
 
   return (
     <div className="b-page c-detail">
@@ -53,6 +63,24 @@ export default async function BetaEvent({ params }: { params: Params }) {
             </dl>
             {event.description && <p className="c-desc">{event.description}</p>}
           </div>
+          {images.length > 0 && (
+            <div className="c-card">
+              {images.map((i, n) => (
+                // A redirect to a short-lived signed URL: next/image would proxy and re-cache it
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  className="c-figure"
+                  src={eventImageUrl(event.id, i)}
+                  alt={images.length > 1 ? `${event.title}, image ${n + 1} of ${images.length}` : event.title}
+                  width={1200}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ))}
+            </div>
+          )}
           {form ? (
             <div className="c-embed" style={{ marginTop: 12 }}>
               <div className="c-embed-head">

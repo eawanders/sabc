@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBrowserClient, subscribeToTable } from '@/lib/live/realtime';
 import { saveOutingReport, undoChange } from '@/lib/live/write';
 import type { OutingReportRow } from '@/lib/live/types';
+import type { UndoStack } from '../_lib/undo-stack';
 import { useIdentity } from './Identity';
 import { useToast } from './Toasts';
 
@@ -40,7 +41,8 @@ export function changedFields(base: ReportDraft, draft: ReportDraft): Partial<Re
 
 export type ReportConflict = { by: string | null; current: OutingReportRow | null };
 
-export function useReport(outingId: string) {
+/** `undo`: the drawer's shared undo stack, so ⌘Z can undo a report save as well as seat changes. */
+export function useReport(outingId: string, undo?: UndoStack) {
   const [row, setRow] = useState<OutingReportRow | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   // The row the draft started from (its version is what a save expects) and the draft itself
@@ -130,19 +132,18 @@ export function useReport(outingId: string) {
         dirtyRef.current = false;
         accept(result.row);
         const changeId = result.changeId;
-        toast('Report saved', {
-          onUndo: async () => {
-            const a = actorRef.current;
-            if (!a) return;
-            const u = await undoChange({ changeId, actorId: a });
-            if (u.ok) {
-              accept(u.row as OutingReportRow);
-              toast('Report change undone');
-            } else if (u.reason === 'conflict') {
-              toast(u.message === 'already undone' ? 'Already undone.' : `Can't undo: ${u.updatedByName ?? 'someone'} changed the report since.`, { warn: true });
-            } else toast("Couldn't undo. Try again.", { warn: true });
-          },
-        });
+        const undoSave = async () => {
+          const a = actorRef.current;
+          if (!a) return;
+          const u = await undoChange({ changeId, actorId: a });
+          if (u.ok) {
+            accept(u.row as OutingReportRow);
+            toast('Report change undone');
+          } else if (u.reason === 'conflict') {
+            toast(u.message === 'already undone' ? 'Already undone.' : `Can't undo: ${u.updatedByName ?? 'someone'} changed the report since.`, { warn: true });
+          } else toast("Couldn't undo. Try again.", { warn: true });
+        };
+        toast('Report saved', { onUndo: undo ? undo.push({ undo: undoSave }).undo : () => void undoSave() });
         return;
       }
       if (result.reason === 'conflict') {
@@ -154,7 +155,7 @@ export function useReport(outingId: string) {
       }
       toast(result.message ? `Not saved: ${result.message}` : 'Not saved. Check your connection and try again.', { warn: true });
     },
-    [base, draft, outingId, requireActor, toast, accept],
+    [base, draft, outingId, requireActor, toast, accept, undo],
   );
 
   return {

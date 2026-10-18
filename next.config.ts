@@ -43,8 +43,9 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Additional cache control for API routes
-        source: '/api/:path*',
+        // Additional cache control for API routes. Not the event image redirect, which sets its own
+        // CDN caching (config headers override a route's own Cache-Control).
+        source: '/api/:path((?!beta/event-image/).*)',
         headers: [
           {
             key: 'Cache-Control',

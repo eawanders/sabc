@@ -8,6 +8,7 @@ import type { LiveResult, SeatRow } from '@/lib/live/types';
 import { conflictMessage, changeMessage } from '../_lib/messages';
 import { emptySeatState, seatReducer, viewSeat, type SeatPatch } from '../_lib/seatState';
 import { seatLabel } from '../_lib/seats';
+import { createUndoStack } from '../_lib/undo-stack';
 import { useIdentity } from './Identity';
 import { useToast } from './Toasts';
 
@@ -23,8 +24,6 @@ export type CrewOuting = {
   details?: string | null;
 };
 
-type Undoable = { changeId: number; seat: string };
-
 const FLASH_MS = 1200;
 // A new person starts as Awaiting Approval (as in the prototype); a cleared seat is reset to it too
 const NEW_STATUS = 'Awaiting Approval';
@@ -36,7 +35,8 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
   const [flash, setFlash] = useState<Record<string, number>>({});
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
-  const undoStack = useRef<Undoable[]>([]);
+  // Shared with the report tab (useReport), so ⌘Z undoes whichever change was most recent
+  const [undo] = useState(createUndoStack);
   const opSeq = useRef(0);
   const { actorId, requireActor } = useIdentity();
   const actorRef = useRef(actorId);
@@ -67,7 +67,7 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
     }
     let cancelled = false;
     setLoadState('loading');
-    undoStack.current = [];
+    undo.clear();
 
     // Subscribe first so nothing between the read and the subscription is missed
     const offSeats = subscribeToOutingSeats<SeatRow>(outingId, (change) => {
@@ -117,11 +117,10 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
       offOuting();
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [outingId, flashSeat, reloadSeats]);
+  }, [outingId, flashSeat, reloadSeats, undo]);
 
   const undoEntry = useCallback(
-    async (entry: Undoable) => {
-      undoStack.current = undoStack.current.filter((e) => e !== entry);
+    async (entry: { changeId: number; seat: string }) => {
       const actor = actorRef.current;
       if (!actor) return;
       const result = await undoChange({ changeId: entry.changeId, actorId: actor });
@@ -152,9 +151,9 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
         for (const s of seats) dispatch({ type: 'settled', opId, seat: s, rows });
         if (result.outingStatus) setOuting((o) => (o ? { ...o, status: result.outingStatus!.to } : o));
         const entry = { changeId: result.changeId, seat };
-        undoStack.current.push(entry);
+        const handle = undo.push({ undo: () => undoEntry(entry) });
         toast(result.outingStatus ? `${describe} · outing ${result.outingStatus.to.toLowerCase()}` : describe, {
-          onUndo: () => void undoEntry(entry),
+          onUndo: handle.undo,
         });
         return;
       }
@@ -172,7 +171,7 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
       for (const s of seats) dispatch({ type: 'failed', opId, seat: s });
       toast(result.message ? `Not saved: ${result.message}` : 'Not saved. Check your connection and try again.', { warn: true });
     },
-    [flashSeat, toast, undoEntry],
+    [flashSeat, toast, undoEntry, undo],
   );
 
   /** One write over one or two seats: optimistic patches now, the server's answer settles them. */
@@ -272,7 +271,7 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
         const a = viewSeat(seatsRef.current, crew);
         const b = viewSeat(seatsRef.current, sub);
         if (!a || !b) return;
-        const before = undoStack.current.length;
+        const before = undo.size();
         await write(
           [
             { seat: crew, patch: { member_id: b.member_id, status: b.status } },
@@ -289,20 +288,16 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
             }),
           `${nameRef.current(b.member_id) ?? 'Sub'} in for ${nameRef.current(a.member_id) ?? 'rower'} at ${seatLabel(crew)}`,
         );
-        if (undoStack.current.length === before) return;
+        if (undo.size() === before) return;
       }
     },
-    [outingId, write],
+    [outingId, write, undo],
   );
 
+  /** ⌘Z: the most recent change in the drawer, a seat change or a report save. */
   const undoLast = useCallback(() => {
-    const entry = undoStack.current[undoStack.current.length - 1];
-    if (!entry) {
-      toast('Nothing to undo');
-      return;
-    }
-    void undoEntry(entry);
-  }, [toast, undoEntry]);
+    if (!undo.undoLast()) toast('Nothing to undo');
+  }, [toast, undo]);
 
   return {
     outing,
@@ -315,6 +310,7 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
     setStatus,
     reserve,
     swapSubs,
+    undo,
     undoLast,
   };
 }

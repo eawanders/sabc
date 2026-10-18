@@ -13,7 +13,18 @@ import {
   type MarshalSlot,
   type SlotAction,
 } from './club-marshal';
-import { eventWhen, findBySlug, parseEmbeddedForm, splitEvents, startOfLondonDay, type ClubEvent } from './club-events';
+import {
+  eventImageCacheControl,
+  eventImageIndexes,
+  eventImageUrl,
+  eventWhen,
+  findBySlug,
+  isNotionId,
+  parseEmbeddedForm,
+  splitEvents,
+  startOfLondonDay,
+  type ClubEvent,
+} from './club-events';
 import { FLAG_RULES, flagColour, noticeList, setAtLabel } from './club-flag';
 
 const ADA = 'aaaaaaaa-0000-4000-8000-000000000001';
@@ -157,6 +168,7 @@ const ev = (over: Partial<ClubEvent> & { id: string; title: string }): ClubEvent
   end_at: null,
   all_day: false,
   embedded_form: null,
+  files: [],
   ...over,
 });
 
@@ -226,8 +238,77 @@ describe('events', () => {
     expect(parseEmbeddedForm('<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSc/viewform?usp=header">')?.src).toBe(
       'https://docs.google.com/forms/d/e/1FAIpQLSc/viewform?usp=header',
     );
-    expect(parseEmbeddedForm('https://notsabcoxford.com/f')?.src).toBe('https://notsabcoxford.com/f');
-    expect(parseEmbeddedForm("<iframe height='99999' src='https://x.example/f'>")?.height).toBe(2000);
+    expect(parseEmbeddedForm("<iframe height='99999' src='https://tally.so/embed/abc'>")?.height).toBe(2000);
+  });
+
+  it('embeds only allowlisted form hosts', () => {
+    for (const ok of [
+      // The three hosts real events use (events.embedded_form, 18 Oct 2026).
+      'https://stantonysboatclub.notion.site/ebd/2a38',
+      'https://docs.google.com/forms/d/e/x/viewform',
+      'https://forms.gle/tA6HqdKkcLfPqwVs8',
+      'https://forms.office.com/r/abc',
+      'https://notion.so/x',
+      'https://www.notion.so/x',
+      'https://tally.so/embed/abc',
+      'https://typeform.com/to/abc',
+      'https://club.typeform.com/to/abc',
+      'https://jotform.com/123',
+      'https://form.jotform.com/123',
+      'https://DOCS.GOOGLE.COM./forms/x',
+    ]) {
+      expect(parseEmbeddedForm(`<iframe src="${ok}"></iframe>`), ok).not.toBeNull();
+    }
+    for (const bad of [
+      'https://notsabcoxford.com/f',
+      'https://x.example/f',
+      'https://evil-docs.google.com.example/f',
+      'https://google.com/forms',
+      'https://notion.site/x',
+      'https://evilnotion.site/x',
+      'https://eviltypeform.com/x',
+      'https://sites.google.com/x',
+      'https://www.jotform.com.evil.example/x',
+    ]) {
+      expect(parseEmbeddedForm(`<iframe src="${bad}"></iframe>`), bad).toBeNull();
+    }
+  });
+});
+
+describe('event images', () => {
+  const notion = (name: string) => ({ name, type: 'file', file: { url: `https://prod-files-secure.s3.us-west-2.amazonaws.com/x/${encodeURIComponent(name)}?X-Amz-Signature=abc`, expiry_time: '2026-10-18T10:00:00.000Z' } });
+  const external = (url: string, name = url) => ({ name, type: 'external', external: { url } });
+
+  it('keeps only image entries, by their position in Files & media', () => {
+    // Torpids Dinner: a photo, then a Google Form link that is not an image
+    expect(eventImageIndexes([notion('IMG_2951.JPG'), external('https://docs.google.com/forms/d/e/x/viewform?usp=dialog')])).toEqual([0]);
+    expect(eventImageIndexes([external('https://docs.google.com/x'), notion('poster.png'), notion('notes.pdf'), external('https://example.com/a.webp?w=1')])).toEqual([1, 3]);
+    expect(eventImageIndexes([notion('A93004B9_1_105_c 1.png')])).toEqual([0]);
+    expect(eventImageIndexes([external('http://example.com/a.png')])).toEqual([]); // not https
+    expect(eventImageIndexes(null)).toEqual([]);
+    expect(eventImageIndexes('nope')).toEqual([]);
+    expect(eventImageIndexes([null, 3, { type: 'file' }])).toEqual([]);
+  });
+
+  it('builds the image route and checks Notion ids', () => {
+    expect(eventImageUrl('27f80040-a8fa-809d-b1a3-ddd0df551c58', 0)).toBe('/api/beta/event-image/27f80040-a8fa-809d-b1a3-ddd0df551c58/0');
+    expect(isNotionId('27f80040-a8fa-809d-b1a3-ddd0df551c58')).toBe(true);
+    expect(isNotionId('27F80040-A8FA-809D-B1A3-DDD0DF551C58')).toBe(false); // the stored form is lower case
+    expect(isNotionId('27f80040a8fa809db1a3ddd0df551c58')).toBe(false);
+    expect(isNotionId('../../members')).toBe(false);
+  });
+
+  it('caches a redirect well inside the signed URL expiry', () => {
+    const now = Date.parse('2026-10-18T09:00:00Z');
+    // A fresh Notion URL (an hour to go): 45 min at the CDN, plus 5 min stale
+    expect(eventImageCacheControl('2026-10-18T10:00:00Z', now)).toBe('public, max-age=300, s-maxage=2700, stale-while-revalidate=300');
+    // Only 20 minutes left: cache for the time left less 10 minutes' margin
+    expect(eventImageCacheControl('2026-10-18T09:20:00Z', now)).toBe('public, max-age=0, s-maxage=600, stale-while-revalidate=0');
+    // Nearly expired or unknown expiry: don't cache beyond a minute
+    expect(eventImageCacheControl('2026-10-18T09:05:00Z', now)).toBe('public, max-age=0, s-maxage=0, stale-while-revalidate=0');
+    expect(eventImageCacheControl(undefined, now)).toBe('public, max-age=0, s-maxage=60, stale-while-revalidate=0');
+    // External URLs don't expire
+    expect(eventImageCacheControl(null, now)).toBe('public, max-age=300, s-maxage=2700, stale-while-revalidate=300');
   });
 });
 
