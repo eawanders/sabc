@@ -159,7 +159,7 @@
 .b-mobilebar { display: none; }
 .b-sheet { display: none; }
 @media (max-width: 760px) {
-  .b-shell { grid-template-columns: minmax(0, 1fr); }
+  .b-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .b-side { display: none; }
   .b-mobilebar { display: flex; position: sticky; top: 0; z-index: 30; align-items: center; justify-content: space-between; padding: 6px 12px; padding-top: max(6px, env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line); }
   .b-mobilebar .b-brand { padding: 4px 0; }
