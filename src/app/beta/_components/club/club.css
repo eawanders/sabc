@@ -44,17 +44,22 @@
 @media (hover: none) { .beta .c-pagekeys { display: none; } }
 
 /* events */
-.beta .c-erow { display: grid; grid-template-columns: 96px 84px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px 12px; }
+.beta .c-erow { display: grid; grid-template-columns: 96px 84px 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 40px; padding: 4px 12px; }
 .beta .c-erow:hover { background: var(--hover); }
 .beta .c-erow .ti { color: var(--fg); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .beta .c-erow .de { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 12px; }
 .beta .c-erow .day { color: var(--fg-2); white-space: nowrap; }
+/* Event images: fixed boxes (no layout shift), loaded lazily through /api/beta/event-image */
+.beta .c-thumb { display: block; width: 48px; height: 36px; border-radius: 4px; object-fit: cover; background: var(--hover); }
+.beta .c-thumb.none { background: none; }
+.beta .c-figure { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: contain; border-radius: var(--r); background: var(--hover); }
+.beta .c-figure + .c-figure { margin-top: 8px; }
 .beta .c-tabs { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; background: var(--surface); }
 .beta .c-tabs a { height: 26px; display: inline-flex; align-items: center; padding: 0 10px; color: var(--fg-2); }
 .beta .c-tabs a + a { border-left: 1px solid var(--line-strong); }
 .beta .c-tabs a[aria-current='page'] { background: var(--active); color: var(--fg); font-weight: 500; }
 @media (max-width: 640px) {
-  .beta .c-erow { grid-template-columns: 76px minmax(0, 1fr) auto; }
+  .beta .c-erow { grid-template-columns: 76px 48px minmax(0, 1fr) auto; }
   .beta .c-erow .tm { display: none; }
 }
 .beta .c-detail { max-width: 760px; }

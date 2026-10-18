@@ -1,9 +1,18 @@
 // /beta/events (?past=1): club events from the events table (anon read), upcoming first.
-// No images: the stored Notion file URLs expire about an hour after each sync.
+// Each row's first image comes through /api/beta/event-image (the stored Notion URLs expire).
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { anonClient } from '../_lib/week';
-import { EVENT_COLUMNS, eventSlug, eventWhen, parseEmbeddedForm, splitEvents, type ClubEvent } from '../_lib/club-events';
+import {
+  EVENT_COLUMNS,
+  eventImageIndexes,
+  eventImageUrl,
+  eventSlug,
+  eventWhen,
+  parseEmbeddedForm,
+  splitEvents,
+  type ClubEvent,
+} from '../_lib/club-events';
 import '../_components/club/club.css';
 
 export const metadata: Metadata = { title: 'Events' };
@@ -50,10 +59,18 @@ export default async function BetaEvents({ searchParams }: { searchParams: Searc
         {list.map((e) => {
           const when = eventWhen(e);
           const form = parseEmbeddedForm(e.embedded_form);
+          const [image] = eventImageIndexes(e.files);
           return (
             <Link key={e.id} href={`/beta/events/${eventSlug(e)}`} className="c-erow">
               <span className="day">{when.day}</span>
               <span className="b-mono tm">{when.time}</span>
+              {image === undefined ? (
+                <span className="c-thumb none" aria-hidden="true" />
+              ) : (
+                // A redirect to a short-lived signed URL: next/image would proxy and re-cache it
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="c-thumb" src={eventImageUrl(e.id, image)} alt="" width={48} height={36} loading="lazy" decoding="async" />
+              )}
               <span style={{ minWidth: 0 }}>
                 <span className="ti">{e.title}</span>
                 {e.description && <span className="de">{e.description}</span>}
