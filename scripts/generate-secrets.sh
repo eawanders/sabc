@@ -32,7 +32,6 @@ echo ""
 echo "2. Configure other required environment variables:"
 echo "   • NEXTAUTH_URL"
 echo "   • Email provider settings (for magic links)"
-echo "   • Upstash Redis credentials (for rate limiting)"
 echo "   • Notion tokens and database IDs"
 echo ""
 echo "📖 See .env.example for the complete list"
@@ -58,8 +57,6 @@ NEXTAUTH_URL=http://localhost:3000
 # NOTION_MEMBERS_DB_ID=
 # NOTION_TESTS_DB_ID=
 # NOTION_COXING_DB_ID=
-# UPSTASH_REDIS_REST_URL=
-# UPSTASH_REDIS_REST_TOKEN=
 # EMAIL_SERVER_HOST=
 # EMAIL_SERVER_PORT=
 # EMAIL_SERVER_USER=
