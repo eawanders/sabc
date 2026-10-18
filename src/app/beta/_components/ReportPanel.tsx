@@ -1,10 +1,11 @@
 'use client';
 // The outing report, in the crew drawer's Report tab: five fields, read and edit in place.
-// ⌘↵ / Ctrl+↵ saves. Conflicts keep the draft and offer "Keep mine" or "Use theirs".
+// ⌘↵ / Ctrl+↵ saves; ⌘Z outside a field undoes the last save (the drawer's shared undo stack). Conflicts keep the draft and offer "Keep mine" or "Use theirs".
+import type { UndoStack } from '../_lib/undo-stack';
 import { REPORT_FIELDS, REPORT_MAX, useReport } from './useReport';
 
-export function ReportPanel({ outingId }: { outingId: string }) {
-  const r = useReport(outingId);
+export function ReportPanel({ outingId, undo }: { outingId: string; undo?: UndoStack }) {
+  const r = useReport(outingId, undo);
 
   if (r.loadState === 'loading') return <p className="b-note">Loading report…</p>;
   if (r.loadState === 'error') return <p className="b-note">Couldn&apos;t load the report. Check your connection and reopen it.</p>;

@@ -178,6 +178,10 @@ export function CrewDrawer(props: {
         if (e.key === 'Escape') {
           e.preventDefault();
           onClose();
+        } else if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+          // Same shared stack as the crew tab: the last report save or seat change
+          e.preventDefault();
+          crew.undoLast();
         }
         return;
       }
@@ -459,7 +463,7 @@ export function CrewDrawer(props: {
               </div>
             ) : (
               <div role="tabpanel" id="panel-report" aria-labelledby="tab-report">
-                <ReportPanel outingId={props.outingId} />
+                <ReportPanel outingId={props.outingId} undo={crew.undo} />
               </div>
             )}
           </div>
@@ -496,6 +500,9 @@ export function CrewDrawer(props: {
             <div className="b-keys" aria-hidden="true">
               <span>
                 <kbd>⌘↵</kbd> save
+              </span>
+              <span>
+                <kbd>⌘Z</kbd> undo
               </span>
               <span>
                 <kbd>R</kbd> crew
