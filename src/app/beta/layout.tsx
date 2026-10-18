@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import { IdentityProvider } from './_components/Identity';
 import { ToastProvider } from './_components/Toasts';
 import { BetaShell } from './_components/BetaNav';
+import { noGoFlagLabel } from './_lib/flag-alert';
 import './beta.css';
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-inter', display: 'swap' });
@@ -13,12 +14,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function BetaLayout({ children }: { children: React.ReactNode }) {
+export default async function BetaLayout({ children }: { children: React.ReactNode }) {
+  const noGoFlag = await noGoFlagLabel();
   return (
     <div className={`beta ${inter.variable}`}>
       <ToastProvider>
         <IdentityProvider>
-          <BetaShell>{children}</BetaShell>
+          <BetaShell noGoFlag={noGoFlag}>{children}</BetaShell>
         </IdentityProvider>
       </ToastProvider>
     </div>

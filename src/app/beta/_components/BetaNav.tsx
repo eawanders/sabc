@@ -47,7 +47,8 @@ function Links({ pathname, onNavigate }: { pathname: string | null; onNavigate?:
   );
 }
 
-export function BetaShell({ children }: { children: React.ReactNode }) {
+/** `noGoFlag`: "Red flag" / "Black flag" when no crews may go out (read once, in the layout). */
+export function BetaShell({ children, noGoFlag = null }: { children: React.ReactNode; noGoFlag?: string | null }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
@@ -77,7 +78,20 @@ export function BetaShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
-      <main className="b-main">{children}</main>
+      <main className="b-main">
+        {noGoFlag && pathname !== '/beta/flag' && (
+          <Link href="/beta/flag" className="b-flagline" role="alert">
+            <span className="in">
+              <span className="b-dot no" />
+              <span className="tx">
+                <b>{noGoFlag}.</b> No crews are allowed out.
+              </span>
+              <span className="more">Flag status →</span>
+            </span>
+          </Link>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

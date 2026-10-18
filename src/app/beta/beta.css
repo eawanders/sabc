@@ -156,6 +156,13 @@
 .b-navlink.on { background: var(--active); color: var(--fg); font-weight: 500; }
 .b-side-foot { margin-top: auto; padding: 12px 8px 4px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; border-top: 1px solid var(--line); }
 .b-main { min-width: 0; }
+/* Red/black flag: one quiet line above every page (BetaShell), in the first paint */
+.b-flagline { display: block; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--fg-2); }
+.b-flagline:hover { background: var(--hover); }
+.b-flagline .in { max-width: 1200px; margin: 0 auto; padding: 7px 16px; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.b-flagline .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.b-flagline b { font-weight: 600; color: var(--fg); }
+.b-flagline .more { margin-left: auto; color: var(--muted); }
 .b-mobilebar { display: none; }
 .b-sheet { display: none; }
 @media (max-width: 760px) {

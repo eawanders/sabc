@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getFlagStatusText } from '@/server/live/flagStatus';
 import { createSlug } from '@/lib/slug';
 import { Status } from './_components/CrewDrawer';
-import { flagLabel, isNoGoFlag, loadHome, whenLabel, type HomeData, type Section } from './_lib/home-data';
+import { flagLabel, loadHome, whenLabel, type HomeData, type Section } from './_lib/home-data';
 import { flagTone, outingStatusTone } from './_lib/seats';
 import { hhmm, londonParts, mondayOf, shortDay } from './_lib/time';
 import { anonClient } from './_lib/week';
@@ -74,15 +74,6 @@ export default async function BetaHome() {
           <div className="sub">St Antony&apos;s College Boat Club · sign up for outings, coxing and OURC tests; see reports and events.</div>
         </div>
       </header>
-
-      {isNoGoFlag(flag) && (
-        <Link href="/beta/flag" className="h-banner" role="alert">
-          <span className="b-dot no" />
-          <span>
-            <b>{flagText}.</b> No crews are allowed out.
-          </span>
-        </Link>
-      )}
 
       <div className="h-grid">
         <div className="h-col">
