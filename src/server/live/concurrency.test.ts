@@ -3,7 +3,9 @@
 // and the seed data (`supabase db reset`). Two separate clients fire the same write in parallel;
 // PostgREST serves them on separate database connections, so they really race.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { addGuest } from './guestMember';
 
 const url = process.env.LIVE_DB_TEST_URL;
 const key = process.env.LIVE_DB_TEST_SERVICE_KEY;
@@ -29,6 +31,23 @@ async function claim(db: SupabaseClient, seat: string, member: string | null, ac
   });
   if (error) throw error;
   return data as { ok: boolean; reason?: string; holder_name?: string; held_seat?: string };
+}
+
+// From supabase/seed.sql: 'Swim test (pool)', Eve in slot 1, slots 2..6 free
+const SWIM_TEST = '00000000-0000-4000-8000-000000000301';
+
+async function slotVersion(db: SupabaseClient, slot: number): Promise<number> {
+  const { data, error } = await db.from('swim_test_slots').select('version').eq('test_id', SWIM_TEST).eq('slot', slot).single();
+  if (error) throw error;
+  return data.version as number;
+}
+
+async function claimSlot(db: SupabaseClient, slot: number, member: string | null, actor: string, version: number) {
+  const { data, error } = await db.rpc('claim_test_slot', {
+    p_test_id: SWIM_TEST, p_slot: slot, p_member_id: member, p_actor: actor, p_expected_version: version,
+  });
+  if (error) throw error;
+  return data as { ok: boolean; reason?: string; held_slot?: number };
 }
 
 describe.skipIf(!url || !key)('claims under real concurrency (local stack)', () => {
@@ -61,6 +80,41 @@ describe.skipIf(!url || !key)('claims under real concurrency (local stack)', () 
       expect([ra, rb].filter((r) => r.ok), `round ${round}`).toHaveLength(1);
       const loser = ra.ok ? rb : ra;
       expect(loser).toMatchObject({ reason: 'conflict', held_seat: ra.ok ? '3 Seat' : '4 Seat' });
+    }
+  }, 60_000);
+
+  it(`one member booked into two slots of one swim test in parallel: exactly one lands, ${ROUNDS} rounds`, async () => {
+    const [a, b] = [client(), client()];
+    for (let round = 0; round < ROUNDS; round++) {
+      for (const slot of [3, 4]) {
+        const r = await claimSlot(a, slot, null, GUS, await slotVersion(a, slot));
+        expect(r.ok).toBe(true);
+      }
+      const [v3, v4] = [await slotVersion(a, 3), await slotVersion(a, 4)];
+      const [ra, rb] = await Promise.all([claimSlot(a, 3, DEV, DEV, v3), claimSlot(b, 4, DEV, DEV, v4)]);
+      expect([ra, rb].filter((r) => r.ok), `round ${round}`).toHaveLength(1);
+      const loser = ra.ok ? rb : ra;
+      expect(loser).toMatchObject({ reason: 'conflict', held_slot: ra.ok ? 3 : 4 });
+    }
+  }, 60_000);
+
+  it('two simultaneous guest adds of one new name create one page (Notion faked), 10 rounds', async () => {
+    const [a, b] = [client(), client()];
+    for (let round = 0; round < 10; round++) {
+      const name = `Race Guest ${randomUUID().slice(0, 8)}`;
+      let pages = 0;
+      const createPage = async () => {
+        pages++;
+        await new Promise((r) => setTimeout(r, 150)); // a Notion round trip
+        return randomUUID();
+      };
+      const [ra, rb] = await Promise.all([
+        addGuest(name, { db: a, createPage }),
+        addGuest(`  ${name.toUpperCase()} `, { db: b, createPage }),
+      ]);
+      expect(pages, `round ${round}`).toBe(1);
+      expect(ra.member.id).toBe(rb.member.id);
+      expect([ra.created, rb.created].sort()).toEqual([false, true]);
     }
   }, 60_000);
 });

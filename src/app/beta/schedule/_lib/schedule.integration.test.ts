@@ -12,6 +12,8 @@ import { loadSchedule } from './load';
 import { subSwaps } from './rules';
 
 vi.mock('@/server/live/flagStatus', () => ({ getFlagStatusText: vi.fn(async () => 'Green') }));
+// These drive many writes as one actor; the limiter has its own tests (rate-limit.test.ts, 17_rate_limit)
+vi.mock('@/app/api/_utils/rate-limit', async (orig) => ({ ...(await orig<object>()), checkRateLimit: vi.fn(async () => {}) }));
 const { notionRequest } = vi.hoisted(() => ({ notionRequest: vi.fn() }));
 vi.mock('@/server/notion/client', () => ({ getNotionClient: () => ({ request: notionRequest }) }));
 

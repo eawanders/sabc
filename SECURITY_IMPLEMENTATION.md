@@ -60,8 +60,6 @@ Set in `next.config.ts` (HSTS is added by Vercel):
   - `NOTION_MEMBERS_DB_ID`
   - `NOTION_TESTS_DB_ID`
   - `NOTION_COXING_DB_ID`
-  - `UPSTASH_REDIS_REST_URL` (optional - for rate limiting)
-  - `UPSTASH_REDIS_REST_TOKEN` (optional - for rate limiting)
 
   **Preview:** Same as above but with different Notion values if needed
 
@@ -81,16 +79,11 @@ Set in `next.config.ts` (HSTS is added by Vercel):
   # 3. Revoke old integration
   ```
 
-- [ ] **3. Set Up Upstash Redis (Optional)**
+- [ ] **3. Rate Limiting (no setup)**
 
-  For rate limiting:
-
-  ```bash
-  # 1. Create account at https://upstash.com
-  # 2. Create a Redis database
-  # 3. Copy REST URL and token to environment variables
-  # Note: If not configured, rate limiting will be disabled
-  ```
+  Rate limiting is stored in the Supabase database (`rate_limit_hit` RPC,
+  PER-278) and needs no extra account or env vars. If the database call fails
+  the request is allowed and a `RATE_LIMITER_UNAVAILABLE` warning is logged.
 
 - [ ] **4. Deploy Changes**
 
@@ -129,7 +122,7 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
 
   try {
-    // 1. Rate limit (optional - requires Upstash Redis)
+    // 1. Rate limit (Postgres-backed; fails open if the database is down)
     await checkRateLimit(ip);
 
     // 2. Validate input
@@ -153,8 +146,8 @@ export async function POST(req: NextRequest) {
 ### Security Utilities
 
 - `src/app/api/_utils/auth.ts` - Placeholder for future auth
-- `src/app/api/_utils/rate-limit.ts` - Rate limiting with Upstash Redis
-  (optional)
+- `src/app/api/_utils/rate-limit.ts` - Rate limiting backed by Postgres
+  (`rate_limit_hit` RPC)
 - `src/app/api/_utils/schemas.ts` - Zod validation schemas
 - `src/app/api/_utils/logger.ts` - Structured logging with PII redaction
 - `src/app/api/_utils/response.ts` - Standard response helpers
@@ -185,11 +178,10 @@ export async function POST(req: NextRequest) {
 
 ## 🆘 Troubleshooting
 
-### "UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN missing"
+### "RATE_LIMITER_UNAVAILABLE" in the logs
 
-- This is OK! Rate limiting will be disabled (warning logged)
-- To enable rate limiting, create Redis database at upstash.com and add
-  credentials
+- The rate limiter could not reach the database (or the `rate_limit_hit`
+  migration is not applied); requests are allowed until it can.
 
 ## 🎯 Next Steps
 

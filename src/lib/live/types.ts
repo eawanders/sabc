@@ -79,6 +79,7 @@ export type LiveConflict<Row> = {
   holderName: string | null; // who holds the seat / slot now
   updatedByName: string | null; // who last changed it
   heldSeat?: string; // the member already sits here in this outing
+  heldSlot?: number; // the member already holds this slot of the swim test
   message?: string;
 };
 

@@ -125,6 +125,16 @@ describe('/api/live/* routes', () => {
     expect(await res.json()).toMatchObject({ heldSeat: 'Sub 1', holderName: 'Ada' });
   });
 
+  it('says which swim-test slot a member already holds', async () => {
+    rpc.mockResolvedValue({
+      data: { ok: false, reason: 'conflict', current: { slot: 2 }, holder_name: 'Ada', updated_by_name: 'Ada', held_slot: 2 },
+      error: null,
+    });
+    const res = await post(claimTestSlot, { testId: OUTING, slot: 4, memberId: ADA, actorId: ADA, expectedVersion: 0 });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ heldSlot: 2, holderName: 'Ada' });
+  });
+
   it.each([
     [{ ok: false, reason: 'not_found' }, 404],
     [{ ok: false, reason: 'invalid', message: 'unknown actor' }, 400],
@@ -179,7 +189,7 @@ describe('/api/live/* routes', () => {
   });
 
   it('fails open when the rate limiter is down', async () => {
-    checkRateLimit.mockRejectedValue(new Error('Upstash unreachable'));
+    checkRateLimit.mockRejectedValue(new Error('database unreachable'));
     rpc.mockResolvedValue({ data: { ok: true, change_id: 1, row: {}, outing_status: null }, error: null });
     const res = await post(setTestOutcome, { testId: OUTING, slot: 1, outcome: 'Passed', actorId: ADA, expectedMemberId: ADA });
     expect(res.status).toBe(200);

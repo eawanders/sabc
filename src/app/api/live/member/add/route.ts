@@ -1,6 +1,6 @@
 // POST /api/live/member/add — add a guest (Non-Member) to Notion + the members table, or return
 // the existing member of that name (PER-277). Body: { name, actor }. Answers
-//   200 { ok: true, member: { id, name } } · 400/429/500 { ok: false, reason }
+//   200 { ok: true, member: { id, name } } · 400/409/429/500 { ok: false, reason }
 // where `reason` is a short sentence safe to show the user (no internal detail).
 import { NextResponse } from 'next/server';
 import { readJsonObject } from '@/app/api/_utils/request';
@@ -8,7 +8,7 @@ import { checkRateLimit, RateLimitError } from '@/app/api/_utils/rate-limit';
 import { getClientIp } from '@/app/api/_utils/response';
 import logger, { logApiError } from '@/app/api/_utils/logger';
 import { addGuestMemberSchema } from '@/lib/live/schemas';
-import { addGuest } from '@/server/live/guestMember';
+import { addGuest, GuestPendingError } from '@/server/live/guestMember';
 
 // Next to the database (Supabase, Ireland)
 export const preferredRegion = 'dub1';
@@ -39,6 +39,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     logger.info({ route: ROUTE, memberId: member.id, created }, created ? 'Guest member created' : 'Guest member already existed');
     return NextResponse.json({ ok: true, member }, { status: 200, headers: NO_STORE });
   } catch (error) {
+    if (error instanceof GuestPendingError) return fail(409, 'Someone is adding this guest right now. Try again in a moment.');
     logApiError(error, { route: ROUTE, method: 'POST', userId: actor ?? undefined, ip });
     return fail(500, 'Could not add the guest. Please try again.');
   }

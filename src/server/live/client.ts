@@ -48,6 +48,7 @@ type RpcResult = {
   holder_name?: string | null;
   updated_by_name?: string | null;
   held_seat?: string;
+  held_slot?: number;
 };
 
 const FAILURE_REASONS = ['invalid', 'not_found', 'forbidden'] as const;
@@ -70,6 +71,7 @@ export function toLiveResult<Row>(raw: RpcResult): LiveResult<Row> {
       holderName: raw.holder_name ?? null,
       updatedByName: raw.updated_by_name ?? null,
       ...(raw.held_seat ? { heldSeat: raw.held_seat } : {}),
+      ...(raw.held_slot ? { heldSlot: raw.held_slot } : {}),
       ...(raw.message ? { message: raw.message } : {}),
     };
   }

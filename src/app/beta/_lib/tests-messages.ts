@@ -2,7 +2,7 @@
 import type { LiveConflict, TestSlotRow } from '@/lib/live/types';
 import type { Lost } from './tests-state';
 
-type Conflict = Pick<LiveConflict<TestSlotRow>, 'current' | 'holderName' | 'updatedByName'>;
+type Conflict = Pick<LiveConflict<TestSlotRow>, 'current' | 'holderName' | 'updatedByName' | 'heldSlot'>;
 
 export function slotLabel(slot: number): string {
   return `Slot ${slot}`;
@@ -10,6 +10,7 @@ export function slotLabel(slot: number): string {
 
 /** A claim lost the race: say who has the slot now. */
 export function takenMessage(slot: number, c: Conflict): string {
+  if (c.heldSlot) return `${c.holderName ?? 'They'} ${c.holderName ? 'is' : 'are'} already in ${slotLabel(c.heldSlot)}. Yours wasn't applied.`;
   if (c.current?.member_id) return `${slotLabel(slot)} was taken by ${c.holderName ?? 'someone'} first. Yours wasn't applied.`;
   return `${c.updatedByName ?? 'Someone'} changed ${slotLabel(slot)} first (now empty). Yours wasn't applied.`;
 }

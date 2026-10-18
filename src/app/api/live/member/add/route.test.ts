@@ -7,12 +7,47 @@ const { notionRequest, checkRateLimit, db } = vi.hoisted(() => {
     upsertError: null as { message: string } | null,
     ilike: vi.fn(),
     upsert: vi.fn(),
+    rpc: vi.fn(),
+    // guest_member_claims, as the claim RPCs keep it (supabase/migrations/20261018700200_guest_member_claims.sql)
+    claims: new Map<string, { token: string; member_id: string | null }>(),
+    claimError: null as { message: string } | null,
   };
   return { notionRequest: vi.fn(), checkRateLimit: vi.fn(), db };
 });
 
+const norm = (n: string) => n.trim().replace(/\s+/g, ' ').toLowerCase();
+let tokens = 0;
+async function fakeRpc(fn: string, args: Record<string, string>) {
+  db.rpc(fn, args);
+  if (db.claimError) return { data: null, error: db.claimError };
+  const key = norm(args.p_name);
+  const claim = db.claims.get(key);
+  if (fn === 'claim_guest_name') {
+    if (!claim) {
+      const token = `t${++tokens}`;
+      db.claims.set(key, { token, member_id: null });
+      return { data: { status: 'claimed', token }, error: null };
+    }
+    if (!claim.member_id) return { data: { status: 'pending' }, error: null };
+    const member = db.existing.find((m) => m.id === claim.member_id);
+    return { data: { status: 'exists', member_id: claim.member_id, name: member?.name }, error: null };
+  }
+  if (fn === 'finish_guest_claim') {
+    const ok = claim?.token === args.p_token;
+    if (ok) claim!.member_id = args.p_member_id;
+    return { data: ok, error: null };
+  }
+  if (fn === 'release_guest_claim') {
+    const ok = claim?.token === args.p_token && !claim.member_id;
+    if (ok) db.claims.delete(key);
+    return { data: ok, error: null };
+  }
+  throw new Error(`unexpected rpc ${fn}`);
+}
+
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({
+    rpc: fakeRpc,
     from: () => ({
       select: () => ({
         ilike: (col: string, pattern: string) => {
@@ -20,8 +55,9 @@ vi.mock('@supabase/supabase-js', () => ({
           return { limit: async () => ({ data: db.existing, error: db.lookupError }) };
         },
       }),
-      upsert: async (row: unknown, opts: unknown) => {
+      upsert: async (row: { id: string; name: string }, opts: unknown) => {
         db.upsert(row, opts);
+        if (!db.upsertError) db.existing.push({ id: row.id, name: row.name });
         return { error: db.upsertError };
       },
     }),
@@ -38,7 +74,7 @@ vi.mock('@/app/api/_utils/logger', () => ({
 }));
 
 import { RateLimitError } from '@/app/api/_utils/rate-limit';
-import { logApiError } from '@/app/api/_utils/logger';
+import logger, { logApiError } from '@/app/api/_utils/logger';
 import { addGuestMember } from '@/lib/live/members';
 import { POST } from './route';
 
@@ -64,6 +100,9 @@ describe('POST /api/live/member/add', () => {
     db.upsertError = null;
     db.ilike.mockReset();
     db.upsert.mockReset();
+    db.rpc.mockReset();
+    db.claims.clear();
+    db.claimError = null;
     notionRequest.mockReset();
     notionRequest.mockResolvedValue({ id: NEW_PAGE });
     checkRateLimit.mockReset();
@@ -137,7 +176,7 @@ describe('POST /api/live/member/add', () => {
   });
 
   it('fails open when the rate limiter is down', async () => {
-    checkRateLimit.mockRejectedValue(new Error('Upstash unreachable'));
+    checkRateLimit.mockRejectedValue(new Error('database unreachable'));
     expect((await post({ name: 'Grace Hopper', actor: null })).status).toBe(200);
   });
 
@@ -157,6 +196,65 @@ describe('POST /api/live/member/add', () => {
     const res = await post({ name: 'Grace Hopper', actor: ADA });
     expect(res.status).toBe(500);
     expect(await res.text()).not.toMatch(/constraint/);
+  });
+
+  it('two simultaneous adds of one new name create ONE Notion page and both get that member', async () => {
+    let finishPage!: (v: { id: string }) => void;
+    notionRequest.mockImplementation(() => new Promise((resolve) => (finishPage = resolve)));
+    const first = post({ name: 'Grace Hopper', actor: ADA });
+    await vi.waitFor(() => expect(notionRequest).toHaveBeenCalledTimes(1));
+    const second = post({ name: ' grace  HOPPER', actor: null }); // claim is pending: it waits
+    await new Promise((r) => setTimeout(r, 50));
+    finishPage({ id: NEW_PAGE });
+    const [a, b] = await Promise.all([first, second]);
+    const id = 'bbbbbbbb-0000-4000-8000-00000000000f';
+    expect(await a.json()).toEqual({ ok: true, member: { id, name: 'Grace Hopper' } });
+    expect(b.status).toBe(200);
+    expect(await b.json()).toEqual({ ok: true, member: { id, name: 'Grace Hopper' } });
+    expect(notionRequest).toHaveBeenCalledTimes(1);
+    expect(db.upsert).toHaveBeenCalledTimes(1);
+    expect(db.claims.get('grace hopper')).toMatchObject({ member_id: id });
+  });
+
+  it('answers 409 "try again" when another add of the name is still in flight after the wait', async () => {
+    db.claims.set('grace hopper', { token: 'other', member_id: null });
+    vi.useFakeTimers();
+    try {
+      const res = post({ name: 'Grace Hopper', actor: ADA });
+      await vi.advanceTimersByTimeAsync(10_000);
+      const r = await res;
+      expect(r.status).toBe(409);
+      expect(await r.json()).toEqual({ ok: false, reason: 'Someone is adding this guest right now. Try again in a moment.' });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(notionRequest).not.toHaveBeenCalled();
+  });
+
+  it('releases the claim when Notion fails, so a retry can go straight away', async () => {
+    notionRequest.mockRejectedValueOnce(new Error('Notion down'));
+    expect((await post({ name: 'Grace Hopper', actor: ADA })).status).toBe(500);
+    expect(db.claims.has('grace hopper')).toBe(false);
+    expect((await post({ name: 'Grace Hopper', actor: ADA })).status).toBe(200);
+    expect(notionRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-checks members after winning the claim (a crashed adder may have created the row)', async () => {
+    let lookups = 0;
+    db.ilike.mockImplementation(() => {
+      if (++lookups === 2) db.existing = [{ id: ADA, name: 'Grace Hopper' }];
+    });
+    const res = await post({ name: 'Grace Hopper', actor: null });
+    expect(await res.json()).toEqual({ ok: true, member: { id: ADA, name: 'Grace Hopper' } });
+    expect(notionRequest).not.toHaveBeenCalled();
+  });
+
+  it('falls back to adding without a claim (and logs) if the claim RPC is unavailable', async () => {
+    db.claimError = { message: 'function public.claim_guest_name(text) does not exist' };
+    const res = await post({ name: 'Grace Hopper', actor: ADA });
+    expect(res.status).toBe(200);
+    expect(notionRequest).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(expect.objectContaining({ type: 'GUEST_CLAIM_UNAVAILABLE' }));
   });
 
   it('answers a generic 500 when the lookup fails, before touching Notion', async () => {

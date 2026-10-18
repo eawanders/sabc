@@ -137,6 +137,21 @@ describe('bookFirstFree (Book me)', () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
+  it('stops when the server says I already hold another slot of this test (booked from another device)', async () => {
+    const s = stateOf(six());
+    const claim = vi.fn(async (): Promise<LiveResult<TestSlotRow>> => ({
+      ok: false,
+      reason: 'conflict',
+      current: row(5, ME, 3),
+      holderName: 'Me',
+      updatedByName: 'Me',
+      heldSlot: 5,
+    }));
+    const out = await bookFirstFree({ available: 6, me: ME, row: (n) => viewSlot(s, T, n), busy: () => false, claim });
+    expect(claim).toHaveBeenCalledOnce();
+    expect(out).toEqual({ kind: 'already', slot: 5 });
+  });
+
   it('skips slots with a write already in flight, and stops on a non-conflict failure', async () => {
     const s = stateOf(six());
     const claim = vi.fn(async (): Promise<LiveResult<TestSlotRow>> => ({ ok: false, reason: 'rate_limited' }));
@@ -153,6 +168,9 @@ describe('messages', () => {
     );
     expect(takenMessage(2, { current: row(2), holderName: null, updatedByName: 'Ada' })).toBe(
       "Ada changed Slot 2 first (now empty). Yours wasn't applied.",
+    );
+    expect(takenMessage(4, { current: row(2, 'x'), holderName: 'Ben Blade', updatedByName: 'Ben Blade', heldSlot: 2 })).toBe(
+      "Ben Blade is already in Slot 2. Yours wasn't applied.",
     );
     expect(outcomeConflictMessage(3, { current: row(3, 'x'), holderName: 'Cora', updatedByName: 'Ada' })).toBe(
       'Ada changed Slot 3 first (now Cora). Outcome not saved.',

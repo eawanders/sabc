@@ -151,6 +151,7 @@ export async function bookFirstFree(opts: {
     const result = await opts.claim(slot, current(slot)!.version);
     if (result.ok) return { kind: 'booked', slot, result, lost };
     if (result.reason !== 'conflict' || !result.current) return { kind: 'failed', result, lost };
+    if (result.heldSlot) return { kind: 'already', slot: result.heldSlot }; // booked from another device
     seen.set(slot, result.current);
     if (result.current.member_id === opts.me) return { kind: 'already', slot }; // booked from another tab
     if (result.current.member_id) lost.push({ slot, holderName: result.holderName });

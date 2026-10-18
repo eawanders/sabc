@@ -12,6 +12,8 @@ import { MARSHAL_COLUMNS, groupSlots, type MarshalSlot } from './club-marshal';
 import { EVENT_COLUMNS, splitEvents, type ClubEvent } from './club-events';
 
 vi.mock('@/server/live/flagStatus', () => ({ getFlagStatusText: vi.fn(async () => 'Green') }));
+// These drive many writes as one actor; the limiter has its own tests (rate-limit.test.ts, 17_rate_limit)
+vi.mock('@/app/api/_utils/rate-limit', async (orig) => ({ ...(await orig<object>()), checkRateLimit: vi.fn(async () => {}) }));
 
 const url = process.env.BETA_IT_SUPABASE_URL;
 const anonKey = process.env.BETA_IT_ANON_KEY;
