@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server';
 import type { z } from 'zod';
 import { readJsonObject } from '@/app/api/_utils/request';
-import { checkRateLimit, RateLimitError } from '@/app/api/_utils/rate-limit';
+import { checkLiveWriteRateLimit, RateLimitError } from '@/app/api/_utils/rate-limit';
 import { getClientIp } from '@/app/api/_utils/response';
 import logger, { logApiError } from '@/app/api/_utils/logger';
 import type { LiveResult } from '@/lib/live/types';
@@ -54,7 +54,7 @@ export function liveRoute<S extends z.ZodType<{ actorId: string }>>(
 
     // Per actor + IP. A limiter outage must not block writes: log it and carry on.
     try {
-      await checkRateLimit(`live:${input.actorId}:${ip}`);
+      await checkLiveWriteRateLimit(`live:${input.actorId}:${ip}`);
     } catch (error) {
       if (error instanceof RateLimitError) {
         return respond({ ok: false, reason: 'rate_limited', message: 'Too many changes, try again in a moment' });

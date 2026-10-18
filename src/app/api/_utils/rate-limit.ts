@@ -51,6 +51,15 @@ export async function checkRateLimit(identifier: string): Promise<void> {
 }
 
 /**
+ * Check rate limit for /api/live/* writes (seats, slots, availability, reports, undo): 120 per
+ * minute, counted separately from checkRateLimit. Guest/member adds stay on checkRateLimit (30),
+ * since each creates a Notion page.
+ */
+export async function checkLiveWriteRateLimit(identifier: string): Promise<void> {
+  await hit(`write:${identifier}`, 120);
+}
+
+/**
  * Check rate limit for authenticated users (higher limits): 60 requests per minute
  */
 export async function checkAuthenticatedRateLimit(userId: string): Promise<void> {

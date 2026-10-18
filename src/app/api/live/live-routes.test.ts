@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { rpc, checkRateLimit } = vi.hoisted(() => ({ rpc: vi.fn(), checkRateLimit: vi.fn() }));
+const { rpc, checkLiveWriteRateLimit } = vi.hoisted(() => ({ rpc: vi.fn(), checkLiveWriteRateLimit: vi.fn() }));
 
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ rpc })) }));
 vi.mock('@/server/live/flagStatus', () => ({ getFlagStatusText: vi.fn(async () => 'Light Blue') }));
 vi.mock('@/app/api/_utils/rate-limit', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/app/api/_utils/rate-limit')>()),
-  checkRateLimit,
+  checkLiveWriteRateLimit,
 }));
 vi.mock('@/app/api/_utils/logger', () => ({
   default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
@@ -47,8 +47,8 @@ describe('/api/live/* routes', () => {
     process.env.SUPABASE_URL = 'http://127.0.0.1:1';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-key';
     rpc.mockReset();
-    checkRateLimit.mockReset();
-    checkRateLimit.mockResolvedValue(undefined);
+    checkLiveWriteRateLimit.mockReset();
+    checkLiveWriteRateLimit.mockResolvedValue(undefined);
     vi.mocked(logApiError).mockClear();
   });
 
@@ -100,7 +100,7 @@ describe('/api/live/* routes', () => {
       p_expected_version: 2,
       p_flag_status: 'Light Blue',
     });
-    expect(checkRateLimit).toHaveBeenCalledWith(`live:${ADA}:203.0.113.7`);
+    expect(checkLiveWriteRateLimit).toHaveBeenCalledWith(`live:${ADA}:203.0.113.7`);
   });
 
   it('answers 409 with the current holder and who changed it', async () => {
@@ -181,7 +181,7 @@ describe('/api/live/* routes', () => {
   });
 
   it('answers 429 when the actor is over the limit', async () => {
-    checkRateLimit.mockRejectedValue(new RateLimitError('Rate limit exceeded', { limit: 30, reset: Date.now(), remaining: 0 }));
+    checkLiveWriteRateLimit.mockRejectedValue(new RateLimitError('Rate limit exceeded', { limit: 120, reset: Date.now(), remaining: 0 }));
     const res = await post(claimTestSlot, { testId: OUTING, slot: 1, memberId: ADA, actorId: ADA, expectedVersion: 0 });
     expect(res.status).toBe(429);
     expect(await res.json()).toMatchObject({ ok: false, reason: 'rate_limited' });
@@ -189,7 +189,7 @@ describe('/api/live/* routes', () => {
   });
 
   it('fails open when the rate limiter is down', async () => {
-    checkRateLimit.mockRejectedValue(new Error('database unreachable'));
+    checkLiveWriteRateLimit.mockRejectedValue(new Error('database unreachable'));
     rpc.mockResolvedValue({ data: { ok: true, change_id: 1, row: {}, outing_status: null }, error: null });
     const res = await post(setTestOutcome, { testId: OUTING, slot: 1, outcome: 'Passed', actorId: ADA, expectedMemberId: ADA });
     expect(res.status).toBe(200);

@@ -5,7 +5,7 @@ const { rpc, warn } = vi.hoisted(() => ({ rpc: vi.fn(), warn: vi.fn() }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ rpc })) }));
 vi.mock('./logger', () => ({ default: { warn, error: vi.fn(), info: vi.fn() } }));
 
-import { checkAuthenticatedRateLimit, checkRateLimit, RateLimitError } from './rate-limit';
+import { checkAuthenticatedRateLimit, checkLiveWriteRateLimit, checkRateLimit, RateLimitError } from './rate-limit';
 
 describe('rate limiter (Postgres fixed window)', () => {
   beforeEach(() => {
@@ -39,6 +39,16 @@ describe('rate limiter (Postgres fixed window)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('gives /api/live/* writes 120 a minute under their own key', async () => {
+    rpc.mockResolvedValue({ data: true, error: null });
+    await checkLiveWriteRateLimit('live:a:203.0.113.7');
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('rate_limit_hit', {
+      p_key: 'write:live:a:203.0.113.7',
+      p_window_seconds: 60,
+      p_max: 120,
+    });
   });
 
   it('gives signed-in users 60 a minute under their own key', async () => {
