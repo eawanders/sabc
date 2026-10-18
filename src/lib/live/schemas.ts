@@ -124,6 +124,18 @@ export const saveOutingReportSchema = z
   })
   .strict();
 
+// A guest's name: trimmed, inner whitespace collapsed, 2-80 characters. The actor may be unknown
+// (someone not yet identified adding a guest), so it is optional.
+export const addGuestMemberSchema = z
+  .object({
+    name: z
+      .string()
+      .transform((v) => v.trim().replace(/\s+/g, ' '))
+      .pipe(z.string().min(2).max(80)),
+    actor: id.nullable(),
+  })
+  .strict();
+
 export const undoSchema = z.object({ changeId: z.number().int().positive(), actorId: id }).strict();
 
 export type ClaimSeatInput = z.input<typeof claimSeatSchema>;
@@ -134,4 +146,5 @@ export type SetTestOutcomeInput = z.input<typeof setTestOutcomeSchema>;
 export type ClaimMarshalSlotInput = z.input<typeof claimMarshalSlotSchema>;
 export type SaveUnavailabilityInput = z.input<typeof saveUnavailabilitySchema>;
 export type SaveOutingReportInput = z.input<typeof saveOutingReportSchema>;
+export type AddGuestMemberInput = z.input<typeof addGuestMemberSchema>;
 export type UndoInput = z.input<typeof undoSchema>;

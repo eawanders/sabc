@@ -249,6 +249,52 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
     [outingId, write],
   );
 
+  /** Hold a seat with no one named (Reserved), as "Reserved - Don't Change" did. */
+  const reserve = useCallback(
+    (seat: string) =>
+      write(
+        [{ seat, patch: { member_id: null, status: 'Reserved' } }],
+        (actor, [seen]) =>
+          claimSeat({ outingId, seat, memberId: null, status: 'Reserved', actorId: actor, expectedVersion: seen.version }),
+        `${seatLabel(seat)} reserved`,
+      ),
+    [outingId, write],
+  );
+
+  /**
+   * Swap in subs: each pair is one atomic seat/swap (member and status), so the rower seat gets the
+   * sub (Available) and the sub seat the rower (Not Available). Pairs go one after another; each
+   * has its own undo. Stops at the first pair that doesn't go through (the toast says why).
+   */
+  const swapSubs = useCallback(
+    async (pairs: { crew: string; sub: string }[]) => {
+      for (const { crew, sub } of pairs) {
+        const a = viewSeat(seatsRef.current, crew);
+        const b = viewSeat(seatsRef.current, sub);
+        if (!a || !b) return;
+        const before = undoStack.current.length;
+        await write(
+          [
+            { seat: crew, patch: { member_id: b.member_id, status: b.status } },
+            { seat: sub, patch: { member_id: a.member_id, status: a.status } },
+          ],
+          (actor, [seenCrew, seenSub]) =>
+            swapSeats({
+              outingId,
+              seatA: crew,
+              seatB: sub,
+              actorId: actor,
+              expectedVersionA: seenCrew.version,
+              expectedVersionB: seenSub.version,
+            }),
+          `${nameRef.current(b.member_id) ?? 'Sub'} in for ${nameRef.current(a.member_id) ?? 'rower'} at ${seatLabel(crew)}`,
+        );
+        if (undoStack.current.length === before) return;
+      }
+    },
+    [outingId, write],
+  );
+
   const undoLast = useCallback(() => {
     const entry = undoStack.current[undoStack.current.length - 1];
     if (!entry) {
@@ -267,6 +313,8 @@ export function useCrew(outingId: string, memberName: (id: string | null) => str
     assign,
     move,
     setStatus,
+    reserve,
+    swapSubs,
     undoLast,
   };
 }
