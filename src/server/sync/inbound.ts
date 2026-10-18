@@ -9,6 +9,7 @@
 // arrive through the webhook (reconcilePage) or a full sweep, which deletes
 // rows whose page no longer appears in the data source. Deleting an outing
 // cascades to its seats and report; deleting a member clears their seats.
+import { emptyTally, reconcileAppOwned, type AppOwnedTally } from './appOwned';
 import type { SyncDb } from './db';
 import type { SyncNotion } from './notionApi';
 import { notionErrorInfo } from './notionApi';
@@ -28,6 +29,8 @@ export interface SourceResult {
   deleted: number;
   skipped: number;
   complete: boolean;
+  /** App-owned fields reconciled from Notion (seats, reports, unavailability, slots, sign-ups). */
+  appOwned: AppOwnedTally;
   error?: string;
 }
 
@@ -41,7 +44,9 @@ export async function syncSource(
   options: InboundOptions = {},
 ): Promise<SourceResult> {
   const clock = options.clock ?? Date.now;
-  const result: SourceResult = { source: source.key, upserted: 0, deleted: 0, skipped: 0, complete: false };
+  const result: SourceResult = {
+    source: source.key, upserted: 0, deleted: 0, skipped: 0, complete: false, appOwned: emptyTally(),
+  };
   const state = await db.getState(source.key);
   const since = options.full ? null : state.cursor;
   const seen = new Set<string>();
@@ -74,6 +79,9 @@ export async function syncSource(
       }
       if (rows.length) await upsertRows(db, source, rows);
       if (trashed.length) await db.deleteByIds(source.table, trashed);
+      // Only the pages this query returned (edited since the cursor; all of
+      // them on a full sweep). Before the cursor moves, so a failure retries.
+      await reconcileAppOwned(db, source, page.results ?? [], result.appOwned);
       result.upserted += rows.length;
       result.deleted += trashed.length;
       // Save progress per Notion page of results, so a deadline loses nothing.
@@ -134,5 +142,6 @@ export async function reconcilePage(notion: SyncNotion, db: SyncDb, source: Sour
   const row = source.map(page);
   if (!row) return 'skipped' as const;
   await upsertRows(db, source, [row]);
+  await reconcileAppOwned(db, source, [page], emptyTally());
   return 'upserted' as const;
 }

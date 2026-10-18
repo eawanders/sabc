@@ -51,7 +51,10 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
     await client.from('outings').delete().eq('id', OUTING);
     await client.from('marshal_slots').delete().eq('id', SLOT);
     await client.from('sync_state').delete().in('source', ['outings', 'marshal_slots']);
-    await client.from('notion_outbox').delete().eq('entity_key->>page_id', OUTING);
+    await client.from('notion_outbox').delete().in('entity_key->>page_id', [OUTING, SLOT]);
+    // Leave change_log as found: the pgTAP files count its rows.
+    await client.from('change_log').delete().eq('entity_key->>outing_id', OUTING);
+    await client.from('change_log').delete().eq('entity_key->>id', SLOT);
   });
 
   it('inbound upsert of a new outing creates its 14 seats; a re-run is idempotent', async () => {
@@ -59,8 +62,15 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
     await syncSource(fakeNotion({ [outings.dataSourceId]: [outingPage('IT outing')] }), db, outings, { full: false });
     expect(await seats()).toHaveLength(14);
 
-    // The app claims a seat; inbound sync must not touch it.
-    await client.from('outing_seats').update({ member_id: BEN, status: 'Reserved' }).match({ outing_id: OUTING, seat: 'Bow' });
+    // Notion's crew came in with the outing (reconcile of app-owned fields).
+    expect((await seats()).find((s) => s.seat === 'Cox')).toMatchObject({ member_id: ADA, status: 'Available' });
+
+    // The app claims a seat; its Notion patch is pending, so inbound sync must not touch it.
+    const bow = (await seats()).find((s) => s.seat === 'Bow')!;
+    const claim = await client.rpc('claim_seat', {
+      p_outing_id: OUTING, p_seat: 'Bow', p_member_id: BEN, p_status: 'Reserved', p_actor: BEN, p_expected_version: bow.version,
+    });
+    expect(claim.data).toMatchObject({ ok: true });
     const before = await seats();
 
     await syncSource(fakeNotion({ [outings.dataSourceId]: [outingPage('IT outing, renamed')] }), db, outings);
@@ -75,20 +85,21 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
 
   it('inbound upsert of a marshal slot keeps the app-owned sign-up', async () => {
     const marshals = sourceByKey('marshal_slots');
-    const slot = () => page(SLOT, { Name: title('IT slot'), Person: relation(ADA), 'Person Status': select('Open') });
+    const slot = () => page(SLOT, { Name: title('IT slot'), Person: relation(), 'Person Status': select('Open') });
     await syncSource(fakeNotion({ [marshals.dataSourceId]: [slot()] }), db, marshals);
-    await client.from('marshal_slots').update({ person_id: BEN, person_status: 'Confirmed' }).eq('id', SLOT);
+    const claim = await client.rpc('claim_marshal_slot', { p_slot_id: SLOT, p_member_id: BEN, p_actor: BEN, p_expected_version: 0 });
+    expect(claim.data).toMatchObject({ ok: true });
 
     await syncSource(fakeNotion({ [marshals.dataSourceId]: [slot()] }), db, marshals);
     const { data } = await client.from('marshal_slots').select('name, person_id, person_status, version').eq('id', SLOT).single();
     expect(data).toEqual({ name: 'IT slot', person_id: BEN, person_status: 'Confirmed', version: 1 });
   });
 
-  it('backfill writes changed seats once and nothing on a second run', async () => {
+  it('backfill finds the reconciled seats already done and keeps the app claim', async () => {
     const notion = fakeNotion({ [sourceByKey('outings').dataSourceId]: [outingPage('IT outing, renamed')] });
     const first = await backfillAppOwned(notion, db);
-    // Cox is new (version 0); Bow was claimed by the app above, so it is kept.
-    expect(first.seats).toMatchObject({ written: 1, keptAppChanges: 1 });
+    // Cox already came in through the inbound reconcile; Bow was claimed by the app.
+    expect(first.seats).toMatchObject({ written: 0, keptAppChanges: 1 });
     expect((await seats()).find((s) => s.seat === 'Cox')).toMatchObject({ member_id: ADA, status: 'Available' });
 
     const second = await backfillAppOwned(notion, db);
@@ -96,6 +107,9 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
   });
 
   it('outbox coalesces edits to one page and the worker completes it', async () => {
+    // Settle the claims queued by the tests above.
+    await client.from('notion_outbox').update({ done_at: new Date().toISOString() }).is('done_at', null)
+      .in('entity_key->>page_id', [OUTING, SLOT]);
     const pageKey = { page_id: OUTING };
     await client.rpc('enqueue_notion_outbox', { p_entity: 'outing', p_entity_key: pageKey, p_payload: { 'Bow Status': { status: { name: 'Available' } } } });
     await client.rpc('enqueue_notion_outbox', { p_entity: 'outing', p_entity_key: pageKey, p_payload: { 'Cox Status': { status: { name: 'Reserved' } } } });
@@ -132,4 +146,61 @@ describe.skipIf(!enabled)('sync against local Supabase', () => {
     expect(await pendingRow()).toMatchObject({ payload: {} });
     expect((await pendingRow())?.done_at).not.toBeNull();
   });
+  it('takes a current-app edit from Notion: logged as Notion, nothing echoed back', async () => {
+    const outings = sourceByKey('outings');
+    const edited = page(OUTING, { Name: title('IT outing, renamed'), Status: status('Cancelled'), Cox: relation(ADA),
+      'Cox Status': status('Available'), Bow: relation(BEN), 'Bow Status': status('Reserved'),
+      Stroke: relation(BEN.replace(/-/g, '')), 'Stroke Status': status('Available') },
+      { last_edited_time: new Date(Date.now() + 60_000).toISOString() });
+    const result = await syncSource(fakeNotion({ [outings.dataSourceId]: [edited] }), db, outings);
+
+    // Ben in Bow and Stroke would seat him twice: Stroke is skipped and reported.
+    expect(result.appOwned.skipped).toBe(1);
+    expect((await seats()).find((s) => s.seat === 'Stroke')).toMatchObject({ member_id: null });
+
+    // Ben moves Bow -> 7 Seat in Notion: both seats change together.
+    const moved = page(OUTING, { ...edited.properties, Bow: relation(), Stroke: relation(), '7 Seat': relation(BEN),
+      '7 Seat Status': status('Available') }, { last_edited_time: new Date(Date.now() + 120_000).toISOString() });
+    const res = await syncSource(fakeNotion({ [outings.dataSourceId]: [moved] }), db, outings);
+    expect(res.appOwned.skipped).toBe(0);
+    const now = await seats();
+    expect(now.find((s) => s.seat === 'Bow')).toMatchObject({ member_id: null });
+    expect(now.find((s) => s.seat === '7 Seat')).toMatchObject({ member_id: BEN, status: 'Available' });
+
+    const log = (await client.from('change_log').select('actor_member_id, source, entity_key')
+      .eq('entity', 'outing_seats').eq('entity_key->>outing_id', OUTING).eq('entity_key->>seat', '7 Seat')).data;
+    expect(log).toEqual([{ actor_member_id: null, source: 'notion', entity_key: { outing_id: OUTING, seat: '7 Seat' } }]);
+    const pending = (await client.from('notion_outbox').select('id').is('done_at', null).eq('entity_key->>page_id', OUTING)).data;
+    expect(pending).toEqual([]);
+  });
+
+  it('Realtime pushes a seat taken from Notion to subscribers', async () => {
+    const outings = sourceByKey('outings');
+    const received = new Promise<Record<string, unknown>>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('no Realtime event within 30 s')), 30_000);
+      const channel = client
+        .channel(`it-${Date.now()}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'outing_seats', filter: `outing_id=eq.${OUTING}` },
+          (payload) => {
+            if ((payload.new as { seat?: string }).seat !== 'Sub 1') return;
+            clearTimeout(timer);
+            void client.removeChannel(channel);
+            resolve(payload.new as Record<string, unknown>);
+          })
+        // Write only once the server says the postgres_changes listener is live
+        // (SUBSCRIBED alone can precede it on a freshly started stack).
+        .on('system', {}, async (msg: { extension?: string; status?: string }) => {
+          if (msg.extension !== 'postgres_changes' || msg.status !== 'ok') return;
+          const page1 = page(OUTING, { Name: title('IT outing, renamed'), Status: status('Cancelled'), Cox: relation(ADA),
+            'Cox Status': status('Available'), '7 Seat': relation(BEN), '7 Seat Status': status('Available'),
+            'Sub 1': relation(ADA.replace(/-/g, '')) }, { last_edited_time: new Date(Date.now() + 180_000).toISOString() });
+          // Cox is Ada too: Sub 1 would seat her twice, so move her out of Cox in the same edit.
+          page1.properties!['Cox'] = relation();
+          await syncSource(fakeNotion({ [outings.dataSourceId]: [page1] }), db, outings);
+        })
+        .subscribe();
+    });
+    const row = await received;
+    expect(row).toMatchObject({ outing_id: OUTING, seat: 'Sub 1', member_id: ADA, updated_by: null });
+  }, 35_000);
 });

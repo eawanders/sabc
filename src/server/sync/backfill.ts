@@ -7,11 +7,11 @@
 // a second run writes nothing. Rows the app has already changed (version > 0)
 // are left alone unless `overwrite` is set, so a late re-run cannot undo a
 // member's claim with Notion's stale value.
-import { SEAT_PROPERTIES, SEAT_STATUSES } from '@/lib/seatProperties';
-import { DAYS_OF_WEEK, DAY_LABELS, parseTimeRanges, type TimeRange } from '@/types/rowerAvailability';
+import { SEAT_STATUSES } from '@/lib/seatProperties';
+import { DAYS_OF_WEEK, type TimeRange } from '@/types/rowerAvailability';
+import { REPORT_FIELDS, marshalValues, reportValues, seatValues, testSlotValues, unavailabilityValues } from './appOwned';
 import type { SyncDb } from './db';
 import type { SyncNotion } from './notionApi';
-import { optionName, plainText, relationIds } from './notionValues';
 import { canonicalId, isTrashed, sourceByKey, type NotionPage, type Row } from './sources';
 
 export interface BackfillOptions {
@@ -38,13 +38,6 @@ export interface BackfillResult {
 
 const TEST_OUTCOMES = new Set(['No Show', 'Test Booked', 'Failed', 'Passed']);
 const MARSHAL_STATUSES = new Set(['Open', 'Reserved', 'Maybe Available', 'Awaiting Approval', 'Confirmed', 'Not Available']);
-const REPORT_FIELDS: Record<string, string> = {
-  outing_summary: 'Outing Summary',
-  boat_feel: 'Boat Feel',
-  outing_successes: 'Outing Successes',
-  next_focus: 'Next Focus',
-  coach_feedback: 'Coach Feedback',
-};
 
 const counts = (): BackfillCounts => ({ written: 0, unchanged: 0, keptAppChanges: 0, unknownRefs: 0 });
 
@@ -62,8 +55,6 @@ export async function queryAllPages(notion: SyncNotion, dataSourceId: string): P
   return pages;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const props = (page: NotionPage) => (page.properties ?? {}) as Record<string, any>;
 
 function keyed(rows: Row[], ...cols: string[]) {
   return new Map(rows.map((r) => [cols.map((c) => String(r[c])).join('|'), r]));
@@ -97,11 +88,9 @@ export async function backfillAppOwned(
     marshalSignups: counts(),
   };
   const memberIds = new Set((await db.selectAll('members', 'id')).map((r) => String(r.id)));
-  const member = (prop: unknown, c: BackfillCounts): string | null => {
-    const id = relationIds(prop)[0];
+  const member = (id: string | null, c: BackfillCounts): string | null => {
     if (!id) return null;
-    const canonical = canonicalId(id);
-    if (memberIds.has(canonical)) return canonical;
+    if (memberIds.has(id)) return id;
     c.unknownRefs++;
     return null;
   };
@@ -122,21 +111,18 @@ export async function backfillAppOwned(
       result.seats.unknownRefs++;
       continue;
     }
-    const p = props(page);
-    for (const { relation, status } of Object.values(SEAT_PROPERTIES)) {
-      const statusName = optionName(p[status]);
+    for (const { seat, member_id, status } of seatValues(page)) {
       const wanted = {
         outing_id: outingId,
-        seat: relation,
-        member_id: member(p[relation], result.seats),
-        status: statusName && SEAT_STATUSES.includes(statusName) ? statusName : null,
+        seat,
+        member_id: member(member_id, result.seats),
+        status: status && SEAT_STATUSES.includes(status) ? status : null,
       };
-      if (decide(seats.get(`${outingId}|${relation}`), wanted, ['member_id', 'status'], overwrite, result.seats)) {
+      if (decide(seats.get(`${outingId}|${seat}`), wanted, ['member_id', 'status'], overwrite, result.seats)) {
         seatRows.push(wanted);
       }
     }
-    const report: Row = { outing_id: outingId };
-    for (const [col, prop] of Object.entries(REPORT_FIELDS)) report[col] = plainText(p[prop]);
+    const report: Row = { outing_id: outingId, ...reportValues(page) };
     const existing = reports.get(outingId);
     const empty = Object.keys(REPORT_FIELDS).every((col) => report[col] === null);
     if (!existing && empty) continue;
@@ -155,9 +141,7 @@ export async function backfillAppOwned(
   for (const page of memberPages) {
     const memberId = canonicalId(page.id);
     if (!memberIds.has(memberId)) continue; // nameless members are not synced
-    const p = props(page);
-    const wanted: Row = { member_id: memberId };
-    for (const day of DAYS_OF_WEEK) wanted[day] = normalise(parseTimeRanges(plainText(p[`Unavailable ${DAY_LABELS[day]}`])));
+    const wanted: Row = { member_id: memberId, ...unavailabilityValues(page) };
     const existing = unavailability.get(memberId);
     if (!existing && DAYS_OF_WEEK.every((d) => (wanted[d] as TimeRange[]).length === 0)) continue;
     const comparable = existing && { ...existing, ...Object.fromEntries(DAYS_OF_WEEK.map((d) => [d, normalise(existing[d])])) };
@@ -170,18 +154,16 @@ export async function backfillAppOwned(
   const slotRows: Row[] = [];
   for (const page of testPages) {
     const testId = canonicalId(page.id);
-    const p = props(page);
-    for (let slot = 1; slot <= 6; slot++) {
+    for (const { slot, member_id, outcome } of testSlotValues(page)) {
       const existing = slots.get(`${testId}|${slot}`);
       if (!existing) {
         result.swimTestSlots.unknownRefs++;
         continue;
       }
-      const outcome = optionName(p[`Slot ${slot} Outcome`]);
       const wanted = {
         test_id: testId,
         slot,
-        member_id: member(p[`Slot ${slot}`], result.swimTestSlots),
+        member_id: member(member_id, result.swimTestSlots),
         outcome: outcome && TEST_OUTCOMES.has(outcome) ? outcome : null,
       };
       if (decide(existing, wanted, ['member_id', 'outcome'], overwrite, result.swimTestSlots)) slotRows.push(wanted);
@@ -199,12 +181,11 @@ export async function backfillAppOwned(
       result.marshalSignups.unknownRefs++;
       continue;
     }
-    const p = props(page);
-    const status = optionName(p['Person Status']);
+    const { person_id, person_status: status } = marshalValues(page);
     const wanted = {
       id,
-      person_id: member(p['Person'], result.marshalSignups),
-      person_status: status && MARSHAL_STATUSES.has(status) ? status : 'Open',
+      person_id: member(person_id, result.marshalSignups),
+      person_status: MARSHAL_STATUSES.has(status) ? status : 'Open',
     };
     if (decide(existing, wanted, ['person_id', 'person_status'], overwrite, result.marshalSignups)) {
       marshalUpdates.push(wanted);
