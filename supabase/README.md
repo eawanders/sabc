@@ -123,6 +123,35 @@ cancelled outing: a queued live Status is sent as Cancelled if the outing now
 reads Cancelled, and is re-asserted as Cancelled if the cancellation lands while
 the PATCH is in flight.
 
+**App-owned fields edited in Notion (side-by-side beta).** While the current
+app still writes seats, seat statuses, "Unavailable <Day>", swim-test slots,
+marshal sign-ups and outing reports straight to Notion, the inbound sync also
+reconciles those fields for every page it reads (incremental: pages edited
+since the cursor; the nightly full sweep: all pages). `src/server/sync/appOwned.ts`
+reads the values (shared with the backfill) and the `sync_reconcile_*`
+functions (migration `20261018600100_reconcile_app_owned.sql`, service role
+only) decide per field, atomically:
+
+1. Notion equals the DB → nothing.
+2. A pending `notion_outbox` row for the page has that Notion property → keep
+   the DB (the app's newer value is on its way to Notion).
+3. The row's last *app* write (`updated_by` not null) is later than the page's
+   `last_edited_time` → keep the DB; reported as `kept_newer` and logged.
+   Rows last written by the sync or the backfill (`updated_by` null) never count
+   as newer: their value came from Notion.
+4. Otherwise take Notion's value: the version bumps, `updated_by` = null, one
+   `change_log` row with `actor_member_id` null and `source = 'notion'` (so
+   `undo_change` refuses it), and nothing is queued back to Notion.
+
+Seats take the B4 per-outing advisory lock (`live_lock_outing`). A Notion state
+that would seat one member twice in an outing (a mid-edit snapshot) skips the
+seats moving that member and reports it; moves between seats in one edit apply
+together. Each page runs in its own savepoint, so a bad page is reported in
+`skipped` and the rest of the batch applies. Reconciled rows reach open beta
+screens through Realtime like any other row change. Notion-side seat changes
+do not re-run the auto-confirm (`recompute_outing_status`): the current app
+confirms in Notion itself, and that Status comes in through `sync_outing_status`.
+
 **Deletions (soft approach).** Only rows of Notion-owned tables are deleted, and
 only when Notion says so: a page returned as `archived`/`in_trash`, a
 `page.deleted` webhook (the page is re-read first; `page.undeleted` restores

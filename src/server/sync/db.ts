@@ -24,6 +24,16 @@ export interface OutboxFailure {
   last_error: string;
 }
 
+export type ReconcileKind = 'seats' | 'reports' | 'unavailability' | 'test_slots' | 'marshal_slots';
+
+/** What a sync_reconcile_* function did (see the 20261018600100 migration). */
+export interface ReconcileResult {
+  rows: number;
+  kept_pending: number;
+  kept_newer: { entity: string; key: Record<string, unknown>; field: string }[];
+  skipped: { entity: string; key: Record<string, unknown>; reason: string }[];
+}
+
 export interface SyncDb {
   getState(source: SourceKey): Promise<SyncStateRow>;
   /** Records a run; `cursor` is only written when given. */
@@ -41,6 +51,8 @@ export interface SyncDb {
   getOutingStatus(id: string): Promise<string | null>;
   /** True only if `secret` equals the Vault secret 'sync_shared_secret' (see verify_sync_secret). */
   verifySyncSecret(secret: string): Promise<boolean>;
+  /** Per-field reconcile of app-owned values from Notion (sync_reconcile_<kind>). */
+  reconcileAppOwned(kind: ReconcileKind, items: Record<string, unknown>[]): Promise<ReconcileResult>;
 }
 
 const CHUNK = 500;
@@ -134,6 +146,21 @@ export function createSupabaseSyncDb(client: SupabaseClient): SyncDb {
           'sync_outing_statuses',
         );
       }
+    },
+
+    async reconcileAppOwned(kind, items) {
+      const total: ReconcileResult = { rows: 0, kept_pending: 0, kept_newer: [], skipped: [] };
+      for (let i = 0; i < items.length; i += CHUNK) {
+        const res = check(
+          await client.rpc(`sync_reconcile_${kind}`, { p_items: items.slice(i, i + CHUNK) }),
+          `sync_reconcile_${kind}`,
+        ) as ReconcileResult;
+        total.rows += res.rows;
+        total.kept_pending += res.kept_pending;
+        total.kept_newer.push(...res.kept_newer);
+        total.skipped.push(...res.skipped);
+      }
+      return total;
     },
 
     async getOutingStatus(id) {

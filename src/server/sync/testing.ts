@@ -1,5 +1,5 @@
 // In-memory SyncDb and Notion page builders for the sync unit tests.
-import type { OutboxFailure, OutboxRow, SyncDb, SyncStateRow } from './db';
+import type { OutboxFailure, OutboxRow, ReconcileKind, ReconcileResult, SyncDb, SyncStateRow } from './db';
 import type { NotionPage, Row, SourceKey } from './sources';
 
 const KEYS: Record<string, string[]> = {
@@ -114,6 +114,15 @@ export class FakeDb implements SyncDb {
 
   async verifySyncSecret(secret: string) {
     return this.syncSecret !== null && secret !== '' && secret === this.syncSecret;
+  }
+
+  reconcileCalls: { kind: ReconcileKind; items: Record<string, unknown>[] }[] = [];
+  reconcileResult: ReconcileResult = { rows: 0, kept_pending: 0, kept_newer: [], skipped: [] };
+
+  /** Records the call; the per-field rule itself is SQL (pgTAP 08). */
+  async reconcileAppOwned(kind: ReconcileKind, items: Record<string, unknown>[]) {
+    this.reconcileCalls.push({ kind, items });
+    return this.reconcileResult;
   }
 
   async getOutingStatus(id: string) {
